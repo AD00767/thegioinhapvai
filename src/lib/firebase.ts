@@ -8,12 +8,35 @@ import {
   createUserWithEmailAndPassword,
   fetchSignInMethodsForEmail
 } from "firebase/auth";
-import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, getDocs, query, where, serverTimestamp } from "firebase/firestore";
+import { 
+  getFirestore, 
+  initializeFirestore, 
+  doc, 
+  getDoc, 
+  setDoc, 
+  updateDoc, 
+  collection, 
+  getDocs, 
+  query, 
+  where, 
+  serverTimestamp 
+} from "firebase/firestore";
 import firebaseConfig from "../../firebase-applet-config.json";
+import { useAuthStore } from "../store/useAuthStore";
+import { applyTheme } from "./themeFont";
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+
+let firestoreDb;
+try {
+  firestoreDb = initializeFirestore(app, {
+    experimentalAutoDetectLongPolling: true,
+  }, firebaseConfig.firestoreDatabaseId);
+} catch (e) {
+  firestoreDb = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+}
+export const db = firestoreDb;
 export const googleProvider = new GoogleAuthProvider();
 
 export const sanitizeDisplayName = (rawName: string | null | undefined, numericId: string): string => {
@@ -26,33 +49,78 @@ export const sanitizeDisplayName = (rawName: string | null | undefined, numericI
   return trimmed;
 };
 
-export const loginWithGoogle = async () => {
+export const syncAuthUser = async (firebaseUser: any, customBackendData?: any) => {
+  if (!firebaseUser) {
+    useAuthStore.getState().setAuth(null, null);
+    useAuthStore.getState().setInitialized(true);
+    return null;
+  }
+
+  if (customBackendData) {
+    const payload = { id: firebaseUser.uid, ...customBackendData };
+    useAuthStore.getState().setAuth(firebaseUser, payload);
+    useAuthStore.getState().setInitialized(true);
+    return payload;
+  }
+
   try {
-    const result = await signInWithPopup(auth, googleProvider);
-    const user = result.user;
-    
-    // Check if any admin exists in the system
-    const adminQuery = query(collection(db, "users"), where("role", "==", "ADMIN"));
-    const adminSnap = await getDocs(adminQuery);
-    const hasAdmin = !adminSnap.empty;
-
-    // Sync with Firestore directly
-    const userRef = doc(db, "users", user.uid);
+    const userRef = doc(db, 'users', firebaseUser.uid);
     const userSnap = await getDoc(userRef);
-    
-    let backendData;
-    if (!userSnap.exists()) {
-      const { generateUniqueId } = await import('./generateId');
-      const numericId = await generateUniqueId(db, 'user', user.uid);
 
-      backendData = {
+    // Check admin existence
+    let hasAdmin = true;
+    try {
+      const adminQuery = query(collection(db, "users"), where("role", "==", "ADMIN"));
+      const adminSnap = await getDocs(adminQuery);
+      hasAdmin = !adminSnap.empty;
+    } catch (e) {
+      console.warn("Admin check warning in syncAuthUser:", e);
+    }
+
+    if (userSnap.exists()) {
+      let userData = userSnap.data();
+      if (userData.isLocked) {
+        await signOut(auth).catch(() => {});
+        localStorage.removeItem('custom_auth_user');
+        useAuthStore.getState().setAuth(null, null);
+        useAuthStore.getState().setInitialized(true);
+        throw new Error("Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.");
+      }
+
+      // Auto-promote if no admin exists
+      if (!hasAdmin && userData.role !== 'ADMIN') {
+        await updateDoc(userRef, { role: 'ADMIN' }).catch(() => {});
+        userData.role = 'ADMIN';
+      }
+
+      // Sanitize display name
+      if (!userData.displayName || userData.displayName.includes('@') || userData.displayName === userData.email) {
+        const safeName = sanitizeDisplayName(firebaseUser.displayName, userData.numericId || firebaseUser.uid.substring(0, 6));
+        await updateDoc(userRef, { displayName: safeName }).catch(() => {});
+        userData.displayName = safeName;
+      }
+
+      if (userData.themePreference) {
+        applyTheme(userData.themePreference);
+      }
+
+      const payload = { id: firebaseUser.uid, ...userData };
+      useAuthStore.getState().setAuth(firebaseUser, payload);
+      useAuthStore.getState().setInitialized(true);
+      return payload;
+    } else {
+      // First time profile creation
+      const { generateUniqueId } = await import('./generateId');
+      const numericId = await generateUniqueId(db, 'user', firebaseUser.uid);
+
+      const newUserData = {
         numericId,
-        email: user.email,
-        displayName: sanitizeDisplayName(user.displayName, numericId),
-        avatar: user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`,
+        email: firebaseUser.email || '',
+        displayName: sanitizeDisplayName(firebaseUser.displayName, numericId),
+        avatar: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${firebaseUser.uid}`,
         bio: "",
         socialLinks: {},
-        role: hasAdmin ? "USER" : "ADMIN", // Grant ADMIN to the first participant if no admin exists
+        role: hasAdmin ? "USER" : "ADMIN",
         creatorStatus: false,
         isLocked: false,
         strikeCount: 0,
@@ -62,26 +130,39 @@ export const loginWithGoogle = async () => {
         updatedAt: serverTimestamp(),
         deletedAt: null
       };
-      await setDoc(userRef, backendData);
-    } else {
-      backendData = userSnap.data();
-      if (backendData.isLocked) {
-        await signOut(auth);
-        throw new Error("Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.");
-      }
-      // If displayName was set to an email or contains @, sanitize it immediately
-      if (!backendData.displayName || backendData.displayName.includes('@') || backendData.displayName === backendData.email) {
-        backendData.displayName = sanitizeDisplayName(null, backendData.numericId || user.uid.substring(0, 6));
-        await updateDoc(userRef, { displayName: backendData.displayName }).catch(() => {});
-      }
-      // If no admin exists in system, auto-upgrade this user to ADMIN
-      if (!hasAdmin && backendData.role !== "ADMIN") {
-        backendData.role = "ADMIN";
-        await updateDoc(userRef, { role: "ADMIN" });
-      }
+
+      await setDoc(userRef, newUserData);
+      const payload = { id: firebaseUser.uid, ...newUserData };
+      useAuthStore.getState().setAuth(firebaseUser, payload);
+      useAuthStore.getState().setInitialized(true);
+      return payload;
     }
-    
-    return { user, backendData: { id: user.uid, ...backendData } };
+  } catch (err: any) {
+    if (err.message && err.message.includes("bị khóa")) {
+      throw err;
+    }
+    console.error("syncAuthUser error fallback:", err);
+    const fallbackPayload = {
+      id: firebaseUser.uid,
+      email: firebaseUser.email || '',
+      displayName: sanitizeDisplayName(firebaseUser.displayName, firebaseUser.uid.substring(0, 6)),
+      avatar: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${firebaseUser.uid}`,
+      role: "USER",
+      creatorStatus: false,
+      isLocked: false
+    };
+    useAuthStore.getState().setAuth(firebaseUser, fallbackPayload);
+    useAuthStore.getState().setInitialized(true);
+    return fallbackPayload;
+  }
+};
+
+export const loginWithGoogle = async () => {
+  try {
+    const result = await signInWithPopup(auth, googleProvider);
+    const user = result.user;
+    const backendData = await syncAuthUser(user);
+    return { user, backendData };
   } catch (error: any) {
     console.error("Google Login error:", error);
     throw error;
@@ -113,19 +194,8 @@ export const loginWithEmail = async (email: string, password: string) => {
   try {
     const result = await signInWithEmailAndPassword(auth, cleanEmail, password);
     const user = result.user;
-
-    const userRef = doc(db, "users", user.uid);
-    const userSnap = await getDoc(userRef);
-
-    if (userSnap.exists()) {
-      const backendData = userSnap.data();
-      if (backendData.isLocked) {
-        await signOut(auth);
-        throw new Error("Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.");
-      }
-      return { user, backendData: { id: user.uid, ...backendData } };
-    }
-    return { user, backendData: null };
+    const backendData = await syncAuthUser(user);
+    return { user, backendData };
   } catch (error: any) {
     console.warn("Primary Firebase Auth login attempt result:", error?.code || error?.message);
     const code = error.code || "";
@@ -162,6 +232,8 @@ export const loginWithEmail = async (email: string, password: string) => {
 
         const sessionPayload = { id: userDoc.id, ...userData };
         localStorage.setItem('custom_auth_user', JSON.stringify(sessionPayload));
+        useAuthStore.getState().setAuth(simulatedUser, sessionPayload);
+        useAuthStore.getState().setInitialized(true);
 
         return { user: simulatedUser, backendData: sessionPayload };
       } catch (fallbackErr: any) {
@@ -198,46 +270,8 @@ export const registerWithEmail = async (email: string, password: string) => {
   try {
     const result = await createUserWithEmailAndPassword(auth, cleanEmail, password);
     const user = result.user;
-
-    // Check if any admin exists in the system
-    let hasAdmin = true;
-    try {
-      const adminQuery = query(collection(db, "users"), where("role", "==", "ADMIN"));
-      const adminSnap = await getDocs(adminQuery);
-      hasAdmin = !adminSnap.empty;
-    } catch (adminCheckErr) {
-      console.warn("Could not check admin status, defaulting to USER role:", adminCheckErr);
-    }
-
-    const { generateUniqueId } = await import('./generateId');
-    const numericId = await generateUniqueId(db, 'user', user.uid);
-
-    const userRef = doc(db, "users", user.uid);
-    const backendData = {
-      numericId,
-      email: user.email,
-      displayName: sanitizeDisplayName(user.displayName, numericId),
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`,
-      bio: "",
-      socialLinks: {},
-      role: hasAdmin ? "USER" : "ADMIN",
-      creatorStatus: false,
-      isLocked: false,
-      strikeCount: 0,
-      badges: [],
-      permissions: hasAdmin ? [] : ["ALL"],
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      deletedAt: null
-    };
-
-    try {
-      await setDoc(userRef, backendData);
-    } catch (setDocErr) {
-      console.warn("Could not immediately create user document in registerWithEmail, auth listener will sync it:", setDocErr);
-    }
-
-    return { user, backendData: { id: user.uid, ...backendData } };
+    const backendData = await syncAuthUser(user);
+    return { user, backendData };
   } catch (error: any) {
     console.warn("Primary Firebase Auth register attempt result:", error?.code || error?.message);
     const code = error.code || "";
@@ -298,6 +332,8 @@ export const registerWithEmail = async (email: string, password: string) => {
 
         const sessionPayload = { id: customUid, ...backendData };
         localStorage.setItem('custom_auth_user', JSON.stringify(sessionPayload));
+        useAuthStore.getState().setAuth(simulatedUser, sessionPayload);
+        useAuthStore.getState().setInitialized(true);
 
         return { user: simulatedUser, backendData: sessionPayload };
       } catch (fallbackErr: any) {
@@ -325,6 +361,7 @@ export const registerWithEmail = async (email: string, password: string) => {
 
 export const logout = async () => {
   localStorage.removeItem('custom_auth_user');
+  useAuthStore.getState().setAuth(null, null);
   try {
     await signOut(auth);
   } catch (e) {

@@ -6,8 +6,8 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
-import { auth, db, sanitizeDisplayName } from './lib/firebase';
-import { doc, getDoc, updateDoc, collection, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
+import { auth, db, syncAuthUser } from './lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import { useAuthStore } from './store/useAuthStore';
 import { Toaster } from 'react-hot-toast';
 
@@ -78,96 +78,9 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
-          const userRef = doc(db, 'users', firebaseUser.uid);
-          let userSnap;
-          try {
-            userSnap = await getDoc(userRef);
-          } catch (fetchErr) {
-            console.warn("User profile fetch delayed or pending permission:", fetchErr);
-          }
-
-          // Check if any admin exists in the system (fail-safe)
-          let hasAdmin = true;
-          try {
-            const adminQuery = query(collection(db, "users"), where("role", "==", "ADMIN"));
-            const adminSnap = await getDocs(adminQuery);
-            hasAdmin = !adminSnap.empty;
-          } catch (adminErr) {
-            hasAdmin = true; // default to safe USER role if query is unavailable
-          }
-
-          if (userSnap && userSnap.exists()) {
-            let userData = userSnap.data();
-            // If no admin exists in the system, auto-upgrade the current user to ADMIN
-            if (!hasAdmin && userData.role !== 'ADMIN') {
-              try {
-                await updateDoc(userRef, { role: 'ADMIN' });
-                userData.role = 'ADMIN';
-              } catch (upErr) {
-                console.warn("Could not update admin role:", upErr);
-              }
-            }
-            // If displayName looks like an email or was set to email, sanitize it
-            if (!userData.displayName || userData.displayName.includes('@') || userData.displayName === userData.email) {
-              const safeName = sanitizeDisplayName(null, userData.numericId || firebaseUser.uid.substring(0, 6));
-              try {
-                await updateDoc(userRef, { displayName: safeName });
-                userData.displayName = safeName;
-              } catch (upNameErr) {
-                userData.displayName = safeName;
-              }
-            }
-            if (userData.themePreference) {
-              applyTheme(userData.themePreference);
-            }
-            setAuth(firebaseUser, { id: firebaseUser.uid, ...userData } as any);
-          } else {
-            // First time profile creation in auth listener
-            let numericId = firebaseUser.uid.substring(0, 9);
-            try {
-              const { generateUniqueId } = await import('./lib/generateId');
-              numericId = await generateUniqueId(db, 'user', firebaseUser.uid);
-            } catch (idGenErr) {
-              console.warn("Falling back to standard ID generation:", idGenErr);
-            }
-            
-            const newUserData = {
-              numericId,
-              email: firebaseUser.email,
-              displayName: sanitizeDisplayName(firebaseUser.displayName, numericId),
-              avatar: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${firebaseUser.uid}`,
-              bio: "",
-              socialLinks: {},
-              role: hasAdmin ? "USER" : "ADMIN",
-              creatorStatus: false,
-              isLocked: false,
-              strikeCount: 0,
-              badges: [],
-              permissions: hasAdmin ? [] : ["ALL"],
-              createdAt: serverTimestamp(),
-              updatedAt: serverTimestamp(),
-              deletedAt: null
-            };
-            try {
-              const { setDoc } = await import('firebase/firestore');
-              await setDoc(userRef, newUserData);
-            } catch (setDocErr) {
-              console.warn("User document creation pending sync:", setDocErr);
-            }
-            setAuth(firebaseUser, { id: firebaseUser.uid, ...newUserData } as any);
-          }
+          await syncAuthUser(firebaseUser);
         } catch (e) {
-          console.warn("Gracefully fallback user profile:", e);
-          const fallbackName = sanitizeDisplayName(firebaseUser.displayName, firebaseUser.uid.substring(0, 6));
-          setAuth(firebaseUser, {
-            id: firebaseUser.uid,
-            email: firebaseUser.email,
-            displayName: fallbackName,
-            avatar: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${firebaseUser.uid}`,
-            role: "USER",
-            creatorStatus: false,
-            isLocked: false
-          } as any);
+          console.error("Failed to sync user profile in auth listener:", e);
         }
       } else {
         // Check if custom auth session exists (for database-backed email/password users)

@@ -264,74 +264,36 @@ router.post("/ai-search", async (req, res) => {
     const { query } = req.body;
     if (!query) return res.status(400).json({ error: "Missing query" });
 
-    // Use Gemini to parse the query into structured criteria with rich semantic understanding
+    // Use Gemini to parse the query into structured criteria
     const prompt = `
-    You are an intelligent search assistant for "Thế giới nhập vai_AD", a Google AI Studio Roleplay community platform.
-    Analyze the user's natural language search query in Vietnamese or English and extract search intent and semantic criteria into structured JSON.
+    Analyze the user's search query for a Roleplay community platform.
+    Extract the intent into structured JSON with these optional fields:
+    - type: "character" | "prompt" | "creator" | "all"
+    - tags: array of strings (e.g. "hiện đại", "nữ chính")
+    - gender: "Nam" | "Nữ" | "Khác"
+    - keywords: array of important keywords to search for
 
     User Query: "${query}"
     
-    Extract:
-    - type: "character" | "prompt" | "creator" | "all" (infer from user intent e.g., "tìm nhân vật" -> "character", "tìm prompt" -> "prompt", "tìm tác giả" -> "creator")
-    - summary: A clear, concise 1-sentence Vietnamese summary of what the user is looking for (e.g. "Tìm kiếm nhân vật nữ hiện đại có tính cách lạnh lùng")
-    - gender: "Nam" | "Nữ" | "Khác" | null
-    - tags: array of relevant tag strings (e.g. ["hiện đại", "nữ chính", "lạnh lùng"])
-    - categories: array of genres or themes (e.g. ["Hiện đại", "Cổ đại", "Fantasy", "Kinh dị", "Trinh thám", "Học đường", "World Building", "Jailbreak", "Roleplay"])
-    - keywords: array of core semantic keywords and synonyms to search for across names, slogans, plots, bios, and prompt contents
-    - suggestedSort: "relevance" | "newest" | "hot" | "likes" | "views" | "copies"
-
-    Respond ONLY with valid JSON matching the schema:
-    {
-      "type": "all" | "character" | "prompt" | "creator",
-      "summary": "string",
-      "gender": "Nam" | "Nữ" | "Khác" | null,
-      "tags": ["string"],
-      "categories": ["string"],
-      "keywords": ["string"],
-      "suggestedSort": "relevance"
-    }
+    Respond ONLY with valid JSON.
     `;
 
     let criteria: any = {};
-    const modelsToTry = ["gemini-2.5-flash", "gemini-2.5-pro"];
-    let succeeded = false;
-
-    for (const modelName of modelsToTry) {
-      if (succeeded) break;
-      for (let attempt = 1; attempt <= 2; attempt++) {
-        try {
-          const response = await ai.models.generateContent({
-            model: modelName,
-            contents: prompt,
-            config: {
-              responseMimeType: "application/json"
-            }
-          });
-          if (response.text) {
-            criteria = JSON.parse(response.text);
-            succeeded = true;
-            break;
-          }
-        } catch (attemptErr: any) {
-          const isUnavailable = attemptErr?.status === 503 || attemptErr?.message?.includes("503") || attemptErr?.message?.includes("high demand");
-          if (isUnavailable && attempt < 2) {
-            await new Promise(resolve => setTimeout(resolve, 600));
-            continue;
-          }
-          break;
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json"
         }
-      }
-    }
-
-    if (!succeeded || !criteria || Object.keys(criteria).length === 0) {
-      // Graceful fallback: extract keywords manually from query
-      const words = query.split(/\s+/).filter((w: string) => w.length > 1);
+      });
+      criteria = JSON.parse(response.text || "{}");
+    } catch (aiErr: any) {
+      console.error("Gemini API error (fallback to basic keyword extraction):", aiErr.message);
+      // Fallback: extract keywords manually
+      const words = query.split(/\s+/).filter((w: string) => w.length > 2);
       criteria = {
-        type: "all",
-        summary: `Tìm kiếm theo từ khóa: "${query}"`,
-        keywords: words,
-        tags: words,
-        categories: []
+        keywords: words
       };
     }
     
