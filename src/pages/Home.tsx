@@ -16,7 +16,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import { useSeo } from "../hooks/useSeo";
 import toast from "react-hot-toast";
 
-import { parseIdQuery, lookupIdInFirebase } from "../lib/searchUtils";
+import { parseIdQuery, lookupIdInFirebase, matchesSearchText } from "../lib/searchUtils";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -202,23 +202,35 @@ export default function Home() {
 
   // Filter items based on searchQuery & selectedTag
   const filteredCharacters = hotCharacters.filter(item => {
-    const nameMatch = (item.name || '').toLowerCase().includes(searchQuery.toLowerCase());
-    const descMatch = (item.slogan || '').toLowerCase().includes(searchQuery.toLowerCase());
-    const tagMatch = selectedTag ? item.tags?.includes(selectedTag) : true;
-    return (nameMatch || descMatch) && tagMatch;
+    const term = searchQuery.trim();
+    const nameMatch = matchesSearchText(item.name, term);
+    const descMatch = matchesSearchText(item.slogan, term) || matchesSearchText(item.plot, term) || matchesSearchText(item.creatorName, term);
+    const idMatch = matchesSearchText(item.numericId, term) || matchesSearchText(item.id, term);
+    const tagMatchesQuery = item.tags && item.tags.some(t => matchesSearchText(t, term));
+    const searchMatch = !term || nameMatch || descMatch || idMatch || tagMatchesQuery;
+
+    const tagMatch = selectedTag ? item.tags?.some(t => matchesSearchText(t, selectedTag)) : true;
+    return searchMatch && tagMatch;
   });
 
   const filteredPrompts = hotPrompts.filter(item => {
-    const nameMatch = (item.name || '').toLowerCase().includes(searchQuery.toLowerCase());
-    const descMatch = (item.purpose || '').toLowerCase().includes(searchQuery.toLowerCase());
-    const tagMatch = selectedTag ? item.tags?.includes(selectedTag) : true;
-    return (nameMatch || descMatch) && tagMatch;
+    const term = searchQuery.trim();
+    const nameMatch = matchesSearchText(item.name, term) || matchesSearchText(item.title, term);
+    const descMatch = matchesSearchText(item.purpose, term) || matchesSearchText(item.content, term) || matchesSearchText(item.authorName, term);
+    const idMatch = matchesSearchText(item.numericId, term) || matchesSearchText(item.id, term);
+    const tagMatchesQuery = item.tags && item.tags.some(t => matchesSearchText(t, term));
+    const searchMatch = !term || nameMatch || descMatch || idMatch || tagMatchesQuery;
+
+    const tagMatch = selectedTag ? item.tags?.some(t => matchesSearchText(t, selectedTag)) : true;
+    return searchMatch && tagMatch;
   });
 
   const filteredCreators = topCreators.filter(item => {
-    const nameMatch = (item.displayName || '').toLowerCase().includes(searchQuery.toLowerCase());
-    const descMatch = (item.bio || '').toLowerCase().includes(searchQuery.toLowerCase());
-    return nameMatch || descMatch;
+    const term = searchQuery.trim();
+    const nameMatch = matchesSearchText(item.displayName, term);
+    const descMatch = matchesSearchText(item.bio, term);
+    const idMatch = matchesSearchText(item.numericId, term) || matchesSearchText(item.id, term);
+    return !term || nameMatch || descMatch || idMatch;
   });
 
   return (

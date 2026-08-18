@@ -262,44 +262,88 @@ router.post("/characters", requireCreator, async (req: any, res) => {
 router.post("/ai-search", async (req, res) => {
   try {
     const { query } = req.body;
-    if (!query) return res.status(400).json({ error: "Missing query" });
+    if (!query || typeof query !== "string") return res.status(400).json({ error: "Missing query" });
+
+    const rawQuery = query.trim();
 
     // Use Gemini to parse the query into structured criteria
     const prompt = `
-    Analyze the user's search query for a Roleplay community platform.
-    Extract the intent into structured JSON with these optional fields:
-    - type: "character" | "prompt" | "creator" | "all"
-    - tags: array of strings (e.g. "hiện đại", "nữ chính")
-    - gender: "Nam" | "Nữ" | "Khác"
-    - keywords: array of important keywords to search for
+    You are an intelligent search query parser for "Thế giới nhập vai_AD" - a Google AI Studio Roleplay community platform.
+    Analyze the user's natural language search query in Vietnamese or English.
+    Extract the search intent into a structured JSON object with the following fields:
+    - type: "character" | "prompt" | "creator" | "all" (e.g. if searching for "nữ chính", "nhân vật", "ma cà rồng" -> "character"; if "prompt viết văn", "câu lệnh" -> "prompt"; if "tác giả", "người tạo" -> "creator"; else "all")
+    - tags: string[] (relevant thematic genres, tags e.g. ["Học đường", "Hiện đại", "Fantasy", "Anime", "Huyền huyễn", "Kinh dị", "Trinh thám"])
+    - gender: "Nam" | "Nữ" | "Khác" | null (only if gender intent is explicitly indicated)
+    - keywords: string[] (key semantic nouns, adjectives, or character attributes without filler words)
+    - summary: string (a short 1-sentence friendly explanation in Vietnamese of what user is looking for)
 
-    User Query: "${query}"
+    User Query: "${rawQuery}"
     
     Respond ONLY with valid JSON.
     `;
 
     let criteria: any = {};
     try {
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json"
-        }
-      });
-      criteria = JSON.parse(response.text || "{}");
+      if (process.env.GEMINI_API_KEY) {
+        const response = await ai.models.generateContent({
+          model: "gemini-3.7-flash",
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json"
+          }
+        });
+        criteria = JSON.parse(response.text || "{}");
+      } else {
+        throw new Error("GEMINI_API_KEY not configured");
+      }
     } catch (aiErr: any) {
-      console.error("Gemini API error (fallback to basic keyword extraction):", aiErr.message);
-      // Fallback: extract keywords manually
-      const words = query.split(/\s+/).filter((w: string) => w.length > 2);
+      console.warn("Gemini API fallback to local intent analysis:", aiErr?.message || aiErr);
+      // Fallback intent extraction
+      const lower = rawQuery.toLowerCase();
+      let type: 'character' | 'prompt' | 'creator' | 'all' = 'all';
+      let gender: string | null = null;
+      const tags: string[] = [];
+
+      if (/(\bprompt\b|\bcâu lệnh\b|\blời nhắc\b|\bviết rp\b|\bwriting\b)/i.test(lower)) {
+        type = 'prompt';
+      } else if (/(\bcreator\b|\btác giả\b|\bngười tạo\b|\buser\b|\bauthor\b)/i.test(lower)) {
+        type = 'creator';
+      } else if (/(\bcharacter\b|\bnhân vật\b|\bnữ chính\b|\bnam chính\b|\bphản diện\b|\bbot\b)/i.test(lower)) {
+        type = 'character';
+      }
+
+      if (/\b(nữ|nữ chính|cô gái|female|girl)\b/i.test(lower)) {
+        gender = 'Nữ';
+      } else if (/\b(nam|nam chính|chàng trai|male|boy)\b/i.test(lower)) {
+        gender = 'Nam';
+      }
+
+      // Check common roleplay tags
+      const commonTags = ['hiện đại', 'cổ đại', 'học đường', 'fantasy', 'kinh dị', 'trinh thám', 'anime', 'huyền huyễn', 'tổng tài', 'tiên hiệp', 'scifi', 'khoa học viễn tưởng', 'hài hước', 'tình cảm'];
+      for (const ct of commonTags) {
+        if (lower.includes(ct)) {
+          tags.push(ct.charAt(0).toUpperCase() + ct.slice(1));
+        }
+      }
+
+      // Filter words
+      const stopWords = new Set(['tìm', 'kiếm', 'cho', 'tôi', 'những', 'các', 'một', 'nhân', 'vật', 'prompt', 'creator', 'và', 'là', 'về', 'trong', 'với', 'hãy']);
+      const words = rawQuery
+        .split(/[\s,.;:!?/\\-]+/)
+        .filter((w: string) => w.length > 1 && !stopWords.has(w.toLowerCase()));
+
       criteria = {
-        keywords: words
+        type,
+        gender,
+        tags,
+        keywords: words.length > 0 ? words : [rawQuery],
+        summary: `Tìm kiếm nội dung phù hợp với "${rawQuery}"`
       };
     }
     
     res.json({ success: true, parsedCriteria: criteria });
   } catch (err) {
-    console.error(err);
+    console.error("AI Search route error:", err);
     res.status(500).json({ error: "AI Search failed" });
   }
 });

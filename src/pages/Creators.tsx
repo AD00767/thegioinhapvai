@@ -8,7 +8,7 @@ import CreatorCard from '../components/CreatorCard';
 import toast from 'react-hot-toast';
 
 import { useNavigate } from 'react-router-dom';
-import { parseIdQuery, lookupIdInFirebase } from '../lib/searchUtils';
+import { parseIdQuery, lookupIdInFirebase, matchesSearchText } from '../lib/searchUtils';
 
 export type CreatorSortOption = 'FEATURED' | 'NEWEST' | 'MOST_CONTRIBUTING';
 
@@ -91,13 +91,13 @@ export default function Creators() {
   // Filter & Sort Logic
   const filteredCreators = creators
     .filter(c => {
-      const term = searchTerm.toLowerCase().trim();
+      const term = searchTerm.trim();
       const matchesSearch = 
         !term ||
-        c.displayName.toLowerCase().includes(term) ||
-        (c.bio && c.bio.toLowerCase().includes(term)) ||
-        (c.numericId && c.numericId.includes(term)) ||
-        (c.id && c.id.includes(term));
+        matchesSearchText(c.displayName, term) ||
+        matchesSearchText(c.bio, term) ||
+        matchesSearchText(c.numericId, term) ||
+        matchesSearchText(c.id, term);
       return matchesSearch;
     })
     .sort((a, b) => {

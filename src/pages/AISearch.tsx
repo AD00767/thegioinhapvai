@@ -1,41 +1,50 @@
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../lib/api';
-import { Sparkles, Search, Copy, Check, ExternalLink, User, BookOpen, PenTool, Flame } from 'lucide-react';
+import { Sparkles, Search, Copy, Check, ExternalLink, User, BookOpen, MessageSquare, Heart, Bookmark, Eye, Layers, Filter, ArrowUpDown } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useSeo } from '../hooks/useSeo';
-import { db } from '../lib/firebase';
-import { collection, query, where, limit, getDocs } from 'firebase/firestore';
 import toast from 'react-hot-toast';
-import { parseIdQuery, lookupIdInFirebase, ExactIdLookupResult } from '../lib/searchUtils';
+import { parseIdQuery, lookupIdInFirebase, searchAllCollections, ExactIdLookupResult, GroupedSearchResults } from '../lib/searchUtils';
+import CharacterCard from '../components/CharacterCard';
+import PromptCard from '../components/PromptCard';
+import CreatorCard from '../components/CreatorCard';
+import { CharacterItem, PromptItem, CreatorItem } from '../types';
+
+type SearchTab = 'all' | 'characters' | 'prompts' | 'creators';
+type SortOption = 'relevance' | 'hot' | 'newest';
 
 export default function AISearch() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<any[] | null>(null);
+  const [activeTab, setActiveTab] = useState<SearchTab>('all');
+  const [sortBy, setSortBy] = useState<SortOption>('relevance');
+  const [results, setResults] = useState<GroupedSearchResults | null>(null);
   const [exactMatch, setExactMatch] = useState<ExactIdLookupResult | null>(null);
   const [criteria, setCriteria] = useState<any>(null);
   const [idError, setIdError] = useState<string | null>(null);
   const [copiedPromptId, setCopiedPromptId] = useState<string | null>(null);
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   useSeo({
     title: 'Tìm kiếm bằng AI',
     description: 'Sử dụng trí tuệ nhân tạo để tìm kiếm Character, Prompt và Creator phù hợp nhất qua ngôn ngữ tự nhiên.'
   });
 
-  const performSearch = async (queryText: string) => {
-    if (!queryText.trim()) return;
+  const performSearch = async (queryText: string, currentSort: SortOption = sortBy) => {
+    const trimmed = queryText.trim();
+    if (!trimmed) return;
     
     setLoading(true);
     setResults(null);
     setExactMatch(null);
     setCriteria(null);
     setIdError(null);
+
     try {
-      // Robust ID search handling
-      const idParse = parseIdQuery(queryText);
+      // 1. Check if user typed an explicit ID query (e.g. character/123456789 or 9 digits)
+      const idParse = parseIdQuery(trimmed);
       if (idParse.isIdQuery) {
         if (idParse.error) {
           setIdError(idParse.error);
@@ -52,7 +61,7 @@ export default function AISearch() {
             setLoading(false);
             return;
           } else {
-            const missingMsg = lookup?.error || "ID không tồn tại trên hệ thống.";
+            const missingMsg = lookup?.error || "Mã ID không tồn tại trên hệ thống.";
             setIdError(missingMsg);
             toast.error(missingMsg);
             setLoading(false);
@@ -61,36 +70,50 @@ export default function AISearch() {
         }
       }
 
-      // Normal Natural Language Search
-      const res = await apiFetch("/api/ai-search", {
-        method: "POST",
-        body: JSON.stringify({ query: queryText })
-      });
-      
-      const parsedCriteria = res.parsedCriteria || {};
-      setCriteria(parsedCriteria);
-
-      let q = query(collection(db, "characters"), where("deletedAt", "==", null));
-      if (parsedCriteria.gender) {
-        q = query(q, where("gender", "==", parsedCriteria.gender));
+      // 2. Natural Language / AI Search Processing
+      let parsedCriteria: any = { keywords: [trimmed] };
+      try {
+        const res = await apiFetch("/api/ai-search", {
+          method: "POST",
+          body: JSON.stringify({ query: trimmed })
+        });
+        if (res && res.parsedCriteria) {
+          parsedCriteria = res.parsedCriteria;
+          setCriteria(parsedCriteria);
+        }
+      } catch (aiErr) {
+        console.warn("AI parsing fallback to keyword matching:", aiErr);
       }
 
-      const snapshot = await getDocs(query(q, limit(50)));
-      let fetchedResults = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // 3. Search across all platform collections (Characters, Prompts, Creators)
+      const searchOptions = {
+        type: parsedCriteria.type === 'character' ? ('character' as const)
+             : parsedCriteria.type === 'prompt' ? ('prompt' as const)
+             : parsedCriteria.type === 'creator' ? ('creator' as const)
+             : ('all' as const),
+        gender: parsedCriteria.gender || undefined,
+        tags: parsedCriteria.tags || undefined,
+        keywords: parsedCriteria.keywords || undefined,
+        sortBy: currentSort
+      };
 
-      if (parsedCriteria.keywords && parsedCriteria.keywords.length > 0) {
-        fetchedResults = fetchedResults.filter((char: any) => 
-          parsedCriteria.keywords.some((kw: string) => 
-            (char.name || "").toLowerCase().includes(kw.toLowerCase()) || 
-            (char.slogan || "").toLowerCase().includes(kw.toLowerCase()) ||
-            (char.tags || []).some((t: string) => t.toLowerCase().includes(kw.toLowerCase()))
-          )
-        );
+      const searchOutput = await searchAllCollections(trimmed, searchOptions);
+      setResults(searchOutput);
+
+      // Auto switch to relevant tab if AI specifically identified a single type
+      if (parsedCriteria.type === 'character') {
+        setActiveTab('characters');
+      } else if (parsedCriteria.type === 'prompt') {
+        setActiveTab('prompts');
+      } else if (parsedCriteria.type === 'creator') {
+        setActiveTab('creators');
+      } else {
+        setActiveTab('all');
       }
 
-      setResults(fetchedResults);
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.error("Search execution failed:", err);
+      toast.error("Không thể hoàn tất tìm kiếm. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
@@ -98,7 +121,15 @@ export default function AISearch() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    performSearch(searchQuery);
+    if (!searchQuery.trim()) return;
+    setSearchParams({ q: searchQuery.trim() });
+    performSearch(searchQuery.trim());
+  };
+
+  const handleQuickSuggestion = (text: string) => {
+    setSearchQuery(text);
+    setSearchParams({ q: text });
+    performSearch(text);
   };
 
   const copyToClipboard = (text: string, promptId: string) => {
@@ -106,6 +137,13 @@ export default function AISearch() {
     setCopiedPromptId(promptId);
     toast.success("Đã sao chép nội dung Prompt!");
     setTimeout(() => setCopiedPromptId(null), 2000);
+  };
+
+  const handleSortChange = (newSort: SortOption) => {
+    setSortBy(newSort);
+    if (searchQuery.trim()) {
+      performSearch(searchQuery.trim(), newSort);
+    }
   };
 
   useEffect(() => {
@@ -116,41 +154,80 @@ export default function AISearch() {
     }
   }, [searchParams]);
 
+  const totalResultsCount = results ? results.totalCount : 0;
+  const characterCount = results ? results.characters.length : 0;
+  const promptCount = results ? results.prompts.length : 0;
+  const creatorCount = results ? results.creators.length : 0;
+
   return (
-    <div className="max-w-4xl mx-auto px-4 py-12">
-      <div className="text-center mb-12">
-        <div className="inline-flex items-center justify-center p-3 bg-neutral-100 dark:bg-neutral-800 rounded-full mb-6">
-          <Sparkles className="w-8 h-8 text-neutral-900 dark:text-neutral-100" />
+    <div className="max-w-6xl mx-auto px-4 py-8 md:py-12">
+      {/* Header Banner */}
+      <div className="text-center mb-8">
+        <div className="inline-flex items-center justify-center p-3 bg-neutral-100 dark:bg-neutral-800 rounded-2xl mb-4 border border-neutral-200 dark:border-neutral-700">
+          <Sparkles className="w-7 h-7 text-neutral-900 dark:text-neutral-100" />
         </div>
-        <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">Tìm kiếm bằng AI</h1>
-        <p className="text-neutral-500 max-w-xl mx-auto">
-          Mô tả bằng ngôn ngữ tự nhiên hoặc nhập mã ID trực tiếp (VD: character/123456789), hệ thống sẽ truy xuất chính xác dữ liệu từ cơ sở dữ liệu.
+        <h1 className="text-2xl md:text-4xl font-bold tracking-tight mb-3">AI Search & Tra cứu thông minh</h1>
+        <p className="text-sm md:text-base text-neutral-500 max-w-2xl mx-auto">
+          Mô tả bằng ngôn ngữ tự nhiên (VD: <span className="italic text-neutral-800 dark:text-neutral-300">"Tìm nữ chính hiện đại lạnh lùng"</span>) hoặc tra cứu mã ID trực tiếp (VD: <span className="font-mono text-neutral-800 dark:text-neutral-300">character/123456789</span>).
         </p>
       </div>
 
-      <form onSubmit={handleSearch} className="relative max-w-2xl mx-auto mb-12">
+      {/* Search Input Box */}
+      <form onSubmit={handleSearch} className="relative max-w-3xl mx-auto mb-6">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
         <input 
           type="text" 
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="VD: Tìm nữ chính hiện đại hoặc character/123456789..." 
-          className="w-full pl-12 pr-32 py-4 rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-shadow text-lg"
+          placeholder="Nhập yêu cầu tự nhiên, từ khóa, tên tác giả hoặc mã ID..." 
+          className="w-full pl-12 pr-32 py-4 rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all text-base md:text-lg"
         />
         <button 
           type="submit" 
           disabled={loading || !searchQuery.trim()}
-          className="absolute right-2 top-1/2 -translate-y-1/2 px-6 py-2 bg-black dark:bg-white text-white dark:text-black rounded-xl font-medium disabled:opacity-50 transition-opacity"
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 px-5 py-2.5 bg-black dark:bg-white text-white dark:text-black rounded-xl font-semibold text-sm disabled:opacity-50 transition-all hover:opacity-90 flex items-center gap-2"
         >
-          {loading ? "Đang tìm..." : "Tìm kiếm"}
+          {loading ? (
+            <>
+              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+              <span>Đang tìm...</span>
+            </>
+          ) : (
+            <>
+              <Sparkles className="w-4 h-4" />
+              <span>Tìm kiếm</span>
+            </>
+          )}
         </button>
       </form>
 
-      {/* Error state */}
+      {/* Suggestion Chips */}
+      <div className="flex items-center justify-center gap-2 flex-wrap max-w-3xl mx-auto mb-10 text-xs">
+        <span className="text-neutral-400 font-medium mr-1">Gợi ý tìm kiếm:</span>
+        {[
+          "Nữ chính hiện đại",
+          "Prompt viết RP học đường",
+          "Tổng tài lạnh lùng",
+          "Ma cà rồng Fantasy",
+          "Creator chuyên Anime",
+          "Prompt Roleplay"
+        ].map((chip) => (
+          <button
+            key={chip}
+            type="button"
+            onClick={() => handleQuickSuggestion(chip)}
+            className="px-3 py-1.5 rounded-full bg-neutral-100 dark:bg-neutral-800/80 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 transition-colors border border-neutral-200/60 dark:border-neutral-700/60"
+          >
+            {chip}
+          </button>
+        ))}
+      </div>
+
+      {/* ID Error State */}
       {idError && (
-        <div className="text-center py-12 px-6 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/30 rounded-3xl mt-6">
-          <p className="text-lg font-bold mb-2">{idError}</p>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">Vui lòng kiểm tra lại mã ID hoặc từ khóa tìm kiếm của bạn.</p>
+        <div className="text-center py-10 px-6 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/30 rounded-3xl mb-8">
+          <p className="text-base font-bold mb-1">{idError}</p>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">Vui lòng kiểm tra lại cấu trúc mã ID (gồm đúng 9 chữ số) hoặc chuyển sang tìm kiếm từ khóa.</p>
         </div>
       )}
 
@@ -177,7 +254,7 @@ export default function AISearch() {
                     className="w-20 h-20 rounded-2xl object-cover bg-neutral-100 dark:bg-neutral-800 shrink-0 border border-neutral-200 dark:border-neutral-700" 
                   />
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <h2 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">{exactMatch.result.name}</h2>
                       <span className="text-xs px-2.5 py-0.5 rounded-full font-mono bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                         character/{exactMatch.numericId}
@@ -211,12 +288,12 @@ export default function AISearch() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-2">
-                    <h2 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">{exactMatch.result.title}</h2>
+                    <h2 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">{exactMatch.result.title || exactMatch.result.name}</h2>
                     <span className="text-xs px-2.5 py-0.5 rounded-full font-mono bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                       prompt/{exactMatch.numericId}
                     </span>
                   </div>
-                  <p className="text-xs text-neutral-500">Tác giả: <span className="font-semibold text-neutral-800 dark:text-neutral-200">{exactMatch.result.author}</span></p>
+                  <p className="text-xs text-neutral-500">Tác giả: <span className="font-semibold text-neutral-800 dark:text-neutral-200">{exactMatch.result.authorName || exactMatch.result.author}</span></p>
                 </div>
 
                 <p className="text-sm text-neutral-600 dark:text-neutral-400">{exactMatch.result.purpose}</p>
@@ -266,9 +343,9 @@ export default function AISearch() {
                     <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">{exactMatch.result.bio || "Chưa có tiểu sử"}</p>
                     {exactMatch.type === 'creator' && (
                       <div className="flex items-center gap-4 mt-2 text-xs text-neutral-500">
-                        <span>Character: <strong className="text-neutral-900 dark:text-neutral-100">{exactMatch.result.characterCount}</strong></span>
-                        <span>Prompt: <strong className="text-neutral-900 dark:text-neutral-100">{exactMatch.result.promptCount}</strong></span>
-                        <span>Người theo dõi: <strong className="text-neutral-900 dark:text-neutral-100">{exactMatch.result.followerCount}</strong></span>
+                        <span>Character: <strong className="text-neutral-900 dark:text-neutral-100">{exactMatch.result.characterCount || 0}</strong></span>
+                        <span>Prompt: <strong className="text-neutral-900 dark:text-neutral-100">{exactMatch.result.promptCount || 0}</strong></span>
+                        <span>Người theo dõi: <strong className="text-neutral-900 dark:text-neutral-100">{exactMatch.result.followerCount || 0}</strong></span>
                       </div>
                     )}
                   </div>
@@ -287,54 +364,276 @@ export default function AISearch() {
         </div>
       )}
 
-      {/* Natural language query parsing indicator */}
+      {/* AI Understanding Badge */}
       {!idError && !exactMatch && criteria && (
-        <div className="mb-8 p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800 text-sm">
-          <div className="font-medium mb-2">AI đã hiểu yêu cầu của bạn:</div>
-          <div className="flex flex-wrap gap-2">
-            {criteria.type && <span className="px-3 py-1 bg-white dark:bg-neutral-800 rounded-full border border-neutral-200 dark:border-neutral-700">Loại: {criteria.type}</span>}
-            {criteria.gender && <span className="px-3 py-1 bg-white dark:bg-neutral-800 rounded-full border border-neutral-200 dark:border-neutral-700">Giới tính: {criteria.gender}</span>}
-            {criteria.tags && criteria.tags.map((t: string) => <span key={t} className="px-3 py-1 bg-white dark:bg-neutral-800 rounded-full border border-neutral-200 dark:border-neutral-700">Tag: {t}</span>)}
-            {criteria.keywords && criteria.keywords.map((k: string) => <span key={k} className="px-3 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-full border border-blue-100 dark:border-blue-800">Từ khóa: {k}</span>)}
+        <div className="mb-8 p-4 bg-neutral-50 dark:bg-neutral-900/60 rounded-2xl border border-neutral-200/80 dark:border-neutral-800 text-sm">
+          <div className="flex items-center gap-2 font-medium text-xs text-neutral-500 uppercase tracking-wider mb-2">
+            <Sparkles className="w-3.5 h-3.5 text-neutral-700 dark:text-neutral-300" />
+            <span>AI đã phân tích ngữ nghĩa truy vấn</span>
+          </div>
+          {criteria.summary && (
+            <p className="text-neutral-800 dark:text-neutral-200 font-medium mb-3">{criteria.summary}</p>
+          )}
+          <div className="flex flex-wrap gap-2 text-xs">
+            {criteria.type && criteria.type !== 'all' && (
+              <span className="px-3 py-1 bg-white dark:bg-neutral-800 rounded-full border border-neutral-200 dark:border-neutral-700 font-medium text-neutral-700 dark:text-neutral-300">
+                Phân loại: {criteria.type === 'character' ? 'Nhân vật' : criteria.type === 'prompt' ? 'Prompt' : 'Creator'}
+              </span>
+            )}
+            {criteria.gender && (
+              <span className="px-3 py-1 bg-white dark:bg-neutral-800 rounded-full border border-neutral-200 dark:border-neutral-700 font-medium text-neutral-700 dark:text-neutral-300">
+                Giới tính: {criteria.gender}
+              </span>
+            )}
+            {criteria.tags && criteria.tags.map((t: string) => (
+              <span key={t} className="px-3 py-1 bg-white dark:bg-neutral-800 rounded-full border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400">
+                #{t}
+              </span>
+            ))}
+            {criteria.keywords && criteria.keywords.map((k: string) => (
+              <span key={k} className="px-3 py-1 bg-neutral-200/70 dark:bg-neutral-800 rounded-full border border-neutral-300/50 dark:border-neutral-700 text-neutral-800 dark:text-neutral-200 font-medium">
+                Từ khóa: {k}
+              </span>
+            ))}
           </div>
         </div>
       )}
 
+      {/* Category Tabs & Sorting Bar (When Results Exist) */}
+      {!idError && !exactMatch && results && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-neutral-200 dark:border-neutral-800 pb-4 mb-8">
+          {/* Tabs */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <button
+              onClick={() => setActiveTab('all')}
+              className={`px-4 py-2 rounded-xl text-xs md:text-sm font-semibold transition-colors ${
+                activeTab === 'all'
+                  ? 'bg-black text-white dark:bg-white dark:text-black'
+                  : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'
+              }`}
+            >
+              Tất cả ({totalResultsCount})
+            </button>
+            <button
+              onClick={() => setActiveTab('characters')}
+              className={`px-4 py-2 rounded-xl text-xs md:text-sm font-semibold transition-colors ${
+                activeTab === 'characters'
+                  ? 'bg-black text-white dark:bg-white dark:text-black'
+                  : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'
+              }`}
+            >
+              Nhân vật ({characterCount})
+            </button>
+            <button
+              onClick={() => setActiveTab('prompts')}
+              className={`px-4 py-2 rounded-xl text-xs md:text-sm font-semibold transition-colors ${
+                activeTab === 'prompts'
+                  ? 'bg-black text-white dark:bg-white dark:text-black'
+                  : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'
+              }`}
+            >
+              Prompt ({promptCount})
+            </button>
+            <button
+              onClick={() => setActiveTab('creators')}
+              className={`px-4 py-2 rounded-xl text-xs md:text-sm font-semibold transition-colors ${
+                activeTab === 'creators'
+                  ? 'bg-black text-white dark:bg-white dark:text-black'
+                  : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'
+              }`}
+            >
+              Creator ({creatorCount})
+            </button>
+          </div>
+
+          {/* Sort Selector */}
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <ArrowUpDown className="w-4 h-4 text-neutral-400" />
+            <select
+              value={sortBy}
+              onChange={(e) => handleSortChange(e.target.value as SortOption)}
+              aria-label="Sắp xếp kết quả tìm kiếm"
+              className="px-3 py-1.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-xs font-medium text-neutral-800 dark:text-neutral-200 focus:outline-none"
+            >
+              <option value="relevance">Độ liên quan</option>
+              <option value="hot">Phổ biến nhất / Hot</option>
+              <option value="newest">Mới nhất</option>
+            </select>
+          </div>
+        </div>
+      )}
+
+      {/* Loading Skeleton */}
       {loading && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {[1,2,3,4].map(i => <div key={i} className="h-32 bg-neutral-100 dark:bg-neutral-800 rounded-2xl animate-pulse"></div>)}
+        <div className="space-y-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="h-64 bg-neutral-100 dark:bg-neutral-800/60 rounded-3xl animate-pulse border border-neutral-200/50 dark:border-neutral-700/50"></div>
+            ))}
+          </div>
         </div>
       )}
 
-      {!idError && !exactMatch && !loading && results && results.length === 0 && (
-        <div className="text-center py-20 text-neutral-500 border border-neutral-100 dark:border-neutral-800 rounded-3xl border-dashed">
-          Không tìm thấy kết quả phù hợp.
+      {/* Empty State */}
+      {!idError && !exactMatch && !loading && results && totalResultsCount === 0 && (
+        <div className="text-center py-20 px-6 bg-neutral-50 dark:bg-neutral-900/30 border border-neutral-200 dark:border-neutral-800 rounded-3xl">
+          <div className="w-16 h-16 bg-neutral-100 dark:bg-neutral-800 rounded-2xl flex items-center justify-center mx-auto mb-4 text-neutral-400">
+            <Search className="w-8 h-8" />
+          </div>
+          <h3 className="text-lg font-bold mb-2">Không tìm thấy kết quả phù hợp</h3>
+          <p className="text-sm text-neutral-500 max-w-md mx-auto mb-6">
+            Không tìm thấy Character, Prompt hoặc Creator nào khớp với <span className="font-semibold text-neutral-800 dark:text-neutral-200">"{searchQuery}"</span>.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <button
+              onClick={() => handleQuickSuggestion("Nữ chính")}
+              className="px-4 py-2 bg-neutral-200/70 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 rounded-xl text-xs font-semibold"
+            >
+              Xem Nhân vật Nữ chính
+            </button>
+            <button
+              onClick={() => handleQuickSuggestion("Prompt Roleplay")}
+              className="px-4 py-2 bg-neutral-200/70 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 rounded-xl text-xs font-semibold"
+            >
+              Xem Prompt RP
+            </button>
+            <Link
+              to="/explore"
+              className="px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded-xl text-xs font-semibold"
+            >
+              Khám phá trang cộng đồng
+            </Link>
+          </div>
         </div>
       )}
 
-      {!idError && !exactMatch && !loading && results && results.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {results.map((item, i) => (
-             <motion.div 
-               initial={{ opacity: 0, y: 10 }}
-               animate={{ opacity: 1, y: 0 }}
-               transition={{ delay: i * 0.05 }}
-               key={item.id}
-             >
-               <Link to={`/characters/${item.id}`} className="group p-4 bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm hover:shadow-md transition-all flex gap-4 h-full">
-                 <img src={item.avatar || "https://api.dicebear.com/7.x/bottts/svg?seed="+item.name} className="w-20 h-20 rounded-xl object-cover bg-neutral-100 dark:bg-neutral-800 shrink-0" />
-                 <div className="flex-1 min-w-0">
-                   <h3 className="font-bold text-lg group-hover:text-blue-500 transition-colors truncate">{item.name}</h3>
-                   <p className="text-sm text-neutral-600 dark:text-neutral-400 line-clamp-2 mt-1">{item.slogan}</p>
-                   {item.tags && (
-                     <div className="flex gap-1 mt-2 flex-wrap">
-                       {item.tags.slice(0,2).map((t: string) => <span key={t} className="text-xs px-2 py-0.5 bg-neutral-100 dark:bg-neutral-800 rounded-md text-neutral-600 dark:text-neutral-400">{t}</span>)}
-                     </div>
-                   )}
-                 </div>
-               </Link>
-             </motion.div>
-          ))}
+      {/* Results Content Display */}
+      {!idError && !exactMatch && !loading && results && totalResultsCount > 0 && (
+        <div className="space-y-12">
+          {/* TAB: ALL */}
+          {activeTab === 'all' && (
+            <>
+              {/* 1. Character Section */}
+              {results.characters.length > 0 && (
+                <section>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <User className="w-5 h-5 text-neutral-700 dark:text-neutral-300" />
+                      <h2 className="text-xl font-bold tracking-tight">Nhân vật Roleplay ({results.characters.length})</h2>
+                    </div>
+                    {results.characters.length > 3 && (
+                      <button
+                        onClick={() => setActiveTab('characters')}
+                        className="text-xs font-semibold text-neutral-600 dark:text-neutral-400 hover:underline"
+                      >
+                        Xem tất cả ({results.characters.length})
+                      </button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {results.characters.slice(0, 6).map((character) => (
+                      <CharacterCard key={character.id} character={character} />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* 2. Prompt Section */}
+              {results.prompts.length > 0 && (
+                <section>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <BookOpen className="w-5 h-5 text-neutral-700 dark:text-neutral-300" />
+                      <h2 className="text-xl font-bold tracking-tight">Prompt AI ({results.prompts.length})</h2>
+                    </div>
+                    {results.prompts.length > 3 && (
+                      <button
+                        onClick={() => setActiveTab('prompts')}
+                        className="text-xs font-semibold text-neutral-600 dark:text-neutral-400 hover:underline"
+                      >
+                        Xem tất cả ({results.prompts.length})
+                      </button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {results.prompts.slice(0, 6).map((prompt) => (
+                      <PromptCard key={prompt.id} prompt={prompt} />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* 3. Creator Section */}
+              {results.creators.length > 0 && (
+                <section>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-5 h-5 text-neutral-700 dark:text-neutral-300" />
+                      <h2 className="text-xl font-bold tracking-tight">Creator & Tác giả ({results.creators.length})</h2>
+                    </div>
+                    {results.creators.length > 3 && (
+                      <button
+                        onClick={() => setActiveTab('creators')}
+                        className="text-xs font-semibold text-neutral-600 dark:text-neutral-400 hover:underline"
+                      >
+                        Xem tất cả ({results.creators.length})
+                      </button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {results.creators.slice(0, 6).map((creator) => (
+                      <CreatorCard key={creator.id} creator={creator} />
+                    ))}
+                  </div>
+                </section>
+              )}
+            </>
+          )}
+
+          {/* TAB: CHARACTERS ONLY */}
+          {activeTab === 'characters' && (
+            <div>
+              {results.characters.length === 0 ? (
+                <div className="text-center py-16 text-neutral-500">Không có Character nào phù hợp với tìm kiếm.</div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {results.characters.map((character) => (
+                    <CharacterCard key={character.id} character={character} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB: PROMPTS ONLY */}
+          {activeTab === 'prompts' && (
+            <div>
+              {results.prompts.length === 0 ? (
+                <div className="text-center py-16 text-neutral-500">Không có Prompt nào phù hợp với tìm kiếm.</div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {results.prompts.map((prompt) => (
+                    <PromptCard key={prompt.id} prompt={prompt} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB: CREATORS ONLY */}
+          {activeTab === 'creators' && (
+            <div>
+              {results.creators.length === 0 ? (
+                <div className="text-center py-16 text-neutral-500">Không có Creator nào phù hợp với tìm kiếm.</div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {results.creators.map((creator) => (
+                    <CreatorCard key={creator.id} creator={creator} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

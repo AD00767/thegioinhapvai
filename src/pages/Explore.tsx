@@ -15,7 +15,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useSeo } from '../hooks/useSeo';
 import toast from 'react-hot-toast';
 
-import { parseIdQuery, lookupIdInFirebase } from '../lib/searchUtils';
+import { parseIdQuery, lookupIdInFirebase, matchesSearchText } from '../lib/searchUtils';
 
 type FilterTab = 'all' | 'featured_characters' | 'new_characters' | 'featured_prompts' | 'new_prompts' | 'featured_creators' | 'new_creators';
 
@@ -168,12 +168,26 @@ export default function Explore() {
   };
 
   // Filter helper functions
-  const filterBySearch = <T extends { name?: string; title?: string; displayName?: string; slogan?: string; purpose?: string; tags?: string[] }>(items: T[]): T[] => {
+  const filterBySearch = <T extends { name?: string; title?: string; displayName?: string; slogan?: string; purpose?: string; plot?: string; content?: string; authorName?: string; creatorName?: string; numericId?: string; id?: string; tags?: string[] }>(items: T[]): T[] => {
     return items.filter(item => {
-      const nameMatch = (item.name || item.title || item.displayName || '').toLowerCase().includes(searchQuery.toLowerCase());
-      const descMatch = (item.slogan || item.purpose || '').toLowerCase().includes(searchQuery.toLowerCase());
+      if (!searchQuery.trim() && !selectedTag) return true;
+      const term = searchQuery.trim();
+      const matchesSearch = !term ||
+        matchesSearchText(item.name, term) ||
+        matchesSearchText(item.title, term) ||
+        matchesSearchText(item.displayName, term) ||
+        matchesSearchText(item.slogan, term) ||
+        matchesSearchText(item.purpose, term) ||
+        matchesSearchText(item.plot, term) ||
+        matchesSearchText(item.content, term) ||
+        matchesSearchText(item.authorName, term) ||
+        matchesSearchText(item.creatorName, term) ||
+        matchesSearchText(item.numericId, term) ||
+        matchesSearchText(item.id, term) ||
+        (item.tags && item.tags.some(t => matchesSearchText(t, term)));
+
       const tagMatch = selectedTag ? item.tags?.includes(selectedTag) : true;
-      return (nameMatch || descMatch) && tagMatch;
+      return matchesSearch && tagMatch;
     });
   };
 

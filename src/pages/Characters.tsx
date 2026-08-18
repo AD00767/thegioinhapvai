@@ -12,7 +12,7 @@ import CreateCharacterModal from '../components/profile/CreateCharacterModal';
 import toast from 'react-hot-toast';
 
 import { useNavigate } from 'react-router-dom';
-import { parseIdQuery, lookupIdInFirebase } from '../lib/searchUtils';
+import { parseIdQuery, lookupIdInFirebase, matchesSearchText } from '../lib/searchUtils';
 
 export type CharacterSortOption = 'FEATURED' | 'NEWEST' | 'OLDEST';
 
@@ -104,17 +104,18 @@ export default function Characters() {
   // Filter & Sort Logic
   const filteredCharacters = characters
     .filter(c => {
-      const term = searchTerm.toLowerCase().trim();
+      const term = searchTerm.trim();
       const matchesSearch = 
         !term ||
-        c.name.toLowerCase().includes(term) ||
-        c.slogan.toLowerCase().includes(term) ||
-        (c.plot && c.plot.toLowerCase().includes(term)) ||
-        (c.creatorName && c.creatorName.toLowerCase().includes(term)) ||
-        (c.numericId && c.numericId.includes(term)) ||
-        (c.id && c.id.includes(term));
+        matchesSearchText(c.name, term) ||
+        matchesSearchText(c.slogan, term) ||
+        matchesSearchText(c.plot, term) ||
+        matchesSearchText(c.creatorName, term) ||
+        matchesSearchText(c.numericId, term) ||
+        matchesSearchText(c.id, term) ||
+        (c.tags && c.tags.some(t => matchesSearchText(t, term)));
 
-      const matchesTag = selectedTag ? c.tags?.includes(selectedTag) : true;
+      const matchesTag = selectedTag ? c.tags?.some(t => matchesSearchText(t, selectedTag)) : true;
       const matchesGender = selectedGender === 'ALL' ? true : c.gender === selectedGender;
 
       return matchesSearch && matchesTag && matchesGender;

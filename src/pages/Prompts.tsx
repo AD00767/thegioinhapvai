@@ -13,7 +13,7 @@ import DeleteConfirmModal from '../components/DeleteConfirmModal';
 import toast from 'react-hot-toast';
 
 import { useNavigate } from 'react-router-dom';
-import { parseIdQuery, lookupIdInFirebase } from '../lib/searchUtils';
+import { parseIdQuery, lookupIdInFirebase, matchesSearchText } from '../lib/searchUtils';
 
 export default function Prompts() {
   const navigate = useNavigate();
@@ -103,17 +103,19 @@ export default function Prompts() {
 
   // Filter & Sort
   const filteredPrompts = prompts.filter(p => {
-    const term = searchTerm.toLowerCase().trim();
+    const term = searchTerm.trim();
     const matchesSearch = 
       !term ||
-      p.name.toLowerCase().includes(term) ||
-      p.purpose.toLowerCase().includes(term) ||
-      p.content.toLowerCase().includes(term) ||
-      (p.authorName && p.authorName.toLowerCase().includes(term)) ||
-      (p.numericId && p.numericId.includes(term)) ||
-      (p.id && p.id.includes(term));
+      matchesSearchText(p.name, term) ||
+      matchesSearchText(p.title, term) ||
+      matchesSearchText(p.purpose, term) ||
+      matchesSearchText(p.content, term) ||
+      matchesSearchText(p.authorName, term) ||
+      matchesSearchText(p.numericId, term) ||
+      matchesSearchText(p.id, term) ||
+      (p.tags && p.tags.some(t => matchesSearchText(t, term)));
 
-    const matchesTag = selectedTag ? p.tags?.includes(selectedTag) : true;
+    const matchesTag = selectedTag ? p.tags?.some(t => matchesSearchText(t, selectedTag)) : true;
 
     return matchesSearch && matchesTag;
   }).sort((a, b) => {
