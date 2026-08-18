@@ -1,0 +1,130 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and account information",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string", "maxLength": 50 },
+        "avatar": { "type": "string" },
+        "bio": { "type": "string", "maxLength": 600 },
+        "role": { "type": "string", "enum": ["USER", "CREATOR", "MODERATOR", "ADMIN"] },
+        "creatorStatus": { "type": "boolean" },
+        "isLocked": { "type": "boolean" },
+        "lockReason": { "type": "string" },
+        "lockExpiresAt": { "type": "string" },
+        "strikeCount": { "type": "number" },
+        "badges": { "type": "array" },
+        "permissions": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "deletedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "displayName", "role"]
+    },
+    "Character": {
+      "title": "Character",
+      "description": "Roleplay character information",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 50 },
+        "avatar": { "type": "string" },
+        "gender": { "type": "string" },
+        "slogan": { "type": "string", "maxLength": 700 },
+        "plot": { "type": "string" },
+        "characterLink": { "type": "string", "pattern": "^https://aistudio\\.google\\.com/.*$" },
+        "creatorId": { "type": "string" },
+        "creatorName": { "type": "string" },
+        "tags": { "type": "array" },
+        "likesCount": { "type": "number" },
+        "savesCount": { "type": "number" },
+        "viewsCount": { "type": "number" },
+        "pinned": { "type": "boolean" },
+        "isHidden": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "deletedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "avatar", "slogan", "plot", "characterLink", "creatorId"]
+    },
+    "Prompt": {
+      "title": "Prompt",
+      "description": "Prompt information",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "purpose": { "type": "string" },
+        "content": { "type": "string" },
+        "tags": { "type": "array" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "copyCount": { "type": "number" },
+        "savesCount": { "type": "number" },
+        "viewsCount": { "type": "number" },
+        "pinned": { "type": "boolean" },
+        "isHidden": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "deletedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["purpose", "content", "authorId"]
+    },
+    "Report": {
+      "title": "Report",
+      "description": "Content or user report",
+      "type": "object",
+      "properties": {
+        "targetId": { "type": "string" },
+        "targetType": { "type": "string", "enum": ["CHARACTER", "PROMPT", "CREATOR", "USER", "COMMENT", "FEEDBACK"] },
+        "targetName": { "type": "string" },
+        "reason": { "type": "string" },
+        "description": { "type": "string" },
+        "attachmentUrl": { "type": "string" },
+        "status": { "type": "string", "enum": ["PENDING", "REVIEWING", "RESOLVED", "REJECTED", "DISMISSED"] },
+        "severity": { "type": "string", "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"] },
+        "reporterId": { "type": "string" },
+        "reporterName": { "type": "string" },
+        "adminResponse": { "type": "string" },
+        "processedBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["targetId", "targetType", "reason", "description", "status", "reporterId"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Log of admin/moderator actions",
+      "type": "object",
+      "properties": {
+        "executorId": { "type": "string" },
+        "executorName": { "type": "string" },
+        "executorRole": { "type": "string" },
+        "action": { "type": "string" },
+        "targetId": { "type": "string" },
+        "targetType": { "type": "string" },
+        "statusBefore": { "type": "object" },
+        "statusAfter": { "type": "object" },
+        "reason": { "type": "string" },
+        "details": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["executorId", "action", "details", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": { "schema": "User", "description": "User profiles" },
+    "/characters/{characterId}": { "schema": "Character", "description": "Character collection" },
+    "/prompts/{promptId}": { "schema": "Prompt", "description": "Prompt collection" },
+    "/reports/{reportId}": { "schema": "Report", "description": "System reports" },
+    "/audit_logs/{logId}": { "schema": "AuditLog", "description": "Admin audit logs" },
+    "/tags/{tagId}": { "schema": "object", "description": "Tags collection" },
+    "/bookmarks/{bookmarkId}": { "schema": "object", "description": "User bookmarks" },
+    "/follows/{followId}": { "schema": "object", "description": "Follow relationships" },
+    "/feedbacks/{feedbackId}": { "schema": "object", "description": "User feedbacks" },
+    "/comments/{commentId}": { "schema": "object", "description": "Content comments" },
+    "/notifications/{notifId}": { "schema": "object", "description": "User notifications" },
+    "/appeals/{appealId}": { "schema": "object", "description": "Moderation appeals" },
+    "/creator_requests/{requestId}": { "schema": "object", "description": "Creator status requests" }
+  }
+}

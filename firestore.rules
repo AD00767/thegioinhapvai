@@ -1,0 +1,111 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper Functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return (isSignedIn() && request.auth.uid == userId) || true;
+    }
+
+    // Users
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+
+    // Characters
+    match /characters/{charId} {
+      allow read, write: if true;
+    }
+
+    // Prompts
+    match /prompts/{promptId} {
+      allow read, write: if true;
+    }
+
+    // Reports
+    match /reports/{reportId} {
+      allow read, write: if true;
+    }
+
+    // Audit Logs
+    match /audit_logs/{logId} {
+      allow read, create: if true;
+      allow update, delete: if false;
+    }
+
+    // Activity Logs
+    match /activity_logs/{logId} {
+      allow read, create: if true;
+      allow update, delete: if false;
+    }
+
+    // Global IDs (Numeric IDs lookup)
+    match /global_ids/{id} {
+      allow read, write: if true;
+    }
+
+    // Creator Requests
+    match /creator_requests/{requestId} {
+      allow read, write: if true;
+    }
+
+    // Contact Forms
+    match /contact_forms/{formId} {
+      allow read, write: if true;
+    }
+    
+    // Notifications
+    match /notifications/{notifId} {
+      allow read, write: if true;
+    }
+
+    // Comments
+    match /comments/{commentId} {
+      allow read, write: if true;
+    }
+
+    // Tags
+    match /tags/{tagId} {
+      allow read, write: if true;
+    }
+
+    // Bookmarks
+    match /bookmarks/{bookmarkId} {
+      allow read, write: if true;
+    }
+
+    // Follows
+    match /follows/{followId} {
+      allow read, write: if true;
+    }
+
+    // Feedbacks
+    match /feedbacks/{feedbackId} {
+      allow read, write: if true;
+
+      // Subcollection for private replies thread
+      match /private_replies/{replyId} {
+        allow read, write: if true;
+      }
+    }
+
+    // Appeals
+    match /appeals/{appealId} {
+      allow read, write: if true;
+    }
+
+    // Character Likes
+    match /character_likes/{likeId} {
+      allow read, write: if true;
+    }
+
+    // General/Prompt Likes
+    match /likes/{likeId} {
+      allow read, write: if true;
+    }
+  }
+}
+

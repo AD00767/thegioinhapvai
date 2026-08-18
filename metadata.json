@@ -1,0 +1,8 @@
+{
+  "name": "Thế giới nhập vai AD 0.1",
+  "description": "Nền tảng cộng đồng dành cho Google AI Studio Roleplay, nơi Creator chia sẻ Character và Prompt, người dùng khám phá tài nguyên, kết nối với cộng đồng và tìm kiếm mọi thông tin cần thiết để xây dựng trải nghiệm Roleplay chất lượng.\n",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

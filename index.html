@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#ffffff" id="theme-color-meta" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Thế Giới Nhập vai AD" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="description" content="Thế Giới Nhập vai AD - Khởi đầu cho mọi hành trình Roleplay. Cộng đồng Google AI Studio." />
+    <title>Thế Giới Nhập vai AD</title>
+    <script>
+      (function() {
+        try {
+          var mode = localStorage.getItem('app_theme_mode') || 'SYSTEM';
+          var isDark = false;
+          if (mode === 'DARK') {
+            isDark = true;
+          } else if (mode === 'LIGHT') {
+            isDark = false;
+          } else {
+            isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          }
+          if (isDark) {
+            document.documentElement.classList.add('dark');
+            var meta = document.getElementById('theme-color-meta');
+            if (meta) meta.setAttribute('content', '#0a0a0a');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
