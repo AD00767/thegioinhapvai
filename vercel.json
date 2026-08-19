@@ -1,11 +1,15 @@
 {
   "rewrites": [
     {
-      "source": "/(?!api).*all",
-      "destination": "/index.html"
+      "source": "/api/:path*",
+      "destination": "/api/:path*"
     },
     {
-      "source": "/(.*)",
+      "source": "/assets/:path*",
+      "destination": "/assets/:path*"
+    },
+    {
+      "source": "/((?!api|assets|.*\\.[a-zA-Z0-9]+$).*)",
       "destination": "/index.html"
     }
   ]
