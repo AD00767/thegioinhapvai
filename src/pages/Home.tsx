@@ -236,7 +236,7 @@ export default function Home() {
         <div className="relative z-10 max-w-3xl mx-auto">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/10 text-amber-400 text-xs font-semibold mb-6 border border-amber-500/20">
             <Compass className="w-4 h-4" />
-            <span>Trang Chủ & Khám Phá — Thế Giới Nhập vai AD</span>
+            <span>Trang Chủ & Khám Phá — Thế Giới Nhập Vai AD</span>
           </div>
 
           <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight mb-4 leading-tight">

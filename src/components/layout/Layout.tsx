@@ -229,7 +229,7 @@ export default function Layout({ children }: LayoutProps) {
             <button className="lg:hidden p-2 -ml-2 shrink-0" onClick={() => setSidebarOpen(true)}>
               <Menu className="w-6 h-6" />
             </button>
-            <Link to="/" className="text-base min-[380px]:text-lg sm:text-xl font-bold tracking-tight shrink-0 truncate max-w-[140px] min-[380px]:max-w-[180px] sm:max-w-none">Thế Giới Nhập vai AD</Link>
+            <Link to="/" className="text-base min-[380px]:text-lg sm:text-xl font-bold tracking-tight shrink-0 truncate max-w-[140px] min-[380px]:max-w-[180px] sm:max-w-none">Thế Giới Nhập Vai AD</Link>
           </div>
 
           {/* Global Header Search Bar */}
@@ -411,14 +411,14 @@ export default function Layout({ children }: LayoutProps) {
     {/* Footer */}
       <footer className="border-t border-neutral-200 dark:border-neutral-800 py-8 bg-white dark:bg-black mt-auto">
         <div className="max-w-7xl mx-auto px-4 text-center text-sm text-neutral-500">
-          <p className="font-medium text-neutral-900 dark:text-neutral-100 mb-2">Thế Giới Nhập vai AD</p>
+          <p className="font-medium text-neutral-900 dark:text-neutral-100 mb-2">Thế Giới Nhập Vai AD</p>
           <p className="mb-4">Khởi đầu cho mọi hành trình Roleplay.</p>
           <div className="flex items-center justify-center gap-4">
             <Link to="/privacy" className="hover:text-black dark:hover:text-white transition-colors">Bảo mật</Link>
             <Link to="/terms" className="hover:text-black dark:hover:text-white transition-colors">Điều khoản</Link>
             <Link to="/contact" className="hover:text-black dark:hover:text-white transition-colors">Liên hệ</Link>
           </div>
-          <p className="mt-8 text-xs opacity-50">&copy; 2026 Thế Giới Nhập vai AD. All rights reserved.</p>
+          <p className="mt-8 text-xs opacity-50">&copy; 2026 Thế Giới Nhập Vai AD. All rights reserved.</p>
         </div>
       </footer>
     </div>

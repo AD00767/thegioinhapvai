@@ -29,7 +29,7 @@ export default function Welcome({ onStart }: WelcomeProps) {
 
   useSeo({
     title: 'THẾ GIỚI NHẬP VAI AD - KHỞI ĐẦU CHO MỌI HÀNH TRÌNH ROLEPLAY',
-    description: 'Thế Giới Nhập vai AD - Khởi đầu cho mọi hành trình Roleplay trên Google AI Studio. Khám phá Character, Prompt và kết nối với cộng đồng Creator.'
+    description: 'Thế Giới Nhập Vai AD - Khởi đầu cho mọi hành trình Roleplay trên Google AI Studio. Khám phá Character, Prompt và kết nối với cộng đồng Creator.'
   });
 
   useEffect(() => {
