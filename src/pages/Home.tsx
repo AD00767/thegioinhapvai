@@ -16,7 +16,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import { useSeo } from "../hooks/useSeo";
 import toast from "react-hot-toast";
 
-import { parseIdQuery, lookupIdInFirebase, matchesSearchText } from "../lib/searchUtils";
+import { parseIdQuery, lookupIdInFirebase, matchesSearchText, matchesItemFields } from "../lib/searchUtils";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -159,7 +159,6 @@ export default function Home() {
     if (idParse.isIdQuery) {
       if (idParse.error) {
         toast.error(idParse.error);
-        navigate(`/ai-search?q=${encodeURIComponent(queryStr)}`);
         return;
       }
 
@@ -171,14 +170,11 @@ export default function Home() {
             navigate(lookup.path);
             return;
           } else {
-            const errorMsg = lookup?.error || "Mã ID không tồn tại trên hệ thống.";
-            toast.error(errorMsg);
-            navigate(`/ai-search?q=${encodeURIComponent(queryStr)}`);
+            toast.error(lookup?.error || "Mã ID không tồn tại trên hệ thống.");
             return;
           }
         } catch (err) {
           console.error("Exact lookup error in Home page:", err);
-          navigate(`/ai-search?q=${encodeURIComponent(queryStr)}`);
           return;
         }
       }
@@ -203,34 +199,30 @@ export default function Home() {
   // Filter items based on searchQuery & selectedTag
   const filteredCharacters = hotCharacters.filter(item => {
     const term = searchQuery.trim();
-    const nameMatch = matchesSearchText(item.name, term);
-    const descMatch = matchesSearchText(item.slogan, term) || matchesSearchText(item.plot, term) || matchesSearchText(item.creatorName, term);
-    const idMatch = matchesSearchText(item.numericId, term) || matchesSearchText(item.id, term);
-    const tagMatchesQuery = item.tags && item.tags.some(t => matchesSearchText(t, term));
-    const searchMatch = !term || nameMatch || descMatch || idMatch || tagMatchesQuery;
-
+    const matchesSearch = !term || matchesItemFields(
+      [item.name, item.slogan, item.plot, item.creatorName, item.tags, item.numericId, item.id],
+      term
+    );
     const tagMatch = selectedTag ? item.tags?.some(t => matchesSearchText(t, selectedTag)) : true;
-    return searchMatch && tagMatch;
+    return matchesSearch && tagMatch;
   });
 
   const filteredPrompts = hotPrompts.filter(item => {
     const term = searchQuery.trim();
-    const nameMatch = matchesSearchText(item.name, term) || matchesSearchText(item.title, term);
-    const descMatch = matchesSearchText(item.purpose, term) || matchesSearchText(item.content, term) || matchesSearchText(item.authorName, term);
-    const idMatch = matchesSearchText(item.numericId, term) || matchesSearchText(item.id, term);
-    const tagMatchesQuery = item.tags && item.tags.some(t => matchesSearchText(t, term));
-    const searchMatch = !term || nameMatch || descMatch || idMatch || tagMatchesQuery;
-
+    const matchesSearch = !term || matchesItemFields(
+      [item.name, item.title, item.purpose, item.content, item.authorName, item.tags, item.numericId, item.id],
+      term
+    );
     const tagMatch = selectedTag ? item.tags?.some(t => matchesSearchText(t, selectedTag)) : true;
-    return searchMatch && tagMatch;
+    return matchesSearch && tagMatch;
   });
 
   const filteredCreators = topCreators.filter(item => {
     const term = searchQuery.trim();
-    const nameMatch = matchesSearchText(item.displayName, term);
-    const descMatch = matchesSearchText(item.bio, term);
-    const idMatch = matchesSearchText(item.numericId, term) || matchesSearchText(item.id, term);
-    return !term || nameMatch || descMatch || idMatch;
+    return !term || matchesItemFields(
+      [item.displayName, item.bio, item.numericId, item.id],
+      term
+    );
   });
 
   return (

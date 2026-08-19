@@ -42,7 +42,7 @@ export default function Layout({ children }: LayoutProps) {
     if (idParse.isIdQuery) {
       if (idParse.error) {
         toast.error(idParse.error);
-        navigate(`/ai-search?q=${encodeURIComponent(queryStr)}`);
+        navigate(`/explore?q=${encodeURIComponent(queryStr)}`);
         setHeaderSearchQuery("");
         return;
       }
@@ -58,21 +58,21 @@ export default function Layout({ children }: LayoutProps) {
           } else {
             const errorMsg = lookup?.error || "Mã ID không tồn tại trên hệ thống.";
             toast.error(errorMsg);
-            navigate(`/ai-search?q=${encodeURIComponent(queryStr)}`);
+            navigate(`/explore?q=${encodeURIComponent(queryStr)}`);
             setHeaderSearchQuery("");
             return;
           }
         } catch (err) {
           console.error("Exact lookup error in Header:", err);
-          navigate(`/ai-search?q=${encodeURIComponent(queryStr)}`);
+          navigate(`/explore?q=${encodeURIComponent(queryStr)}`);
           setHeaderSearchQuery("");
           return;
         }
       }
     }
 
-    // Standard text queries redirect to search
-    navigate(`/ai-search?q=${encodeURIComponent(queryStr)}`);
+    // Standard search routes to Explore page for direct real-data search
+    navigate(`/explore?q=${encodeURIComponent(queryStr)}`);
     setHeaderSearchQuery("");
   };
 

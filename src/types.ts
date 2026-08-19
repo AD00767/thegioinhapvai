@@ -90,6 +90,7 @@ export interface CreatorItem {
   totalLikes?: number;
   totalSaves?: number;
   sharesCount?: number;
+  deletedAt?: string | null;
   createdAt?: any;
 }
 

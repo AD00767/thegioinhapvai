@@ -24,23 +24,11 @@ export interface ExactIdLookupResult {
  */
 export function removeVietnameseTones(str: string): string {
   if (!str) return '';
-  let res = str;
-  res = res.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a");
-  res = res.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, "e");
-  res = res.replace(/ì|í|ị|ỉ|ĩ/g, "i");
-  res = res.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, "o");
-  res = res.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, "u");
-  res = res.replace(/ỳ|ý|ỵ|ỷ|ỹ/g, "y");
-  res = res.replace(/đ/g, "d");
-  res = res.replace(/À|Á|Ạ|Ả|Ã|Â|Ầ|Ấ|Ậ|Ẩ|Ẫ|Ă|Ằ|Ắ|Ặ|Ẳ|Ẵ/g, "A");
-  res = res.replace(/È|É|Ẹ|Ẻ|Ẽ|Ê|Ề|Ế|Ệ|Ể|Ễ/g, "E");
-  res = res.replace(/Ì|Í|Ị|Ỉ|Ĩ/g, "I");
-  res = res.replace(/Ò|Ó|Ọ|Ỏ|Õ|Ô|Ồ|Ố|Ộ|Ổ|Ỗ|Ơ|Ờ|Ớ|Ợ|Ở|Ỡ/g, "O");
-  res = res.replace(/Ù|Ú|Ụ|Ủ|Ũ|Ư|Ừ|Ứ|Ự|Ử|Ữ/g, "U");
-  res = res.replace(/Ỳ|Ý|Ỵ|Ỷ|Ỹ/g, "Y");
-  res = res.replace(/Đ/g, "D");
-  res = res.replace(/[\u0300-\u036f]/g, "");
-  return res;
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D');
 }
 
 /**
@@ -52,32 +40,67 @@ export function normalizeSearchText(str: string | undefined | null): string {
 }
 
 /**
- * Checks if target string matches query text (supports accented and unaccented Vietnamese)
+ * Checks if target string matches query text (supports accented, unaccented, and multi-word token matching)
  */
 export function matchesSearchText(target: string | undefined | null, queryText: string): boolean {
   if (!target || !queryText) return false;
   const normTarget = normalizeSearchText(target);
   const normQuery = normalizeSearchText(queryText);
-  if (!normQuery) return false;
+  if (!normQuery || !normTarget) return false;
 
-  // Direct substring match
+  // 1. Direct lowercase substring match (handles Vietnamese with accents e.g. "Kỷ Ngôn" in "Đại thần Kỷ Ngôn")
   if (normTarget.includes(normQuery)) return true;
 
-  // Unaccented match
+  // 2. Unaccented substring match (handles "ky ngon" in "Kỷ Ngôn" and vice versa)
   const strippedTarget = removeVietnameseTones(normTarget);
   const strippedQuery = removeVietnameseTones(normQuery);
+  if (!strippedQuery) return false;
   if (strippedTarget.includes(strippedQuery)) return true;
+
+  // 3. Multi-token match: if query has multiple words, check if all tokens appear in target
+  const queryTokens = strippedQuery.split(/\s+/).filter(t => t.length > 0);
+  if (queryTokens.length > 1) {
+    const allTokensMatch = queryTokens.every(token => strippedTarget.includes(token));
+    if (allTokensMatch) return true;
+  }
 
   return false;
 }
 
 /**
- * Parses a query text to check if it's an ID-oriented search.
- * It identifies:
- * - Direct 9-digit queries: "123456789"
- * - Prefixed 9-digit queries: "character/123456789", "character: 123456789", "id/123456789", "mã: 123456789"
- * - Incomplete explicit ID inputs: "character/" or "id: 123" (returns error)
- * - Returns isIdQuery: false for natural language searches (e.g. "character nữ chính", "prompt anime")
+ * Checks if an item matches the query across all its searchable fields
+ */
+export function matchesItemFields(fields: (string | undefined | null | string[])[], queryText: string): boolean {
+  if (!queryText || !queryText.trim()) return true;
+  const normQuery = normalizeSearchText(queryText);
+  if (!normQuery) return true;
+
+  const flattenedStrings: string[] = [];
+  for (const f of fields) {
+    if (!f) continue;
+    if (Array.isArray(f)) {
+      for (const item of f) {
+        if (item) flattenedStrings.push(String(item));
+      }
+    } else {
+      flattenedStrings.push(String(f));
+    }
+  }
+
+  // 1. Check if any single field matches
+  for (const str of flattenedStrings) {
+    if (matchesSearchText(str, queryText)) return true;
+  }
+
+  // 2. Check across combined string for multi-token cross-field queries (e.g. keyword 1 in name, keyword 2 in tags)
+  const combined = flattenedStrings.join(' ');
+  if (matchesSearchText(combined, queryText)) return true;
+
+  return false;
+}
+
+/**
+ * Parses a query text to check if it's an explicit ID-oriented search.
  */
 export function parseIdQuery(queryText: string): IdSearchResult {
   const trimmed = queryText.trim();
@@ -325,7 +348,9 @@ export async function lookupIdInFirebase(numericId: string, typeHint?: string): 
 export interface SearchOptions {
   type?: 'all' | 'character' | 'prompt' | 'creator';
   gender?: string;
+  strictGender?: boolean;
   tags?: string[];
+  strictTags?: boolean;
   keywords?: string[];
   sortBy?: 'relevance' | 'hot' | 'newest' | 'likes' | 'views' | 'copies';
 }
@@ -339,9 +364,14 @@ export interface GroupedSearchResults {
 }
 
 /**
- * Performs a comprehensive search across all platform content (Characters, Prompts, Creators)
- * supporting case-insensitive, Vietnamese diacritic normalization, multi-keyword fuzzy matching,
- * and category filtering.
+ * Standard Search (Search Thường):
+ * Performs a comprehensive search directly across real Firestore collections (Characters, Prompts, Creators).
+ * Matches across all searchable fields:
+ * - Character: Name, Slogan, Plot, Tags, Gender, Creator Name, Link, NumericId, ID
+ * - Prompt: Title/Name, Purpose, Content, Tags, Author Name, NumericId, ID
+ * - Creator: Display Name, Bio, Role, NumericId, ID
+ * 
+ * Returns ALL matching results without arbitrary truncation.
  */
 export async function searchAllCollections(
   queryText: string,
@@ -358,7 +388,7 @@ export async function searchAllCollections(
   const matchedCreators: { item: CreatorItem; score: number }[] = [];
 
   // Helper score calculator
-  const scoreItem = (
+  const calculateScore = (
     primaryText: string,
     secondaryText: string,
     extraTexts: string[],
@@ -370,21 +400,26 @@ export async function searchAllCollections(
     const normQuery = normalizeSearchText(trimmed);
 
     // Exact full query match in primary name/title
-    if (normPrimary === normQuery) score += 120;
-    else if (matchesSearchText(primaryText, trimmed)) score += 80;
-    else if (matchesSearchText(secondaryText, trimmed)) score += 50;
+    if (normPrimary === normQuery) score += 150;
+    else if (matchesSearchText(primaryText, trimmed)) score += 100;
+    else if (matchesSearchText(secondaryText, trimmed)) score += 60;
 
     // Check tags
     if (tags.some(t => matchesSearchText(t, trimmed))) {
-      score += 60;
+      score += 70;
+    }
+
+    // Check extra fields (plot, content, author, numericId, id)
+    if (extraTexts.some(et => matchesSearchText(et, trimmed))) {
+      score += 50;
     }
 
     // Check individual keywords
     for (const kw of keywords) {
-      if (matchesSearchText(primaryText, kw)) score += 30;
-      else if (matchesSearchText(secondaryText, kw)) score += 15;
-      else if (tags.some(t => matchesSearchText(t, kw))) score += 20;
-      else if (extraTexts.some(et => matchesSearchText(et, kw))) score += 10;
+      if (matchesSearchText(primaryText, kw)) score += 40;
+      else if (matchesSearchText(secondaryText, kw)) score += 25;
+      else if (tags.some(t => matchesSearchText(t, kw))) score += 30;
+      else if (extraTexts.some(et => matchesSearchText(et, kw))) score += 20;
     }
 
     return score;
@@ -418,30 +453,57 @@ export async function searchAllCollections(
           createdAt: data.createdAt
         };
 
-        // Gender filter
-        if (options.gender && options.gender !== 'ALL' && charItem.gender !== options.gender) {
+        // Strict Gender filter if explicitly requested via UI filter
+        if (options.strictGender && options.gender && options.gender !== 'ALL' && charItem.gender !== options.gender) {
           return;
         }
 
-        // Tags filter
-        if (options.tags && options.tags.length > 0) {
+        // Strict Tags filter if explicitly requested via UI filter
+        if (options.strictTags && options.tags && options.tags.length > 0) {
           const hasTag = options.tags.some(t => charItem.tags.some(ct => matchesSearchText(ct, t)));
           if (!hasTag) return;
         }
 
-        let score = scoreItem(
-          charItem.name,
-          charItem.slogan,
-          [charItem.plot, charItem.creatorName, charItem.numericId || '', charItem.id],
-          charItem.tags
+        // Check if character matches query across all searchable fields
+        const isMatched = !trimmed || matchesItemFields(
+          [
+            charItem.name,
+            charItem.slogan,
+            charItem.plot,
+            charItem.tags,
+            charItem.gender,
+            charItem.creatorName,
+            charItem.characterLink,
+            charItem.numericId,
+            charItem.id
+          ],
+          trimmed
         );
 
-        // If no query string provided but filters applied (e.g. browsing tag)
-        if (!trimmed && (options.gender || (options.tags && options.tags.length > 0))) {
-          score = 10;
-        }
+        if (isMatched) {
+          let score = calculateScore(
+            charItem.name,
+            charItem.slogan,
+            [charItem.plot, charItem.creatorName, charItem.gender, charItem.numericId || '', charItem.id],
+            charItem.tags
+          );
 
-        if (score > 0) {
+          if (charItem.pinned) score += 20;
+
+          // Score bonus for matching UI filters
+          if (options.gender && options.gender !== 'ALL' && charItem.gender === options.gender) {
+            score += 30;
+          }
+          if (options.tags && options.tags.length > 0) {
+            for (const optTag of options.tags) {
+              if (charItem.tags.some(ct => matchesSearchText(ct, optTag))) {
+                score += 40;
+              }
+            }
+          }
+
+          if (!trimmed) score = Math.max(score, 10);
+
           matchedCharacters.push({ item: charItem, score });
         }
       });
@@ -475,24 +537,47 @@ export async function searchAllCollections(
           createdAt: data.createdAt
         };
 
-        // Tags filter
-        if (options.tags && options.tags.length > 0) {
+        // Strict Tags filter if requested
+        if (options.strictTags && options.tags && options.tags.length > 0) {
           const hasTag = options.tags.some(t => promptItem.tags.some(pt => matchesSearchText(pt, t)));
           if (!hasTag) return;
         }
 
-        let score = scoreItem(
-          promptItem.name || promptItem.title || '',
-          promptItem.purpose,
-          [promptItem.content, promptItem.authorName, promptItem.numericId || '', promptItem.id],
-          promptItem.tags
+        // Check if prompt matches query across all searchable fields
+        const isMatched = !trimmed || matchesItemFields(
+          [
+            promptItem.name,
+            promptItem.title,
+            promptItem.purpose,
+            promptItem.content,
+            promptItem.tags,
+            promptItem.authorName,
+            promptItem.numericId,
+            promptItem.id
+          ],
+          trimmed
         );
 
-        if (!trimmed && options.tags && options.tags.length > 0) {
-          score = 10;
-        }
+        if (isMatched) {
+          let score = calculateScore(
+            promptItem.name || promptItem.title || '',
+            promptItem.purpose,
+            [promptItem.content, promptItem.authorName, promptItem.numericId || '', promptItem.id],
+            promptItem.tags
+          );
 
-        if (score > 0) {
+          if (promptItem.pinned) score += 20;
+
+          if (options.tags && options.tags.length > 0) {
+            for (const optTag of options.tags) {
+              if (promptItem.tags.some(pt => matchesSearchText(pt, optTag))) {
+                score += 40;
+              }
+            }
+          }
+
+          if (!trimmed) score = Math.max(score, 10);
+
           matchedPrompts.push({ item: promptItem, score });
         }
       });
@@ -523,18 +608,31 @@ export async function searchAllCollections(
           createdAt: data.createdAt
         };
 
-        let score = scoreItem(
-          creatorItem.displayName,
-          creatorItem.bio || '',
-          [creatorItem.numericId || '', creatorItem.id, creatorItem.role || '']
+        // Check if creator matches query across all searchable fields
+        const isMatched = !trimmed || matchesItemFields(
+          [
+            creatorItem.displayName,
+            creatorItem.bio,
+            creatorItem.role,
+            creatorItem.numericId,
+            creatorItem.id
+          ],
+          trimmed
         );
 
-        // Boost score if creatorStatus is true
-        if (creatorItem.creatorStatus) {
-          score += 10;
-        }
+        if (isMatched) {
+          let score = calculateScore(
+            creatorItem.displayName,
+            creatorItem.bio || '',
+            [creatorItem.numericId || '', creatorItem.id, creatorItem.role || '']
+          );
 
-        if (score > 0) {
+          if (creatorItem.creatorStatus) {
+            score += 25;
+          }
+
+          if (!trimmed) score = Math.max(score, 10);
+
           matchedCreators.push({ item: creatorItem, score });
         }
       });

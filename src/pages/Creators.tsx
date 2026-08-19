@@ -7,22 +7,30 @@ import { CreatorItem } from '../types';
 import CreatorCard from '../components/CreatorCard';
 import toast from 'react-hot-toast';
 
-import { useNavigate } from 'react-router-dom';
-import { parseIdQuery, lookupIdInFirebase, matchesSearchText } from '../lib/searchUtils';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { parseIdQuery, lookupIdInFirebase, matchesSearchText, matchesItemFields } from '../lib/searchUtils';
 
 export type CreatorSortOption = 'FEATURED' | 'NEWEST' | 'MOST_CONTRIBUTING';
 
 export default function Creators() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [creators, setCreators] = useState<CreatorItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || searchParams.get('search') || '');
   const [sortOption, setSortOption] = useState<CreatorSortOption>('FEATURED');
 
   useSeo({
     title: 'Danh Sách Creator',
     description: 'Nơi tôn vinh các tác giả, người sáng tạo nhân vật Roleplay và Prompt xuất sắc nhất trên Google AI Studio cộng đồng.'
   });
+
+  useEffect(() => {
+    const qParam = searchParams.get('q') || searchParams.get('search');
+    if (qParam !== null && qParam !== undefined) {
+      setSearchTerm(qParam);
+    }
+  }, [searchParams]);
 
   const fetchCreators = async () => {
     setLoading(true);
@@ -62,7 +70,6 @@ export default function Creators() {
     if (idParse.isIdQuery) {
       if (idParse.error) {
         toast.error(idParse.error);
-        navigate(`/ai-search?q=${encodeURIComponent(queryStr)}`);
         return;
       }
 
@@ -74,14 +81,11 @@ export default function Creators() {
             navigate(lookup.path);
             return;
           } else {
-            const errorMsg = lookup?.error || "Mã ID không tồn tại trên hệ thống.";
-            toast.error(errorMsg);
-            navigate(`/ai-search?q=${encodeURIComponent(queryStr)}`);
+            toast.error(lookup?.error || "Mã ID không tồn tại trên hệ thống.");
             return;
           }
         } catch (err) {
           console.error("Exact lookup error in Creators page:", err);
-          navigate(`/ai-search?q=${encodeURIComponent(queryStr)}`);
           return;
         }
       }
@@ -92,12 +96,10 @@ export default function Creators() {
   const filteredCreators = creators
     .filter(c => {
       const term = searchTerm.trim();
-      const matchesSearch = 
-        !term ||
-        matchesSearchText(c.displayName, term) ||
-        matchesSearchText(c.bio, term) ||
-        matchesSearchText(c.numericId, term) ||
-        matchesSearchText(c.id, term);
+      const matchesSearch = !term || matchesItemFields(
+        [c.displayName, c.bio, c.role, c.numericId, c.id],
+        term
+      );
       return matchesSearch;
     })
     .sort((a, b) => {

@@ -12,17 +12,18 @@ import CreatePromptModal from '../components/profile/CreatePromptModal';
 import DeleteConfirmModal from '../components/DeleteConfirmModal';
 import toast from 'react-hot-toast';
 
-import { useNavigate } from 'react-router-dom';
-import { parseIdQuery, lookupIdInFirebase, matchesSearchText } from '../lib/searchUtils';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { parseIdQuery, lookupIdInFirebase, matchesSearchText, matchesItemFields } from '../lib/searchUtils';
 
 export default function Prompts() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuthStore();
 
   const [prompts, setPrompts] = useState<PromptItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || searchParams.get('search') || '');
+  const [selectedTag, setSelectedTag] = useState<string | null>(searchParams.get('tag') || null);
   const [sortBy, setSortBy] = useState<'NEWEST' | 'COPY_COUNT' | 'SAVES_COUNT'>('NEWEST');
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -33,6 +34,17 @@ export default function Prompts() {
     title: 'Thư Viện Prompt',
     description: 'Hàng trăm System Instructions, Prompt Roleplay và World Building được tối ưu sẵn cho Google AI Studio từ cộng đồng.'
   });
+
+  useEffect(() => {
+    const qParam = searchParams.get('q') || searchParams.get('search');
+    const tagParam = searchParams.get('tag');
+    if (qParam !== null && qParam !== undefined) {
+      setSearchTerm(qParam);
+    }
+    if (tagParam !== null && tagParam !== undefined) {
+      setSelectedTag(tagParam);
+    }
+  }, [searchParams]);
 
   const fetchPrompts = async () => {
     setLoading(true);
@@ -75,7 +87,6 @@ export default function Prompts() {
     if (idParse.isIdQuery) {
       if (idParse.error) {
         toast.error(idParse.error);
-        navigate(`/ai-search?q=${encodeURIComponent(queryStr)}`);
         return;
       }
 
@@ -87,14 +98,11 @@ export default function Prompts() {
             navigate(lookup.path);
             return;
           } else {
-            const errorMsg = lookup?.error || "Mã ID không tồn tại trên hệ thống.";
-            toast.error(errorMsg);
-            navigate(`/ai-search?q=${encodeURIComponent(queryStr)}`);
+            toast.error(lookup?.error || "Mã ID không tồn tại trên hệ thống.");
             return;
           }
         } catch (err) {
           console.error("Exact lookup error in Prompts page:", err);
-          navigate(`/ai-search?q=${encodeURIComponent(queryStr)}`);
           return;
         }
       }
@@ -104,16 +112,10 @@ export default function Prompts() {
   // Filter & Sort
   const filteredPrompts = prompts.filter(p => {
     const term = searchTerm.trim();
-    const matchesSearch = 
-      !term ||
-      matchesSearchText(p.name, term) ||
-      matchesSearchText(p.title, term) ||
-      matchesSearchText(p.purpose, term) ||
-      matchesSearchText(p.content, term) ||
-      matchesSearchText(p.authorName, term) ||
-      matchesSearchText(p.numericId, term) ||
-      matchesSearchText(p.id, term) ||
-      (p.tags && p.tags.some(t => matchesSearchText(t, term)));
+    const matchesSearch = !term || matchesItemFields(
+      [p.name, p.title, p.purpose, p.content, p.authorName, p.tags, p.numericId, p.id],
+      term
+    );
 
     const matchesTag = selectedTag ? p.tags?.some(t => matchesSearchText(t, selectedTag)) : true;
 

@@ -11,19 +11,20 @@ import CharacterCard from '../components/CharacterCard';
 import CreateCharacterModal from '../components/profile/CreateCharacterModal';
 import toast from 'react-hot-toast';
 
-import { useNavigate } from 'react-router-dom';
-import { parseIdQuery, lookupIdInFirebase, matchesSearchText } from '../lib/searchUtils';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { parseIdQuery, lookupIdInFirebase, matchesSearchText, matchesItemFields } from '../lib/searchUtils';
 
 export type CharacterSortOption = 'FEATURED' | 'NEWEST' | 'OLDEST';
 
 export default function Characters() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuthStore();
 
   const [characters, setCharacters] = useState<CharacterItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || searchParams.get('search') || '');
+  const [selectedTag, setSelectedTag] = useState<string | null>(searchParams.get('tag') || null);
   const [selectedGender, setSelectedGender] = useState<string>('ALL');
   const [sortOption, setSortOption] = useState<CharacterSortOption>('FEATURED');
 
@@ -34,6 +35,17 @@ export default function Characters() {
     title: 'Danh Sách Character',
     description: 'Khám phá thư viện Character Roleplay độc đáo từ cộng đồng Creator Google AI Studio. Tìm kiếm nhân vật theo sở thích và cốt truyện.'
   });
+
+  useEffect(() => {
+    const qParam = searchParams.get('q') || searchParams.get('search');
+    const tagParam = searchParams.get('tag');
+    if (qParam !== null && qParam !== undefined) {
+      setSearchTerm(qParam);
+    }
+    if (tagParam !== null && tagParam !== undefined) {
+      setSelectedTag(tagParam);
+    }
+  }, [searchParams]);
 
   const fetchCharacters = async () => {
     setLoading(true);
@@ -75,7 +87,6 @@ export default function Characters() {
     if (idParse.isIdQuery) {
       if (idParse.error) {
         toast.error(idParse.error);
-        navigate(`/ai-search?q=${encodeURIComponent(queryStr)}`);
         return;
       }
 
@@ -87,14 +98,11 @@ export default function Characters() {
             navigate(lookup.path);
             return;
           } else {
-            const errorMsg = lookup?.error || "Mã ID không tồn tại trên hệ thống.";
-            toast.error(errorMsg);
-            navigate(`/ai-search?q=${encodeURIComponent(queryStr)}`);
+            toast.error(lookup?.error || "Mã ID không tồn tại trên hệ thống.");
             return;
           }
         } catch (err) {
           console.error("Exact lookup error in Characters page:", err);
-          navigate(`/ai-search?q=${encodeURIComponent(queryStr)}`);
           return;
         }
       }
@@ -105,15 +113,10 @@ export default function Characters() {
   const filteredCharacters = characters
     .filter(c => {
       const term = searchTerm.trim();
-      const matchesSearch = 
-        !term ||
-        matchesSearchText(c.name, term) ||
-        matchesSearchText(c.slogan, term) ||
-        matchesSearchText(c.plot, term) ||
-        matchesSearchText(c.creatorName, term) ||
-        matchesSearchText(c.numericId, term) ||
-        matchesSearchText(c.id, term) ||
-        (c.tags && c.tags.some(t => matchesSearchText(t, term)));
+      const matchesSearch = !term || matchesItemFields(
+        [c.name, c.slogan, c.plot, c.tags, c.creatorName, c.gender, c.characterLink, c.numericId, c.id],
+        term
+      );
 
       const matchesTag = selectedTag ? c.tags?.some(t => matchesSearchText(t, selectedTag)) : true;
       const matchesGender = selectedGender === 'ALL' ? true : c.gender === selectedGender;

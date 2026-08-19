@@ -282,23 +282,32 @@ router.post("/ai-search", async (req, res) => {
     Respond ONLY with valid JSON.
     `;
 
-    let criteria: any = {};
-    try {
-      if (process.env.GEMINI_API_KEY) {
-        const response = await ai.models.generateContent({
-          model: "gemini-3.7-flash",
-          contents: prompt,
-          config: {
-            responseMimeType: "application/json"
+    let criteria: any = null;
+    
+    if (process.env.GEMINI_API_KEY) {
+      const candidateModels = ["gemini-3.7-flash", "gemini-3.1-flash-lite", "gemini-2.5-flash", "gemini-flash-latest"];
+      for (const modelName of candidateModels) {
+        try {
+          const response = await ai.models.generateContent({
+            model: modelName,
+            contents: prompt,
+            config: {
+              responseMimeType: "application/json"
+            }
+          });
+          if (response?.text) {
+            criteria = JSON.parse(response.text);
+            break;
           }
-        });
-        criteria = JSON.parse(response.text || "{}");
-      } else {
-        throw new Error("GEMINI_API_KEY not configured");
+        } catch (err: any) {
+          // Model might be busy (503) or unavailable, try next candidate
+          continue;
+        }
       }
-    } catch (aiErr: any) {
-      console.warn("Gemini API fallback to local intent analysis:", aiErr?.message || aiErr);
-      // Fallback intent extraction
+    }
+
+    // If Gemini models were unavailable or API key not present, use local semantic analyzer
+    if (!criteria || typeof criteria !== "object") {
       const lower = rawQuery.toLowerCase();
       let type: 'character' | 'prompt' | 'creator' | 'all' = 'all';
       let gender: string | null = null;
