@@ -28,6 +28,7 @@ import { db } from '../../lib/firebase';
 import { useAuthStore } from '../../store/useAuthStore';
 import { BADGE_DEFINITIONS, evaluateUserBadges, BadgeId } from '../../lib/badges';
 import { CustomSocialLink } from '../../types';
+import { getValidAvatar } from '../../lib/avatar';
 import toast from 'react-hot-toast';
 
 interface EditProfileModalProps {
@@ -124,14 +125,6 @@ export default function EditProfileModal({ isOpen, onClose, onSaveSuccess }: Edi
       toast.success("Tải ảnh đại diện thành công!");
     };
     reader.readAsDataURL(file);
-  };
-
-  // Generate Random Avatar
-  const handleRandomAvatar = () => {
-    const randomSeed = Math.random().toString(36).substring(7);
-    const newAvatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${randomSeed}`;
-    setAvatar(newAvatar);
-    toast.success("Đã tạo ảnh đại diện mới!");
   };
 
   // Add Custom Social Link
@@ -392,7 +385,7 @@ export default function EditProfileModal({ isOpen, onClose, onSaveSuccess }: Edi
               <div className="flex flex-col sm:flex-row items-center gap-6 p-4 rounded-2xl bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700">
                 <div className="relative group shrink-0">
                   <img 
-                    src={avatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + (displayName || "User")} 
+                    src={getValidAvatar(avatar)} 
                     alt="Avatar Preview" 
                     className="w-28 h-28 rounded-full object-cover border-4 border-white dark:border-neutral-800 shadow-md" 
                   />
@@ -418,14 +411,6 @@ export default function EditProfileModal({ isOpen, onClose, onSaveSuccess }: Edi
                       <Upload className="w-3.5 h-3.5" />
                       Tải ảnh từ thiết bị
                     </label>
-                    <button 
-                      type="button" 
-                      onClick={handleRandomAvatar}
-                      className="px-4 py-2 rounded-xl bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 text-neutral-800 dark:text-neutral-100 text-xs font-bold transition-colors flex items-center gap-2"
-                    >
-                      <RefreshCw className="w-3.5 h-3.5" />
-                      Tạo ngẫu nhiên
-                    </button>
                   </div>
                   <p className="text-xs text-neutral-500 leading-relaxed">
                     Hỗ trợ định dạng JPG, JPEG, PNG, WEBP. Dung lượng tối đa <strong>10 MB</strong>.

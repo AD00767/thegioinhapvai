@@ -8,6 +8,7 @@ import { CreatorItem } from '../types';
 import ReportModal from './ReportModal';
 import UserBadge from './UserBadge';
 import DisplayId from './DisplayId';
+import { getValidAvatar } from '../lib/avatar';
 import toast from 'react-hot-toast';
 import { checkIsFollowing, toggleFollow } from '../lib/followService';
 
@@ -84,7 +85,7 @@ export default function CreatorCard({ creator, onUpdate }: CreatorCardProps) {
       <div>
         <Link to={`/creator/${creator.id}`} className="flex items-center gap-4 mb-4 group/creator">
           <img 
-            src={creator.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${creator.displayName}`} 
+            src={getValidAvatar(creator.avatar)} 
             alt={creator.displayName}
             className="w-14 h-14 rounded-full object-cover border border-neutral-200 dark:border-neutral-800 shrink-0 group-hover/creator:scale-105 transition-transform"
           />

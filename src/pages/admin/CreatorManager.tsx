@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuthStore } from '../../store/useAuthStore';
+import { getValidAvatar } from '../../lib/avatar';
 import toast from 'react-hot-toast';
 
 export default function CreatorManager() {
@@ -194,7 +195,7 @@ export default function CreatorManager() {
                 >
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center gap-3">
-                      <img src={r.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${r.userId}`} className="w-12 h-12 rounded-xl" alt="" />
+                      <img src={getValidAvatar(r.avatar)} className="w-12 h-12 rounded-xl object-cover" alt="" />
                       <div>
                         <div className="flex items-center gap-2">
                           <h3 className="font-black text-sm uppercase tracking-tight">{r.displayName}</h3>

@@ -17,6 +17,7 @@ import UserBadge from '../components/UserBadge';
 import DeleteConfirmModal from '../components/DeleteConfirmModal';
 import AppealModal from '../components/AppealModal';
 import DisplayId from '../components/DisplayId';
+import { getValidAvatar } from '../lib/avatar';
 import toast from 'react-hot-toast';
 import { reconcileFollowerCount } from '../lib/followService';
 import { Link } from 'react-router-dom';
@@ -496,7 +497,7 @@ export default function Profile() {
           {/* Avatar */}
           <div className="relative">
             <img 
-              src={user.avatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + user.displayName} 
+              src={getValidAvatar(user.avatar)} 
               alt={user.displayName} 
               className="w-28 h-28 md:w-32 md:h-32 rounded-full object-cover border-4 border-neutral-100 dark:border-neutral-800 shadow-md"
             />

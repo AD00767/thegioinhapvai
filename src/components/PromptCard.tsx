@@ -13,6 +13,7 @@ import CommentSection from './comments/CommentSection';
 import ReportModal from './ReportModal';
 import UserBadge from './UserBadge';
 import DisplayId from './DisplayId';
+import { getValidAvatar } from '../lib/avatar';
 import toast from 'react-hot-toast';
 
 interface PromptCardProps {
@@ -188,8 +189,8 @@ export default function PromptCard({ prompt, onEdit, onDelete, onPin, isOwner }:
                   className="flex items-center gap-1.5 cursor-pointer hover:text-amber-600 dark:hover:text-amber-400 hover:underline"
                 >
                   <img 
-                    src={prompt.authorAvatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + (prompt.authorName || "Author")} 
-                    alt={prompt.authorName} 
+                    src={getValidAvatar(prompt.authorAvatar)} 
+                    alt={prompt.authorName || "Author"} 
                     className="w-5 h-5 rounded-full object-cover border border-neutral-200 dark:border-neutral-700 hover:scale-105 transition-transform"
                   />
                   <span>Tác giả: <strong className="font-semibold">{prompt.authorName || 'Ẩn danh'}</strong></span>
@@ -197,8 +198,8 @@ export default function PromptCard({ prompt, onEdit, onDelete, onPin, isOwner }:
               ) : (
                 <>
                   <img 
-                    src={prompt.authorAvatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + (prompt.authorName || "Author")} 
-                    alt={prompt.authorName} 
+                    src={getValidAvatar(prompt.authorAvatar)} 
+                    alt={prompt.authorName || "Author"} 
                     className="w-5 h-5 rounded-full object-cover border border-neutral-200 dark:border-neutral-700"
                   />
                   <span>Tác giả: <strong className="text-neutral-700 dark:text-neutral-300 font-semibold">{prompt.authorName || 'Ẩn danh'}</strong></span>

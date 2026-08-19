@@ -7,6 +7,7 @@ import { collection, addDoc, doc, updateDoc, serverTimestamp, query, where, getD
 import { db } from '../../lib/firebase';
 import { useAuthStore } from '../../store/useAuthStore';
 import { CharacterItem } from '../../types';
+import { getValidAvatar } from '../../lib/avatar';
 import toast from 'react-hot-toast';
 
 interface CreateCharacterModalProps {
@@ -26,7 +27,6 @@ export default function CreateCharacterModal({
 
   // State initialization
   const [avatar, setAvatar] = useState('');
-  const [avatarUrlInput, setAvatarUrlInput] = useState('');
 
   const [name, setName] = useState('');
   const [gender, setGender] = useState('Nữ');
@@ -53,7 +53,6 @@ export default function CreateCharacterModal({
 
     if (characterToEdit) {
       setAvatar(characterToEdit.avatar || '');
-      setAvatarUrlInput('');
       setName(characterToEdit.name || '');
       setGender(characterToEdit.gender || 'Nữ');
       setSlogan(characterToEdit.slogan || '');
@@ -72,7 +71,6 @@ export default function CreateCharacterModal({
       setAdditionalLinks(characterToEdit.additionalLinks || []);
     } else {
       setAvatar('');
-      setAvatarUrlInput('');
       setName('');
       setGender('Nữ');
       setSlogan('');
@@ -115,20 +113,6 @@ export default function CreateCharacterModal({
     };
     reader.readAsDataURL(file);
     e.target.value = '';
-  };
-
-  const handleApplyAvatarUrl = () => {
-    const trimmed = avatarUrlInput.trim();
-    if (!trimmed) return;
-    try {
-      new URL(trimmed);
-    } catch {
-      toast.error("Vui lòng nhập URL hình ảnh hợp lệ.");
-      return;
-    }
-    setAvatar(trimmed);
-    setAvatarUrlInput('');
-    toast.success("Đã áp dụng link ảnh đại diện!");
   };
 
   // --- Tag Handlers (Max 12 tags) ---
@@ -371,7 +355,7 @@ export default function CreateCharacterModal({
                   Ảnh đại diện Character <span className="text-red-500">*</span>
                 </h3>
                 <p className="text-xs text-neutral-500">
-                  Tải trực tiếp ảnh từ thiết bị hoặc dán đường dẫn URL hình ảnh
+                  Tải trực tiếp ảnh từ thiết bị của bạn
                 </p>
               </div>
             </div>
@@ -381,7 +365,7 @@ export default function CreateCharacterModal({
               <div className="flex flex-col items-center justify-center p-4 bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-200 dark:border-neutral-800 rounded-2xl">
                 {avatar ? (
                   <div className="relative group w-36 h-36 rounded-2xl overflow-hidden border-2 border-amber-500/30 shadow-md">
-                    <img src={avatar} alt="Character Preview" className="w-full h-full object-cover" />
+                    <img src={getValidAvatar(avatar)} alt="Character Preview" className="w-full h-full object-cover" />
                     <button
                       type="button"
                       onClick={() => setAvatar('')}
@@ -403,49 +387,26 @@ export default function CreateCharacterModal({
               </div>
 
               {/* Upload Options */}
-              <div className="md:col-span-2 space-y-4">
-                {/* File Upload Button */}
-                <div className="p-4 bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-200 dark:border-neutral-800 rounded-2xl space-y-2">
+              <div className="md:col-span-2 flex flex-col justify-center">
+                <div className="p-6 bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-200 dark:border-neutral-800 rounded-2xl space-y-3">
                   <span className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider">
-                    Lựa chọn 1: Tải trực tiếp từ thiết bị
+                    Tải ảnh đại diện từ thiết bị
                   </span>
-                  <label className="inline-flex items-center gap-2 px-5 py-2.5 bg-neutral-900 dark:bg-neutral-100 text-white dark:text-black rounded-xl text-xs font-bold hover:opacity-90 transition-opacity cursor-pointer shadow-sm">
-                    <Upload className="w-4 h-4" />
-                    <span>Chọn tệp ảnh từ máy tính / điện thoại</span>
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/jpg,image/png,image/webp"
-                      onChange={handleAvatarFileUpload}
-                      className="hidden"
-                    />
-                  </label>
+                  <div>
+                    <label className="inline-flex items-center gap-2 px-5 py-2.5 bg-neutral-900 dark:bg-neutral-100 text-white dark:text-black rounded-xl text-xs font-bold hover:opacity-90 transition-opacity cursor-pointer shadow-sm">
+                      <Upload className="w-4 h-4" />
+                      <span>Chọn tệp ảnh từ máy tính / điện thoại</span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/jpg,image/png,image/webp"
+                        onChange={handleAvatarFileUpload}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
                   <p className="text-[11px] text-neutral-400">
                     Hỗ trợ các định dạng JPG, JPEG, PNG, WEBP (Dung lượng tối đa 10MB).
                   </p>
-                </div>
-
-                {/* URL Input */}
-                <div className="p-4 bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-200 dark:border-neutral-800 rounded-2xl space-y-2">
-                  <span className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider">
-                    Lựa chọn 2: Đường dẫn link URL ảnh trực tiếp
-                  </span>
-                  <div className="flex gap-2">
-                    <input
-                      type="url"
-                      value={avatarUrlInput}
-                      onChange={e => setAvatarUrlInput(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleApplyAvatarUrl(); } }}
-                      placeholder="https://example.com/character-avatar.png"
-                      className="flex-1 px-3.5 py-2 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-medium"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleApplyAvatarUrl}
-                      className="px-4 py-2 bg-neutral-200 dark:bg-neutral-700 text-neutral-800 dark:text-neutral-200 rounded-xl font-bold text-xs hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors shrink-0"
-                    >
-                      Sử dụng URL
-                    </button>
-                  </div>
                 </div>
               </div>
             </div>

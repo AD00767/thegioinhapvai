@@ -24,6 +24,7 @@ import {
 import firebaseConfig from "../../firebase-applet-config.json";
 import { useAuthStore } from "../store/useAuthStore";
 import { applyTheme } from "./themeFont";
+import { DEFAULT_AVATAR, getValidAvatar } from "./avatar";
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
@@ -104,6 +105,9 @@ export const syncAuthUser = async (firebaseUser: any, customBackendData?: any) =
         applyTheme(userData.themePreference);
       }
 
+      // Ensure avatar is valid
+      userData.avatar = getValidAvatar(userData.avatar);
+
       const payload = { id: firebaseUser.uid, ...userData };
       useAuthStore.getState().setAuth(firebaseUser, payload);
       useAuthStore.getState().setInitialized(true);
@@ -117,7 +121,7 @@ export const syncAuthUser = async (firebaseUser: any, customBackendData?: any) =
         numericId,
         email: firebaseUser.email || '',
         displayName: sanitizeDisplayName(firebaseUser.displayName, numericId),
-        avatar: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${firebaseUser.uid}`,
+        avatar: getValidAvatar(firebaseUser.photoURL),
         bio: "",
         socialLinks: {},
         role: hasAdmin ? "USER" : "ADMIN",
@@ -146,7 +150,7 @@ export const syncAuthUser = async (firebaseUser: any, customBackendData?: any) =
       id: firebaseUser.uid,
       email: firebaseUser.email || '',
       displayName: sanitizeDisplayName(firebaseUser.displayName, firebaseUser.uid.substring(0, 6)),
-      avatar: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${firebaseUser.uid}`,
+      avatar: getValidAvatar(firebaseUser.photoURL),
       role: "USER",
       creatorStatus: false,
       isLocked: false
@@ -227,7 +231,7 @@ export const loginWithEmail = async (email: string, password: string) => {
           uid: userDoc.id,
           email: cleanEmail,
           displayName: userData.displayName || cleanEmail.split('@')[0],
-          photoURL: userData.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userDoc.id}`
+          photoURL: getValidAvatar(userData.avatar)
         };
 
         const sessionPayload = { id: userDoc.id, ...userData };
@@ -307,7 +311,7 @@ export const registerWithEmail = async (email: string, password: string) => {
           email: cleanEmail,
           passwordHash,
           displayName: sanitizeDisplayName(null, numericId),
-          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${customUid}`,
+          avatar: DEFAULT_AVATAR,
           bio: "",
           socialLinks: {},
           role: hasAdmin ? "USER" : "ADMIN",

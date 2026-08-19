@@ -6,6 +6,7 @@ import {
 import { collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuthStore } from '../../store/useAuthStore';
+import { getValidAvatar } from '../../lib/avatar';
 import toast from 'react-hot-toast';
 
 export interface UserOption {
@@ -41,7 +42,6 @@ export default function CreateFeedbackModal({
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [images, setImages] = useState<string[]>([]);
-  const [imageUrlInput, setImageUrlInput] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   // Fetch available users for recipient selection
@@ -60,7 +60,7 @@ export default function CreateFeedbackModal({
               id: docSnap.id,
               numericId: uData.numericId || docSnap.id,
               displayName: uData.displayName || 'Thành viên',
-              avatar: uData.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${docSnap.id}`,
+              avatar: getValidAvatar(uData.avatar),
               creatorStatus: uData.creatorStatus
             });
           }
@@ -151,23 +151,6 @@ export default function CreateFeedbackModal({
     e.target.value = '';
   };
 
-  const handleAddImageUrl = () => {
-    const trimmed = imageUrlInput.trim();
-    if (!trimmed) return;
-    if (images.length >= 10) {
-      toast.error("Cho phép tải lên tối đa là 10 ảnh đính kèm.");
-      return;
-    }
-    try {
-      new URL(trimmed);
-    } catch {
-      toast.error("Vui lòng nhập đường dẫn URL hình ảnh hợp lệ.");
-      return;
-    }
-    setImages(prev => [...prev, trimmed]);
-    setImageUrlInput('');
-  };
-
   const handleRemoveImage = (index: number) => {
     setImages(images.filter((_, i) => i !== index));
   };
@@ -196,10 +179,10 @@ export default function CreateFeedbackModal({
       const feedbackData = {
         senderId: currentSenderId,
         senderName: user.displayName,
-        senderAvatar: user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`,
+        senderAvatar: getValidAvatar(user.avatar),
         recipientId: selectedRecipient.id,
         recipientName: selectedRecipient.displayName,
-        recipientAvatar: selectedRecipient.avatar,
+        recipientAvatar: getValidAvatar(selectedRecipient.avatar),
         mode: mode,
         title: title.trim(),
         content: content.trim(),
@@ -316,7 +299,7 @@ export default function CreateFeedbackModal({
             <div className="p-4 bg-neutral-50 dark:bg-neutral-800/60 rounded-2xl border border-neutral-200/80 dark:border-neutral-700/60 flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-3">
                 <img
-                  src={user?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.id}`}
+                  src={getValidAvatar(user?.avatar)}
                   alt={user?.displayName || "Sender"}
                   className="w-12 h-12 rounded-full object-cover border border-neutral-200 dark:border-neutral-700"
                 />
@@ -580,7 +563,7 @@ export default function CreateFeedbackModal({
             </div>
 
             <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
                 {/* File Picker Upload */}
                 <label className={`border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer transition-colors bg-neutral-50 dark:bg-neutral-800/40 group ${
                   images.length >= 10
@@ -589,51 +572,20 @@ export default function CreateFeedbackModal({
                 }`}>
                   <Upload className="w-8 h-8 text-neutral-400 group-hover:text-indigo-500 transition-colors mb-2" />
                   <span className="text-xs font-bold text-neutral-700 dark:text-neutral-300">
-                    Tải ảnh từ thiết bị
+                    Tải ảnh từ máy tính / điện thoại
                   </span>
                   <span className="text-[11px] text-neutral-400 mt-1">
-                    Hỗ trợ JPG, PNG, WEBP (Tối đa 10MB/ảnh)
+                    Hỗ trợ JPG, JPEG, PNG, WEBP (Tối đa 10MB/ảnh)
                   </span>
                   <input
                     type="file"
                     multiple
-                    accept="image/*"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
                     disabled={images.length >= 10}
                     onChange={handleImageFileUpload}
                     className="hidden"
                   />
                 </label>
-
-                {/* URL Upload */}
-                <div className="border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 bg-neutral-50 dark:bg-neutral-800/40 flex flex-col justify-between gap-3">
-                  <div>
-                    <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
-                      Thêm từ URL hình ảnh
-                    </label>
-                    <p className="text-[11px] text-neutral-400">
-                      Dán đường dẫn ảnh trực tiếp trực tuyến
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <input
-                      type="url"
-                      value={imageUrlInput}
-                      disabled={images.length >= 10}
-                      onChange={e => setImageUrlInput(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddImageUrl(); } }}
-                      placeholder="https://example.com/image.png"
-                      className="flex-1 px-3 py-2 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs"
-                    />
-                    <button
-                      type="button"
-                      disabled={images.length >= 10}
-                      onClick={handleAddImageUrl}
-                      className="px-4 py-2 bg-neutral-900 dark:bg-neutral-100 text-white dark:text-black rounded-xl font-bold text-xs hover:opacity-90 transition-opacity shrink-0 disabled:opacity-40"
-                    >
-                      Thêm
-                    </button>
-                  </div>
-                </div>
               </div>
 
               {/* Uploaded Gallery Grid */}

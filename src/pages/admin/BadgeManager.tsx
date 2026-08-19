@@ -10,6 +10,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuthStore } from '../../store/useAuthStore';
+import { getValidAvatar } from '../../lib/avatar';
 import toast from 'react-hot-toast';
 
 interface Badge {
@@ -143,7 +144,7 @@ export default function BadgeManager() {
                     className="p-6 bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-sm flex items-center justify-between group hover:border-neutral-900 dark:hover:border-white transition-all"
                   >
                     <div className="flex items-center gap-4">
-                      <img src={u.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.id}`} className="w-12 h-12 rounded-xl" alt="" />
+                      <img src={getValidAvatar(u.avatar)} className="w-12 h-12 rounded-xl object-cover" alt="" />
                       <div>
                         <p className="font-bold text-sm">{u.displayName}</p>
                         <div className="flex flex-wrap gap-1 mt-1">

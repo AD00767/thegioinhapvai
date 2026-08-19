@@ -13,6 +13,7 @@ import { db } from '../../lib/firebase';
 import { useAuthStore } from '../../store/useAuthStore';
 import toast from 'react-hot-toast';
 import { CreatorItem } from '../../types';
+import { getValidAvatar } from '../../lib/avatar';
 import { useNavigate } from 'react-router-dom';
 
 type ActionType = 'DELETE' | 'SUSPEND' | 'RESTRICT' | 'REMOVE_CREATOR' | 'PROMOTE_ADMIN' | 'PROMOTE_MOD' | 'DEMOTE' | 'HISTORY' | null;
@@ -266,7 +267,7 @@ export default function UserManagement() {
                       <td className="p-6">
                         <div className="flex items-center gap-4">
                           <img 
-                            src={u.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.id}`} 
+                            src={getValidAvatar(u.avatar)} 
                             alt={u.displayName}
                             className="w-12 h-12 rounded-full object-cover border border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800"
                           />

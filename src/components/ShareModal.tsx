@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 
 import { buildCharacterUrl, buildPromptUrl, buildCreatorUrl, getCanonicalBaseUrl } from '../lib/urls.ts';
 import { cn } from '../lib/utils';
+import { getValidAvatar } from '../lib/avatar';
 
 interface ShareModalProps {
   isOpen: boolean;
@@ -172,7 +173,7 @@ export default function ShareModal({
         <div className="flex items-center gap-3.5 p-3.5 bg-neutral-50 dark:bg-neutral-800/60 rounded-2xl border border-neutral-200/80 dark:border-neutral-800">
           {avatar ? (
             <img 
-              src={avatar} 
+              src={getValidAvatar(avatar)} 
               alt={title} 
               className="w-12 h-12 rounded-xl object-cover shrink-0 border border-neutral-200 dark:border-neutral-700" 
             />

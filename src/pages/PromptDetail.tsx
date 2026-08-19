@@ -13,6 +13,7 @@ import ReportModal from '../components/ReportModal';
 import CreatePromptModal from '../components/profile/CreatePromptModal';
 import DeleteConfirmModal from '../components/DeleteConfirmModal';
 import DisplayId from '../components/DisplayId';
+import { getValidAvatar } from '../lib/avatar';
 import toast from 'react-hot-toast';
 
 export default function PromptDetail() {
@@ -267,7 +268,7 @@ export default function PromptDetail() {
 
             <div className="flex items-center gap-3 text-xs text-neutral-500">
               <img 
-                src={prompt.authorAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${prompt.authorName}`} 
+                src={getValidAvatar(prompt.authorAvatar)} 
                 alt={prompt.authorName} 
                 className="w-6 h-6 rounded-full object-cover border border-neutral-200 dark:border-neutral-700"
               />

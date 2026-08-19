@@ -11,6 +11,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import ReportModal from '../ReportModal';
 import UserBadge from '../UserBadge';
 import DeleteConfirmModal from '../DeleteConfirmModal';
+import { getValidAvatar, DEFAULT_AVATAR } from '../../lib/avatar';
 import toast from 'react-hot-toast';
 
 export interface CommentItem {
@@ -131,7 +132,7 @@ export default function CommentSection({
         targetType,
         authorId: user.id,
         authorName: user.displayName || 'Người dùng',
-        authorAvatar: user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`,
+        authorAvatar: getValidAvatar(user.avatar),
         parentId: parentId || null,
         content: trimmed,
         reactions: {},
@@ -162,7 +163,7 @@ export default function CommentSection({
             userId: parentComment.authorId,
             senderId: user.id,
             senderName: user.displayName || 'Người dùng',
-            senderAvatar: user.avatar || '',
+            senderAvatar: getValidAvatar(user.avatar),
             type: 'COMMENT',
             title: 'Phản hồi bình luận mới',
             message: `${user.displayName || 'Một người dùng'} đã trả lời bình luận của bạn: "${trimmed.slice(0, 40)}..."`,
@@ -181,7 +182,7 @@ export default function CommentSection({
           userId: targetOwnerId,
           senderId: user.id,
           senderName: user.displayName || 'Người dùng',
-          senderAvatar: user.avatar || '',
+          senderAvatar: getValidAvatar(user.avatar),
           type: 'COMMENT',
           title: 'Bình luận mới',
           message: `${user.displayName || 'Một người dùng'} đã bình luận bài viết của bạn: "${trimmed.slice(0, 40)}..."`,
@@ -250,7 +251,7 @@ export default function CommentSection({
           userId: comment.authorId,
           senderId: user?.id,
           senderName: "Hệ thống Quản trị",
-          senderAvatar: "https://api.dicebear.com/7.x/bottts/svg?seed=admin",
+          senderAvatar: DEFAULT_AVATAR,
           type: 'SYSTEM',
           title: 'Nội dung đã bị xóa',
           message: `Một bình luận của bạn đã bị xóa bởi Quản trị viên. Lý do: Nội dung vi phạm quy chuẩn cộng đồng.`,
@@ -346,7 +347,7 @@ export default function CommentSection({
       {/* Main Comment Box */}
       <div className="flex items-start gap-2.5">
         <img
-          src={user?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.id || 'guest'}`}
+          src={getValidAvatar(user?.avatar)}
           alt="Avatar"
           className="w-8 h-8 rounded-full border border-neutral-200 dark:border-neutral-700 shrink-0 object-cover"
         />
@@ -403,7 +404,7 @@ export default function CommentSection({
                 <div className="flex items-start gap-2.5 text-xs">
                   <img
                     onClick={() => navigate(`/creator/${comment.authorId}`)}
-                    src={comment.authorAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.authorId}`}
+                    src={getValidAvatar(comment.authorAvatar)}
                     alt={comment.authorName}
                     className="w-7 h-7 rounded-full border border-neutral-200 dark:border-neutral-700 shrink-0 object-cover mt-0.5 cursor-pointer hover:scale-105 transition-transform"
                   />
@@ -599,7 +600,7 @@ export default function CommentSection({
                         <div key={reply.id} className="flex items-start gap-2 text-xs">
                           <img
                             onClick={() => navigate(`/creator/${reply.authorId}`)}
-                            src={reply.authorAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${reply.authorId}`}
+                            src={getValidAvatar(reply.authorAvatar)}
                             alt={reply.authorName}
                             className="w-5 h-5 rounded-full border border-neutral-200 dark:border-neutral-700 shrink-0 object-cover mt-0.5 cursor-pointer hover:scale-105 transition-transform"
                           />

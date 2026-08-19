@@ -16,6 +16,7 @@ import DeleteConfirmModal from '../components/DeleteConfirmModal';
 import UserBadge from '../components/UserBadge';
 import DisplayId from '../components/DisplayId';
 import toast from 'react-hot-toast';
+import { getValidAvatar } from '../lib/avatar';
 import { checkIsFollowing, toggleFollow, reconcileFollowerCount } from '../lib/followService';
 
 export default function CreatorDetail() {
@@ -241,7 +242,7 @@ export default function CreatorDetail() {
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="flex items-center gap-5">
             <img 
-              src={creator.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${creator.displayName}`} 
+              src={getValidAvatar(creator.avatar)} 
               alt={creator.displayName}
               className="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-neutral-200 dark:border-neutral-700 shrink-0 shadow-md"
             />

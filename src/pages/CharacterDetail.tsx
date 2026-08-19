@@ -13,6 +13,7 @@ import ReportModal from '../components/ReportModal';
 import DeleteConfirmModal from '../components/DeleteConfirmModal';
 import CharacterCard from '../components/CharacterCard';
 import DisplayId from '../components/DisplayId';
+import { getValidAvatar } from '../lib/avatar';
 import toast from 'react-hot-toast';
 
 export default function CharacterDetail() {
@@ -313,7 +314,7 @@ export default function CharacterDetail() {
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-6 border-b border-neutral-100 dark:border-neutral-800">
           <div className="flex items-center gap-5">
             <img 
-              src={character.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200"} 
+              src={getValidAvatar(character.avatar)} 
               alt={character.name}
               className="w-20 h-20 md:w-24 md:h-24 rounded-2xl object-cover border border-neutral-200 dark:border-neutral-800 shrink-0 shadow-md"
             />

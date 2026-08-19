@@ -28,7 +28,6 @@ export default function CreatePromptModal({ isOpen, onClose, onSuccess, promptTo
 
   // 2. Hình ảnh minh họa & Giao diện sử dụng
   const [images, setImages] = useState<string[]>([]);
-  const [imageUrlInput, setImageUrlInput] = useState('');
 
   // 3. Nội dung cấu trúc Prompt & Ghi chú
   const [content, setContent] = useState('');
@@ -125,19 +124,6 @@ export default function CreatePromptModal({ isOpen, onClose, onSuccess, promptTo
     });
     // Reset file input
     e.target.value = '';
-  };
-
-  const handleAddImageUrl = () => {
-    const trimmed = imageUrlInput.trim();
-    if (!trimmed) return;
-    try {
-      new URL(trimmed);
-    } catch {
-      toast.error("Vui lòng nhập URL hình ảnh hợp lệ.");
-      return;
-    }
-    setImages(prev => [...prev, trimmed]);
-    setImageUrlInput('');
   };
 
   const handleRemoveImage = (index: number) => {
@@ -419,60 +405,31 @@ export default function CreatePromptModal({ isOpen, onClose, onSuccess, promptTo
                   Hình ảnh minh họa & Giao diện sử dụng
                 </h3>
                 <p className="text-xs text-neutral-500">
-                  Tải lên hoặc dán URL các ảnh chụp màn hình minh họa kết quả & giao diện khi áp dụng Prompt
+                  Tải lên các ảnh chụp màn hình minh họa kết quả & giao diện từ thiết bị khi áp dụng Prompt
                 </p>
               </div>
             </div>
 
             <div className="space-y-4">
               {/* Image Upload Area */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
                 {/* Upload via File Picker */}
                 <label className="border-2 border-dashed border-neutral-300 dark:border-neutral-700 hover:border-amber-500 dark:hover:border-amber-500 rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer transition-colors bg-neutral-50 dark:bg-neutral-800/40 group">
                   <Upload className="w-8 h-8 text-neutral-400 group-hover:text-amber-500 transition-colors mb-2" />
                   <span className="text-xs font-bold text-neutral-700 dark:text-neutral-300">
-                    Chọn ảnh từ thiết bị
+                    Chọn ảnh từ máy tính / điện thoại
                   </span>
                   <span className="text-[11px] text-neutral-400 mt-1">
-                    Hỗ trợ JPG, PNG, WEBP (Tối đa 10MB/ảnh)
+                    Hỗ trợ JPG, JPEG, PNG, WEBP (Tối đa 10MB/ảnh)
                   </span>
                   <input
                     type="file"
                     multiple
-                    accept="image/*"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
                     onChange={handleImageFileUpload}
                     className="hidden"
                   />
                 </label>
-
-                {/* Upload via Image URL */}
-                <div className="border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 bg-neutral-50 dark:bg-neutral-800/40 flex flex-col justify-between gap-3">
-                  <div>
-                    <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1.5">
-                      Thêm qua URL hình ảnh
-                    </label>
-                    <p className="text-[11px] text-neutral-400 mb-3">
-                      Dán đường dẫn ảnh trực tiếp nếu ảnh đã được lưu trữ trực tuyến
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <input
-                      type="url"
-                      value={imageUrlInput}
-                      onChange={e => setImageUrlInput(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddImageUrl(); } }}
-                      placeholder="https://example.com/screenshot.png"
-                      className="flex-1 px-3 py-2 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 focus:outline-none focus:ring-2 focus:ring-amber-500 text-xs"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleAddImageUrl}
-                      className="px-4 py-2 bg-neutral-900 dark:bg-neutral-100 text-white dark:text-black rounded-xl font-bold text-xs hover:opacity-90 transition-opacity shrink-0"
-                    >
-                      Thêm
-                    </button>
-                  </div>
-                </div>
               </div>
 
               {/* Image Gallery Preview Grid */}

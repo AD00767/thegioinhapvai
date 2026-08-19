@@ -8,6 +8,7 @@ import { db } from '../../lib/firebase';
 import { useAuthStore } from '../../store/useAuthStore';
 import UserBadge from '../UserBadge';
 import { FeedbackItem } from './PublicFeedbackCard';
+import { getValidAvatar, DEFAULT_AVATAR } from '../../lib/avatar';
 import toast from 'react-hot-toast';
 
 interface PrivateReply {
@@ -150,7 +151,7 @@ export default function PrivateFeedbackCard({
           recipientId: feedback.senderId,
           senderId: user?.id,
           senderName: "Hệ thống Quản trị",
-          senderAvatar: "https://api.dicebear.com/7.x/bottts/svg?seed=admin",
+          senderAvatar: DEFAULT_AVATAR,
           type: 'SYSTEM',
           title: 'Thư riêng tư đã bị xóa',
           message: `Thư riêng tư của bạn đã bị xóa bởi Quản trị viên. Lý do: Nội dung vi phạm quy chuẩn cộng đồng.`,
@@ -182,7 +183,7 @@ export default function PrivateFeedbackCard({
         feedbackId: feedback.id,
         senderId: user.id,
         senderName: user.displayName,
-        senderAvatar: user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`,
+        senderAvatar: getValidAvatar(user.avatar),
         content: replyText.trim(),
         createdAt: serverTimestamp()
       });
@@ -225,7 +226,7 @@ export default function PrivateFeedbackCard({
             className="flex items-center gap-2 cursor-pointer group"
           >
             <img
-              src={feedback.senderAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${feedback.senderId}`}
+              src={getValidAvatar(feedback.senderAvatar)}
               alt={feedback.senderName}
               className="w-9 h-9 rounded-full border border-amber-500/40 object-cover group-hover:scale-105 transition-transform"
             />
@@ -251,7 +252,7 @@ export default function PrivateFeedbackCard({
             className="flex items-center gap-2 cursor-pointer group"
           >
             <img
-              src={feedback.recipientAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${feedback.recipientId}`}
+              src={getValidAvatar(feedback.recipientAvatar)}
               alt={feedback.recipientName}
               className="w-8 h-8 rounded-full border border-neutral-700 object-cover group-hover:scale-105 transition-transform"
             />
@@ -404,7 +405,7 @@ export default function PrivateFeedbackCard({
               {replies.map(rep => (
                 <div key={rep.id} className="flex items-start gap-2.5 bg-neutral-900/80 p-3 rounded-2xl border border-neutral-800">
                   <img
-                    src={rep.senderAvatar}
+                    src={getValidAvatar(rep.senderAvatar)}
                     alt={rep.senderName}
                     className="w-6 h-6 rounded-full object-cover border border-neutral-700 shrink-0"
                   />

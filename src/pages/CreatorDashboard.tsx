@@ -12,6 +12,7 @@ import CreateCharacterModal from '../components/profile/CreateCharacterModal';
 import CreatePromptModal from '../components/profile/CreatePromptModal';
 import PromptCard from '../components/PromptCard';
 import DeleteConfirmModal from '../components/DeleteConfirmModal';
+import { getValidAvatar } from '../lib/avatar';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 
@@ -540,7 +541,7 @@ export default function CreatorDashboard() {
                     {/* Header line: Avatar, name, Pinned Badge */}
                     <div className="flex items-start gap-3 mb-3">
                       <img 
-                        src={char.avatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + char.name}
+                        src={getValidAvatar(char.avatar)}
                         alt={char.name}
                         className="w-12 h-12 rounded-full object-cover shrink-0 border border-neutral-200 dark:border-neutral-700"
                       />
@@ -723,7 +724,7 @@ export default function CreatorDashboard() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-center gap-3">
                       <img 
-                        src={fb.senderAvatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + fb.senderName} 
+                        src={getValidAvatar(fb.senderAvatar)} 
                         alt={fb.senderName}
                         className="w-10 h-10 rounded-full object-cover shrink-0 border border-neutral-200 dark:border-neutral-700" 
                       />
@@ -845,7 +846,7 @@ export default function CreatorDashboard() {
                   className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 flex items-center gap-3 shadow-sm"
                 >
                   <img 
-                    src={f.followerAvatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + f.followerName} 
+                    src={getValidAvatar(f.followerAvatar)} 
                     alt={f.followerName}
                     className="w-11 h-11 rounded-full object-cover shrink-0 border border-neutral-200 dark:border-neutral-700" 
                   />

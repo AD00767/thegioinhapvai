@@ -15,6 +15,7 @@ import AuthModal from "../auth/AuthModal";
 import ThemeToggle from "../ThemeToggle";
 import { applyTheme, ThemeMode } from "../../lib/themeFont";
 import { parseIdQuery, lookupIdInFirebase } from "../../lib/searchUtils";
+import { getValidAvatar } from "../../lib/avatar";
 
 interface LayoutProps {
   children?: React.ReactNode;
@@ -262,7 +263,7 @@ export default function Layout({ children }: LayoutProps) {
                 </Link>
                 <div className="group relative">
                   <button className="flex items-center gap-2">
-                    <img src={user.avatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + user.displayName} alt="Avatar" className="w-8 h-8 rounded-full border border-neutral-200 dark:border-neutral-800" />
+                    <img src={getValidAvatar(user.avatar)} alt="Avatar" className="w-8 h-8 rounded-full border border-neutral-200 dark:border-neutral-800 object-cover" />
                   </button>
                   <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-neutral-900 rounded-xl shadow-lg border border-neutral-100 dark:border-neutral-800 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
                     <div className="p-2">

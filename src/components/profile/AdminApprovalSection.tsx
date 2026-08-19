@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ShieldCheck, CheckCircle2, XCircle, Clock, UserCheck, AlertCircle } from 'lucide-react';
 import { collection, getDocs, doc, updateDoc, addDoc, query, where } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
+import { getValidAvatar } from '../../lib/avatar';
 import toast from 'react-hot-toast';
 
 interface CreatorRequest {
@@ -138,7 +139,7 @@ export default function AdminApprovalSection() {
             >
               <div className="flex items-center gap-3">
                 <img 
-                  src={req.userAvatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + req.userDisplayName} 
+                  src={getValidAvatar(req.userAvatar)} 
                   alt={req.userDisplayName} 
                   className="w-10 h-10 rounded-full object-cover shrink-0 border border-neutral-200 dark:border-neutral-700" 
                 />

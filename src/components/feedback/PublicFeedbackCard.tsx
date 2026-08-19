@@ -12,6 +12,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import CommentSection from '../comments/CommentSection';
 import ReportModal from '../ReportModal';
 import UserBadge from '../UserBadge';
+import { getValidAvatar, DEFAULT_AVATAR } from '../../lib/avatar';
 import toast from 'react-hot-toast';
 
 export interface FeedbackItem {
@@ -193,7 +194,7 @@ export default function PublicFeedbackCard({
           recipientId: feedback.senderId,
           senderId: user?.id,
           senderName: "Hệ thống Quản trị",
-          senderAvatar: "https://api.dicebear.com/7.x/bottts/svg?seed=admin",
+          senderAvatar: DEFAULT_AVATAR,
           type: 'SYSTEM',
           title: 'Nội dung không còn tồn tại',
           message: `Feedback của bạn đã bị xóa bởi Quản trị viên. Lý do: Nội dung vi phạm quy chuẩn cộng đồng.`,
@@ -226,7 +227,7 @@ export default function PublicFeedbackCard({
             className="flex items-center gap-2 cursor-pointer group"
           >
             <img
-              src={feedback.senderAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${feedback.senderId}`}
+              src={getValidAvatar(feedback.senderAvatar)}
               alt={feedback.senderName}
               className="w-10 h-10 rounded-full border border-neutral-200 dark:border-neutral-800 object-cover group-hover:scale-105 transition-transform"
             />
@@ -253,7 +254,7 @@ export default function PublicFeedbackCard({
             className="flex items-center gap-2 cursor-pointer group"
           >
             <img
-              src={feedback.recipientAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${feedback.recipientId}`}
+              src={getValidAvatar(feedback.recipientAvatar)}
               alt={feedback.recipientName}
               className="w-8 h-8 rounded-full border border-neutral-200 dark:border-neutral-800 object-cover group-hover:scale-105 transition-transform"
             />

@@ -10,6 +10,7 @@ import CharacterCard from '../components/CharacterCard';
 import PromptCard from '../components/PromptCard';
 import CreatorCard from '../components/CreatorCard';
 import { CharacterItem, PromptItem, CreatorItem } from '../types';
+import { getValidAvatar } from '../lib/avatar';
 
 type SearchTab = 'all' | 'characters' | 'prompts' | 'creators';
 type SortOption = 'relevance' | 'hot' | 'newest';
@@ -249,7 +250,7 @@ export default function AISearch() {
               <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
                 <div className="flex gap-4 items-center">
                   <img 
-                    src={exactMatch.result.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${exactMatch.result.name}`} 
+                    src={getValidAvatar(exactMatch.result.avatar)} 
                     alt={exactMatch.result.name}
                     className="w-20 h-20 rounded-2xl object-cover bg-neutral-100 dark:bg-neutral-800 shrink-0 border border-neutral-200 dark:border-neutral-700" 
                   />
@@ -329,7 +330,7 @@ export default function AISearch() {
               <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
                 <div className="flex gap-4 items-center">
                   <img 
-                    src={exactMatch.result.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${exactMatch.result.displayName}`} 
+                    src={getValidAvatar(exactMatch.result.avatar)} 
                     alt={exactMatch.result.displayName}
                     className="w-16 h-16 rounded-full object-cover bg-neutral-100 dark:bg-neutral-800 shrink-0 border border-neutral-200 dark:border-neutral-700" 
                   />

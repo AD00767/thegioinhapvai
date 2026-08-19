@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, UserCheck, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { getValidAvatar } from '../../lib/avatar';
 
 interface FollowUser {
   id: string;
@@ -41,7 +42,7 @@ export default function FollowersModal({ isOpen, onClose, title, users, loading 
               <div key={u.id} className="flex items-center justify-between p-3 rounded-xl bg-neutral-50 dark:bg-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
                 <div className="flex items-center gap-3 min-w-0">
                   <img 
-                    src={u.avatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + u.displayName} 
+                    src={getValidAvatar(u.avatar)} 
                     alt="Avatar" 
                     className="w-10 h-10 rounded-full object-cover shrink-0"
                   />

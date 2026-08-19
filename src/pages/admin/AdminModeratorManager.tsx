@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuthStore } from '../../store/useAuthStore';
+import { getValidAvatar } from '../../lib/avatar';
 import toast from 'react-hot-toast';
 
 export default function AdminModeratorManager() {
@@ -182,7 +183,7 @@ export default function AdminModeratorManager() {
                 <div className={`absolute top-0 left-0 w-full h-1.5 ${m.role === 'ADMIN' ? 'bg-red-500' : 'bg-blue-500'}`}></div>
                 
                 <div className="flex items-center gap-4">
-                  <img src={m.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${m.id}`} className="w-16 h-16 rounded-[1.5rem]" alt="" />
+                  <img src={getValidAvatar(m.avatar)} className="w-16 h-16 rounded-[1.5rem] object-cover" alt="" />
                   <div>
                     <h3 className="font-black text-lg tracking-tight truncate max-w-[150px]">{m.displayName}</h3>
                     <div className="flex items-center gap-1.5 flex-wrap">
@@ -264,7 +265,7 @@ export default function AdminModeratorManager() {
                   {foundUser && (
                     <div className="p-6 bg-neutral-50 dark:bg-neutral-800/50 rounded-3xl border border-neutral-100 dark:border-neutral-800 flex items-center justify-between animate-in slide-in-from-bottom-4 duration-500">
                       <div className="flex items-center gap-3">
-                        <img src={foundUser.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${foundUser.id}`} className="w-12 h-12 rounded-xl" alt="" />
+                        <img src={getValidAvatar(foundUser.avatar)} className="w-12 h-12 rounded-xl object-cover" alt="" />
                         <div>
                           <p className="text-sm font-bold">{foundUser.displayName}</p>
                           <p className="text-[10px] text-neutral-500 font-mono">

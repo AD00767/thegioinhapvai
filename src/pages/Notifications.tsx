@@ -11,6 +11,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { getDoc } from 'firebase/firestore';
+import { getValidAvatar } from '../lib/avatar';
 import DeletedContentModal from '../components/DeletedContentModal';
 
 export interface NotificationItem {
@@ -521,7 +522,7 @@ export default function Notifications() {
                 {/* Avatar / Icon */}
                 <div className="relative shrink-0">
                   <img
-                    src={notif.senderAvatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + (notif.senderName || "User")}
+                    src={getValidAvatar(notif.senderAvatar)}
                     alt={notif.senderName || "User"}
                     className="w-11 h-11 rounded-full object-cover border border-neutral-200 dark:border-neutral-700"
                   />
