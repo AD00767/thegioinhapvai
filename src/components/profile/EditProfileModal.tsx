@@ -258,14 +258,9 @@ export default function EditProfileModal({ isOpen, onClose, onSaveSuccess }: Edi
       {/* Sticky Fullscreen Top Header */}
       <header className="sticky top-0 z-30 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-800 px-4 md:px-8 py-3.5 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-3">
-          <button 
-            type="button" 
-            onClick={onClose}
-            className="p-2 rounded-xl text-neutral-500 hover:text-black dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-            title="Quay lại"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
+          <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+            <UserIcon className="w-5 h-5" />
+          </div>
           <div>
             <h1 className="text-lg md:text-xl font-extrabold flex items-center gap-2">
               Chỉnh sửa hồ sơ cá nhân
@@ -281,33 +276,14 @@ export default function EditProfileModal({ isOpen, onClose, onSaveSuccess }: Edi
           </div>
         </div>
 
-        <div className="flex items-center gap-2 md:gap-3">
-          <button 
-            type="button" 
-            onClick={onClose} 
-            className="px-4 py-2 rounded-xl text-xs md:text-sm font-semibold text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-          >
-            Hủy
-          </button>
-          <button 
-            type="button"
-            onClick={handleSubmit} 
-            disabled={saving} 
-            className="px-5 py-2 rounded-xl bg-black dark:bg-white text-white dark:text-black text-xs md:text-sm font-extrabold hover:opacity-90 transition-opacity disabled:opacity-50 shadow-md flex items-center gap-2"
-          >
-            {saving ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                Đang lưu...
-              </>
-            ) : (
-              <>
-                <Check className="w-4 h-4" />
-                Lưu thay đổi
-              </>
-            )}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="p-2 rounded-xl text-neutral-500 hover:text-black dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+          title="Đóng"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </header>
 
       {/* Main Fullscreen Form Body */}
@@ -366,7 +342,7 @@ export default function EditProfileModal({ isOpen, onClose, onSaveSuccess }: Edi
 
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* ==================== MỤC 1: THÔNG TIN CƠ BẢN ==================== */}
-          <section id="section-basic" className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 md:p-8 shadow-sm space-y-6">
+          <section id="section-basic" className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 sm:p-6 md:p-8 shadow-sm space-y-6">
             <div className="flex items-center gap-3 pb-4 border-b border-neutral-100 dark:border-neutral-800">
               <div className="p-2.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">
                 <UserIcon className="w-5 h-5" />
@@ -457,7 +433,7 @@ export default function EditProfileModal({ isOpen, onClose, onSaveSuccess }: Edi
           </section>
 
           {/* ==================== MỤC 2: HUY HIỆU & TRẠNG THÁI ==================== */}
-          <section id="section-badges" className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 md:p-8 shadow-sm space-y-6">
+          <section id="section-badges" className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 sm:p-6 md:p-8 shadow-sm space-y-6">
             <div className="flex items-center gap-3 pb-4 border-b border-neutral-100 dark:border-neutral-800">
               <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
                 <Award className="w-5 h-5" />
@@ -566,7 +542,7 @@ export default function EditProfileModal({ isOpen, onClose, onSaveSuccess }: Edi
           </section>
 
           {/* ==================== MỤC 3: LIÊN KẾT MẠNG XÃ HỘI ==================== */}
-          <section id="section-social" className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 md:p-8 shadow-sm space-y-6">
+          <section id="section-social" className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 sm:p-6 md:p-8 shadow-sm space-y-6">
             <div className="flex items-center gap-3 pb-4 border-b border-neutral-100 dark:border-neutral-800">
               <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
                 <Globe className="w-5 h-5" />
@@ -690,7 +666,7 @@ export default function EditProfileModal({ isOpen, onClose, onSaveSuccess }: Edi
           </section>
 
           {/* ==================== MỤC 4: TRẠNG THÁI YÊU CẦU CREATOR ==================== */}
-          <section id="section-creator" className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 md:p-8 shadow-sm space-y-6">
+          <section id="section-creator" className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 sm:p-6 md:p-8 shadow-sm space-y-6">
             <div className="flex items-center gap-3 pb-4 border-b border-neutral-100 dark:border-neutral-800">
               <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
                 <Crown className="w-5 h-5" />
@@ -806,18 +782,18 @@ export default function EditProfileModal({ isOpen, onClose, onSaveSuccess }: Edi
           </section>
 
           {/* Bottom Action Footer */}
-          <div className="flex items-center justify-end gap-3 pt-6 border-t border-neutral-200 dark:border-neutral-800">
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center sm:justify-end gap-3 pt-6 border-t border-neutral-200 dark:border-neutral-800">
             <button 
               type="button" 
               onClick={onClose} 
-              className="px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors"
+              className="px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors text-center"
             >
               Hủy
             </button>
             <button 
               type="submit" 
               disabled={saving} 
-              className="px-6 py-2.5 rounded-xl bg-black dark:bg-white text-white dark:text-black text-sm font-extrabold hover:opacity-90 transition-opacity disabled:opacity-50 shadow-md flex items-center gap-2"
+              className="px-6 py-2.5 rounded-xl bg-black dark:bg-white text-white dark:text-black text-sm font-extrabold hover:opacity-90 transition-opacity disabled:opacity-50 shadow-md flex items-center justify-center gap-2"
             >
               {saving ? (
                 <>

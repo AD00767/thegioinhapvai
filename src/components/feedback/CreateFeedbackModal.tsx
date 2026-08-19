@@ -251,29 +251,14 @@ export default function CreateFeedbackModal({
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700 text-xs font-semibold hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-          >
-            Hủy
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={submitting || !selectedRecipient || !content.trim()}
-            className="px-6 py-2 rounded-xl bg-black dark:bg-white text-white dark:text-black text-xs font-bold hover:opacity-90 transition-all disabled:opacity-50 shadow-sm flex items-center gap-2"
-          >
-            {submitting ? (
-              <span>Đang gửi...</span>
-            ) : (
-              <>
-                <Send className="w-3.5 h-3.5" />
-                <span>Gửi Feedback</span>
-              </>
-            )}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="p-2 rounded-xl text-neutral-500 hover:text-black dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+          title="Đóng"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
 
       {/* Main Full-Screen Body */}
@@ -281,7 +266,7 @@ export default function CreateFeedbackModal({
         <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-8 pb-16">
 
           {/* MỤC 1: NGƯỜI GỬI (TỰ ĐỘNG) */}
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 md:p-8 shadow-sm space-y-4">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-sm space-y-4">
             <div className="flex items-center gap-3 pb-3 border-b border-neutral-100 dark:border-neutral-800">
               <div className="w-8 h-8 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 font-extrabold text-sm flex items-center justify-center shrink-0">
                 1
@@ -326,7 +311,7 @@ export default function CreateFeedbackModal({
           </div>
 
           {/* MỤC 2: NGƯỜI NHẬN */}
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 md:p-8 shadow-sm space-y-5">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-sm space-y-5">
             <div className="flex items-center gap-3 pb-3 border-b border-neutral-100 dark:border-neutral-800">
               <div className="w-8 h-8 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 font-extrabold text-sm flex items-center justify-center shrink-0">
                 2
@@ -430,7 +415,7 @@ export default function CreateFeedbackModal({
           </div>
 
           {/* MỤC 3: CHẾ ĐỘ FEEDBACK */}
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 md:p-8 shadow-sm space-y-4">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-sm space-y-4">
             <div className="flex items-center gap-3 pb-3 border-b border-neutral-100 dark:border-neutral-800">
               <div className="w-8 h-8 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 font-extrabold text-sm flex items-center justify-center shrink-0">
                 3
@@ -487,7 +472,7 @@ export default function CreateFeedbackModal({
           </div>
 
           {/* MỤC 4: THÔNG TIN CHI TIẾT */}
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 md:p-8 shadow-sm space-y-5">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-sm space-y-5">
             <div className="flex items-center gap-3 pb-3 border-b border-neutral-100 dark:border-neutral-800">
               <div className="w-8 h-8 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 font-extrabold text-sm flex items-center justify-center shrink-0">
                 4
@@ -538,7 +523,7 @@ export default function CreateFeedbackModal({
           </div>
 
           {/* MỤC 5: ẢNH MINH HỌA / ĐÍNH KÈM (TỐI ĐA 10 ĂNH) */}
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 md:p-8 shadow-sm space-y-5">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-sm space-y-5">
             <div className="flex items-center justify-between pb-3 border-b border-neutral-100 dark:border-neutral-800">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 font-extrabold text-sm flex items-center justify-center shrink-0">
@@ -623,18 +608,18 @@ export default function CreateFeedbackModal({
           </div>
 
           {/* Bottom Action Footer */}
-          <div className="flex items-center justify-end gap-3 pt-4">
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center sm:justify-end gap-3 pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-3 rounded-2xl border border-neutral-200 dark:border-neutral-700 text-xs font-bold hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+              className="px-5 py-3 rounded-2xl border border-neutral-200 dark:border-neutral-700 text-xs font-bold hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors text-center"
             >
               Hủy bỏ
             </button>
             <button
               type="submit"
               disabled={submitting || !selectedRecipient || !content.trim()}
-              className="px-8 py-3 rounded-2xl bg-black dark:bg-white text-white dark:text-black text-xs font-bold hover:opacity-90 transition-all disabled:opacity-50 shadow-md flex items-center gap-2"
+              className="px-8 py-3 rounded-2xl bg-black dark:bg-white text-white dark:text-black text-xs font-bold hover:opacity-90 transition-all disabled:opacity-50 shadow-md flex items-center justify-center gap-2"
             >
               {submitting ? "Đang gửi..." : "Gửi Feedback"}
             </button>

@@ -315,29 +315,14 @@ export default function CreateCharacterModal({
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700 text-xs font-semibold hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-          >
-            Hủy
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={saving}
-            className="px-6 py-2 rounded-xl bg-black dark:bg-white text-white dark:text-black text-xs font-bold hover:opacity-90 transition-all disabled:opacity-50 shadow-sm flex items-center gap-2"
-          >
-            {saving ? (
-              <span>Đang lưu...</span>
-            ) : (
-              <>
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>{characterToEdit ? "Lưu thay đổi" : "Tạo Character Mới"}</span>
-              </>
-            )}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="p-2 rounded-xl text-neutral-500 hover:text-black dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+          title="Đóng"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
 
       {/* Main Full-Screen Body */}
@@ -345,7 +330,7 @@ export default function CreateCharacterModal({
         <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-8 pb-16">
 
           {/* MỤC 1: ẢNH ĐẠI DIỆN CHARACTER */}
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 md:p-8 shadow-sm space-y-5">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-sm space-y-5">
             <div className="flex items-center gap-3 pb-3 border-b border-neutral-100 dark:border-neutral-800">
               <div className="w-8 h-8 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 font-extrabold text-sm flex items-center justify-center shrink-0">
                 1
@@ -413,7 +398,7 @@ export default function CreateCharacterModal({
           </div>
 
           {/* MỤC 2: THÔNG TIN CƠ BẢN */}
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 md:p-8 shadow-sm space-y-5">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-sm space-y-5">
             <div className="flex items-center gap-3 pb-3 border-b border-neutral-100 dark:border-neutral-800">
               <div className="w-8 h-8 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 font-extrabold text-sm flex items-center justify-center shrink-0">
                 2
@@ -495,7 +480,7 @@ export default function CreateCharacterModal({
           </div>
 
           {/* MỤC 3: TAG PHÂN LOẠI (TỐI ĐA 12 TAG) */}
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 md:p-8 shadow-sm space-y-5">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-sm space-y-5">
             <div className="flex items-center justify-between pb-3 border-b border-neutral-100 dark:border-neutral-800">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 font-extrabold text-sm flex items-center justify-center shrink-0">
@@ -567,7 +552,7 @@ export default function CreateCharacterModal({
           </div>
 
           {/* MỤC 4: CỐT TRUYỆN (PLOT) */}
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 md:p-8 shadow-sm space-y-4">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-sm space-y-4">
             <div className="flex items-center gap-3 pb-3 border-b border-neutral-100 dark:border-neutral-800">
               <div className="w-8 h-8 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 font-extrabold text-sm flex items-center justify-center shrink-0">
                 4
@@ -592,7 +577,7 @@ export default function CreateCharacterModal({
           </div>
 
           {/* MỤC 5: CẢNH MỞ ĐẦU (OPENING SCENE) */}
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 md:p-8 shadow-sm space-y-4">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-sm space-y-4">
             <div className="flex items-center gap-3 pb-3 border-b border-neutral-100 dark:border-neutral-800">
               <div className="w-8 h-8 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 font-extrabold text-sm flex items-center justify-center shrink-0">
                 5
@@ -617,7 +602,7 @@ export default function CreateCharacterModal({
           </div>
 
           {/* MỤC 6: LINK CHARACTER */}
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 md:p-8 shadow-sm space-y-5">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-sm space-y-5">
             <div className="flex items-center gap-3 pb-3 border-b border-neutral-100 dark:border-neutral-800">
               <div className="w-8 h-8 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 font-extrabold text-sm flex items-center justify-center shrink-0">
                 6

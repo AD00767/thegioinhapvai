@@ -237,29 +237,14 @@ export default function CreatePromptModal({ isOpen, onClose, onSuccess, promptTo
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700 text-xs font-semibold hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-          >
-            Hủy
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={saving}
-            className="px-6 py-2 rounded-xl bg-black dark:bg-white text-white dark:text-black text-xs font-bold hover:opacity-90 transition-all disabled:opacity-50 shadow-sm flex items-center gap-2"
-          >
-            {saving ? (
-              <span>Đang lưu...</span>
-            ) : (
-              <>
-                <Check className="w-4 h-4" />
-                <span>{promptToEdit ? "Lưu thay đổi" : "Hoàn tất & Đăng Prompt"}</span>
-              </>
-            )}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="p-2 rounded-xl text-neutral-500 hover:text-black dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+          title="Đóng"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
 
       {/* Main Full-Screen Body */}
@@ -267,7 +252,7 @@ export default function CreatePromptModal({ isOpen, onClose, onSuccess, promptTo
         <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-8 pb-16">
 
           {/* MỤC 1: THÔNG TIN CƠ BẢN */}
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-sm space-y-6">
             <div className="flex items-center gap-3 pb-4 border-b border-neutral-100 dark:border-neutral-800">
               <div className="w-8 h-8 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 font-extrabold text-sm flex items-center justify-center shrink-0">
                 1
@@ -395,7 +380,7 @@ export default function CreatePromptModal({ isOpen, onClose, onSuccess, promptTo
           </div>
 
           {/* MỤC 2: HÌNH ẢNH MINH HỌA & GIAO DIỆN SỬ DỤNG */}
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-sm space-y-6">
             <div className="flex items-center gap-3 pb-4 border-b border-neutral-100 dark:border-neutral-800">
               <div className="w-8 h-8 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 font-extrabold text-sm flex items-center justify-center shrink-0">
                 2
@@ -467,7 +452,7 @@ export default function CreatePromptModal({ isOpen, onClose, onSuccess, promptTo
           </div>
 
           {/* MỤC 3: NỘI DUNG CẤU TRÚC PROMPT & GHI CHÚ */}
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-sm space-y-6">
             <div className="flex items-center gap-3 pb-4 border-b border-neutral-100 dark:border-neutral-800">
               <div className="w-8 h-8 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 font-extrabold text-sm flex items-center justify-center shrink-0">
                 3
@@ -514,18 +499,18 @@ export default function CreatePromptModal({ isOpen, onClose, onSuccess, promptTo
           </div>
 
           {/* Bottom Action Footer */}
-          <div className="flex items-center justify-end gap-3 pt-4">
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center sm:justify-end gap-3 pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-3 rounded-2xl border border-neutral-200 dark:border-neutral-700 text-xs font-bold hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+              className="px-5 py-3 rounded-2xl border border-neutral-200 dark:border-neutral-700 text-xs font-bold hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors text-center"
             >
               Hủy bỏ
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="px-8 py-3 rounded-2xl bg-black dark:bg-white text-white dark:text-black text-xs font-bold hover:opacity-90 transition-all disabled:opacity-50 shadow-md flex items-center gap-2"
+              className="px-8 py-3 rounded-2xl bg-black dark:bg-white text-white dark:text-black text-xs font-bold hover:opacity-90 transition-all disabled:opacity-50 shadow-md flex items-center justify-center gap-2"
             >
               {saving ? "Đang lưu..." : (promptToEdit ? "Lưu thay đổi" : "Hoàn tất & Đăng Prompt")}
             </button>

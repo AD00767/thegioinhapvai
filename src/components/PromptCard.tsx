@@ -274,9 +274,9 @@ export default function PromptCard({ prompt, onEdit, onDelete, onPin, isOwner }:
       </div>
 
       {/* Footer Interactive Actions: Quick Copy, Copy Counter, Save Button, Save Counter */}
-      <div className="pt-3 border-t border-neutral-100 dark:border-neutral-800/80 flex items-center justify-between gap-2">
+      <div className="pt-3 border-t border-neutral-100 dark:border-neutral-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         {/* Left: Counters */}
-        <div className="flex items-center gap-4 text-xs font-medium text-neutral-500 dark:text-neutral-400">
+        <div className="flex items-center gap-3 xs:gap-4 text-xs font-medium text-neutral-500 dark:text-neutral-400 flex-wrap">
           {/* Bộ đếm số lần sao chép */}
           <span className="flex items-center gap-1.5" title="Số lần sao chép">
             <Copy className="w-3.5 h-3.5 text-blue-500" />
@@ -291,11 +291,11 @@ export default function PromptCard({ prompt, onEdit, onDelete, onPin, isOwner }:
         </div>
 
         {/* Right: Action Buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 xs:gap-2">
           {/* Nút Bình luận */}
           <button
             onClick={(e) => { e.stopPropagation(); setShowComments(!showComments); }}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${
+            className={`flex items-center gap-1 px-2.5 py-1.5 xs:px-3 xs:py-2 rounded-xl text-[11px] xs:text-xs font-semibold border transition-all ${
               showComments
                 ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
                 : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-700'
@@ -303,14 +303,14 @@ export default function PromptCard({ prompt, onEdit, onDelete, onPin, isOwner }:
             title="Xem & Viết bình luận"
           >
             <MessageSquare className="w-3.5 h-3.5 text-neutral-500" />
-            <span>Bình luận</span>
+            <span className="hidden min-[360px]:inline">Bình luận</span>
           </button>
 
           {/* Nút lưu */}
           <button
             onClick={(e) => { e.stopPropagation(); handleToggleSave(); }}
             disabled={bookmarking}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${
+            className={`flex items-center gap-1 px-2.5 py-1.5 xs:px-3 xs:py-2 rounded-xl text-[11px] xs:text-xs font-semibold border transition-all ${
               isBookmarked
                 ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
                 : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-700'
@@ -320,12 +320,12 @@ export default function PromptCard({ prompt, onEdit, onDelete, onPin, isOwner }:
             {isBookmarked ? (
               <>
                 <BookmarkCheck className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                <span>Đã lưu</span>
+                <span className="hidden min-[360px]:inline">Đã lưu</span>
               </>
             ) : (
               <>
                 <Bookmark className="w-3.5 h-3.5 text-neutral-500" />
-                <span>Lưu Prompt</span>
+                <span className="hidden min-[360px]:inline">Lưu</span>
               </>
             )}
           </button>
@@ -333,7 +333,7 @@ export default function PromptCard({ prompt, onEdit, onDelete, onPin, isOwner }:
           {/* Báo cáo vi phạm */}
           <button
             onClick={(e) => { e.stopPropagation(); setIsReportOpen(true); }}
-            className="flex items-center justify-center p-2.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-500 hover:text-red-500 border border-neutral-200 dark:border-neutral-700 transition-all"
+            className="flex items-center justify-center p-1.5 xs:p-2.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-500 hover:text-red-500 border border-neutral-200 dark:border-neutral-700 transition-all"
             title="Báo cáo vi phạm"
           >
             <Flag className="w-3.5 h-3.5" />
@@ -342,17 +342,17 @@ export default function PromptCard({ prompt, onEdit, onDelete, onPin, isOwner }:
           {/* Sao chép nhanh */}
           <button
             onClick={(e) => { e.stopPropagation(); handleQuickCopy(); }}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-black dark:bg-white text-white dark:text-black hover:opacity-90 transition-all rounded-xl text-xs font-bold shadow-sm"
+            className="flex-1 min-[360px]:flex-none flex items-center justify-center gap-1 px-3 py-1.5 xs:px-3.5 xs:py-2 bg-black dark:bg-white text-white dark:text-black hover:opacity-90 transition-all rounded-xl text-[11px] xs:text-xs font-bold shadow-sm"
           >
             {copied ? (
               <>
                 <Check className="w-3.5 h-3.5 text-emerald-400 dark:text-emerald-600" />
-                <span>Đã sao chép</span>
+                <span>Đã chép</span>
               </>
             ) : (
               <>
                 <Copy className="w-3.5 h-3.5" />
-                <span>Sao chép nhanh</span>
+                <span>Sao chép</span>
               </>
             )}
           </button>
