@@ -25,6 +25,8 @@ import Creators from './pages/Creators';
 import Notifications from './pages/Notifications';
 import Contact from './pages/Contact';
 import Settings from './pages/Settings';
+import Terms from './pages/Terms';
+import Privacy from './pages/Privacy';
 import AdminDashboard from './pages/AdminDashboard';
 import DashboardStats from './pages/admin/DashboardStats';
 import UserManagement from './pages/admin/UserManagement';
@@ -152,6 +154,8 @@ export default function App() {
           <Route path="/feedback" element={<Feedbacks />} />
           <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/privacy" element={<Privacy />} />
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           <Route path="/creator/dashboard" element={<ProtectedRoute><CreatorDashboard /></ProtectedRoute>} />
           <Route path="/creator/:id" element={<CreatorDetail />} />
