@@ -225,11 +225,11 @@ export default function Layout({ children }: LayoutProps) {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white/80 dark:bg-black/80 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-800">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button className="lg:hidden p-2 -ml-2" onClick={() => setSidebarOpen(true)}>
+          <div className="flex items-center gap-4 min-w-0">
+            <button className="lg:hidden p-2 -ml-2 shrink-0" onClick={() => setSidebarOpen(true)}>
               <Menu className="w-6 h-6" />
             </button>
-            <Link to="/" className="text-xl font-bold tracking-tight shrink-0">Thế Giới Nhập vai AD</Link>
+            <Link to="/" className="text-base min-[380px]:text-lg sm:text-xl font-bold tracking-tight shrink-0 truncate max-w-[140px] min-[380px]:max-w-[180px] sm:max-w-none">Thế Giới Nhập vai AD</Link>
           </div>
 
           {/* Global Header Search Bar */}
@@ -250,7 +250,9 @@ export default function Layout({ children }: LayoutProps) {
             <Link to="/ai-search" className="p-2 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300 transition-colors" title="AI Search">
               <Sparkles className="w-5 h-5" />
             </Link>
-            <ThemeToggle />
+            <div className="hidden xs:block">
+              <ThemeToggle />
+            </div>
             {user ? (
               <div className="flex items-center gap-3">
                 <Link to="/notifications" className="relative p-2 text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white" title="Thông báo">
@@ -290,9 +292,9 @@ export default function Layout({ children }: LayoutProps) {
                 </div>
               </div>
             ) : (
-              <button onClick={handleLoginClick} className="flex items-center gap-2 px-4 py-2 rounded-full bg-black dark:bg-white text-white dark:text-black text-sm font-medium hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors">
-                <LogIn className="w-4 h-4" />
-                <span>Đăng nhập</span>
+              <button onClick={handleLoginClick} className="flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-black dark:bg-white text-white dark:text-black text-xs sm:text-sm font-medium hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors shrink-0">
+                <LogIn className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="hidden xs:inline">Đăng nhập</span>
               </button>
             )}
           </div>
@@ -326,70 +328,74 @@ export default function Layout({ children }: LayoutProps) {
           <div className="fixed inset-0 z-50 lg:hidden">
             <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
             <aside className="fixed inset-y-0 left-0 w-72 bg-white dark:bg-neutral-900 shadow-2xl p-6 flex flex-col">
-              <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center justify-between mb-6 shrink-0">
                 <span className="font-bold text-lg">Menu</span>
                 <button onClick={() => setSidebarOpen(false)} className="p-2 -mr-2"><X className="w-5 h-5" /></button>
               </div>
-              <nav className="space-y-2 flex-1 overflow-y-auto">
-                {menuItems.map(item => (
-                  <Link 
-                    key={item.path} 
-                    to={item.path}
-                    className={clsx(
-                      "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors",
-                      location.pathname === item.path 
-                        ? "bg-neutral-100 dark:bg-neutral-800 text-black dark:text-white" 
-                        : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800/50"
-                    )}
-                  >
-                    {item.icon}
-                    {item.label}
-                  </Link>
-                ))}
-              </nav>
+              
+              {/* Scrollable Container containing both menu items and theme selector */}
+              <div className="flex-1 overflow-y-auto pr-1 space-y-6">
+                <nav className="space-y-2">
+                  {menuItems.map(item => (
+                    <Link 
+                      key={item.path} 
+                      to={item.path}
+                      className={clsx(
+                        "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors",
+                        location.pathname === item.path 
+                          ? "bg-neutral-100 dark:bg-neutral-800 text-black dark:text-white" 
+                          : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800/50"
+                      )}
+                    >
+                      {item.icon}
+                      {item.label}
+                    </Link>
+                  ))}
+                </nav>
 
-              {/* Mobile Theme Switcher */}
-              <div className="pt-4 mt-4 border-t border-neutral-200 dark:border-neutral-800 space-y-2">
-                <div className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 px-1">
-                  Giao diện (Theme)
-                </div>
-                <div className="grid grid-cols-3 gap-1.5 p-1 bg-neutral-100 dark:bg-neutral-800/80 rounded-2xl">
-                  <button
-                    onClick={() => handleMobileThemeChange('LIGHT')}
-                    className={clsx(
-                      "flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-xl text-[11px] font-bold transition-all",
-                      currentTheme === 'LIGHT'
-                        ? "bg-white dark:bg-neutral-900 text-amber-600 dark:text-amber-400 shadow-sm"
-                        : "text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white"
-                    )}
-                  >
-                    <Sun className="w-4 h-4 text-amber-500" />
-                    <span>Sáng</span>
-                  </button>
-                  <button
-                    onClick={() => handleMobileThemeChange('DARK')}
-                    className={clsx(
-                      "flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-xl text-[11px] font-bold transition-all",
-                      currentTheme === 'DARK'
-                        ? "bg-white dark:bg-neutral-900 text-amber-600 dark:text-amber-400 shadow-sm"
-                        : "text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white"
-                    )}
-                  >
-                    <Moon className="w-4 h-4 text-blue-400" />
-                    <span>Tối</span>
-                  </button>
-                  <button
-                    onClick={() => handleMobileThemeChange('SYSTEM')}
-                    className={clsx(
-                      "flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-xl text-[11px] font-bold transition-all",
-                      currentTheme === 'SYSTEM'
-                        ? "bg-white dark:bg-neutral-900 text-amber-600 dark:text-amber-400 shadow-sm"
-                        : "text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white"
-                    )}
-                  >
-                    <Laptop className="w-4 h-4 text-indigo-400" />
-                    <span>Hệ thống</span>
-                  </button>
+                {/* Mobile Theme Switcher inside the scroll flow */}
+                <div className="pt-4 border-t border-neutral-200 dark:border-neutral-800 space-y-2">
+                  <div className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 px-1">
+                    Giao diện (Theme)
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5 p-1 bg-neutral-100 dark:bg-neutral-800/80 rounded-2xl">
+                    <button
+                      onClick={() => handleMobileThemeChange('LIGHT')}
+                      className={clsx(
+                        "flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-xl text-[11px] font-bold transition-all",
+                        currentTheme === 'LIGHT'
+                          ? "bg-white dark:bg-neutral-900 text-amber-600 dark:text-amber-400 shadow-sm"
+                          : "text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white"
+                      )}
+                    >
+                      <Sun className="w-4 h-4 text-amber-500" />
+                      <span>Sáng</span>
+                    </button>
+                    <button
+                      onClick={() => handleMobileThemeChange('DARK')}
+                      className={clsx(
+                        "flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-xl text-[11px] font-bold transition-all",
+                        currentTheme === 'DARK'
+                          ? "bg-white dark:bg-neutral-900 text-amber-600 dark:text-amber-400 shadow-sm"
+                          : "text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white"
+                      )}
+                    >
+                      <Moon className="w-4 h-4 text-blue-400" />
+                      <span>Tối</span>
+                    </button>
+                    <button
+                      onClick={() => handleMobileThemeChange('SYSTEM')}
+                      className={clsx(
+                        "flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-xl text-[11px] font-bold transition-all",
+                        currentTheme === 'SYSTEM'
+                          ? "bg-white dark:bg-neutral-900 text-amber-600 dark:text-amber-400 shadow-sm"
+                          : "text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white"
+                      )}
+                    >
+                      <Laptop className="w-4 h-4 text-indigo-400" />
+                      <span>Hệ thống</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </aside>

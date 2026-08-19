@@ -247,7 +247,7 @@ export default function Home() {
           </p>
 
           {/* Quick Search */}
-          <form onSubmit={handleSearchSubmit} className="max-w-2xl mx-auto flex items-center gap-2">
+          <form onSubmit={handleSearchSubmit} className="max-w-2xl mx-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
             <div className="relative flex-1">
               <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
               <input 
@@ -255,7 +255,7 @@ export default function Home() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Tìm kiếm Character, Prompt, Creator hoặc Thẻ..." 
-                className="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-neutral-800/90 border border-neutral-700 text-white placeholder-neutral-400 shadow-sm focus:outline-none focus:border-amber-500 transition-all text-sm md:text-base"
+                className="w-full pl-12 pr-12 py-3.5 rounded-2xl bg-neutral-800/90 border border-neutral-700 text-white placeholder-neutral-400 shadow-sm focus:outline-none focus:border-amber-500 transition-all text-sm md:text-base"
               />
               {searchQuery && (
                 <button
@@ -270,19 +270,21 @@ export default function Home() {
                 </button>
               )}
             </div>
-            <button 
-              type="submit"
-              className="px-5 py-3.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-black font-semibold text-sm transition-colors flex items-center gap-2 shadow-lg shrink-0"
-            >
-              <span>Tìm kiếm</span>
-            </button>
-            <Link 
-              to="/ai-search" 
-              className="p-3.5 rounded-2xl bg-neutral-800 hover:bg-neutral-700 text-amber-400 border border-neutral-700 transition-colors shrink-0"
-              title="AI Search Ngữ Nghĩa"
-            >
-              <Sparkles className="w-5 h-5" />
-            </Link>
+            <div className="flex items-center gap-2 justify-center shrink-0">
+              <button 
+                type="submit"
+                className="flex-1 sm:flex-initial px-5 py-3.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-black font-semibold text-sm transition-colors flex items-center justify-center gap-2 shadow-lg shrink-0"
+              >
+                <span>Tìm kiếm</span>
+              </button>
+              <Link 
+                to="/ai-search" 
+                className="p-3.5 rounded-2xl bg-neutral-800 hover:bg-neutral-700 text-amber-400 border border-neutral-700 transition-colors shrink-0"
+                title="AI Search Ngữ Nghĩa"
+              >
+                <Sparkles className="w-5 h-5" />
+              </Link>
+            </div>
           </form>
         </div>
       </section>
@@ -291,7 +293,7 @@ export default function Home() {
         
         {/* SECTION 1: TAG ĐANG PHỔ BIẾN */}
         <section className="bg-white dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800 p-6 rounded-3xl shadow-sm">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
             <div className="flex items-center gap-2">
               <TagIcon className="w-5 h-5 text-amber-500" />
               <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-100">Tag Đang Phổ Biến</h2>
@@ -299,7 +301,7 @@ export default function Home() {
             {selectedTag && (
               <button
                 onClick={() => handleTagClick(null)}
-                className="text-xs text-amber-600 dark:text-amber-400 font-semibold hover:underline"
+                className="text-xs text-amber-600 dark:text-amber-400 font-semibold hover:underline self-start sm:self-auto"
               >
                 Xóa bộ lọc thẻ (#{selectedTag})
               </button>
@@ -338,7 +340,7 @@ export default function Home() {
 
         {/* SECTION 2: CHARACTER HOT / TẤT CẢ */}
         <section>
-          <div className="flex items-end justify-between mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-6">
             <div>
               <div className="flex items-center gap-2">
                 <Flame className="w-6 h-6 text-red-500 fill-red-500" />
@@ -346,7 +348,7 @@ export default function Home() {
               </div>
               <p className="text-xs text-neutral-500 mt-1">Các nhân vật có nhiều lượt lưu và yêu thích nhất</p>
             </div>
-            <Link to="/characters" className="text-xs font-semibold text-neutral-500 hover:text-black dark:hover:text-white flex items-center gap-1">
+            <Link to="/characters" className="text-xs font-semibold text-neutral-500 hover:text-black dark:hover:text-white flex items-center gap-1 self-start sm:self-auto shrink-0">
               <span>Xem tất cả Character</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
@@ -371,7 +373,7 @@ export default function Home() {
 
         {/* SECTION 3: PROMPT HOT */}
         <section>
-          <div className="flex items-end justify-between mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-6">
             <div>
               <div className="flex items-center gap-2">
                 <Sparkles className="w-6 h-6 text-emerald-500 fill-emerald-500" />
@@ -379,7 +381,7 @@ export default function Home() {
               </div>
               <p className="text-xs text-neutral-500 mt-1">Các câu lệnh Prompt có lượt copy và lưu cao nhất từ cộng đồng</p>
             </div>
-            <Link to="/prompts" className="text-xs font-semibold text-neutral-500 hover:text-black dark:hover:text-white flex items-center gap-1">
+            <Link to="/prompts" className="text-xs font-semibold text-neutral-500 hover:text-black dark:hover:text-white flex items-center gap-1 self-start sm:self-auto shrink-0">
               <span>Xem tất cả Prompt</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
@@ -409,7 +411,7 @@ export default function Home() {
 
         {/* SECTION 4: CREATOR NỔI BẬT */}
         <section>
-          <div className="flex items-end justify-between mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-6">
             <div>
               <div className="flex items-center gap-2">
                 <Users className="w-6 h-6 text-amber-500" />
@@ -417,7 +419,7 @@ export default function Home() {
               </div>
               <p className="text-xs text-neutral-500 mt-1">Những tác giả Roleplay xuất sắc được đông đảo người dùng theo dõi</p>
             </div>
-            <Link to="/creators" className="text-xs font-semibold text-neutral-500 hover:text-black dark:hover:text-white flex items-center gap-1">
+            <Link to="/creators" className="text-xs font-semibold text-neutral-500 hover:text-black dark:hover:text-white flex items-center gap-1 self-start sm:self-auto shrink-0">
               <span>Xem danh sách Creator</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
@@ -442,7 +444,7 @@ export default function Home() {
 
         {/* SECTION 5: PUBLIC FEEDBACK */}
         <section>
-          <div className="flex items-end justify-between mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-6">
             <div>
               <div className="flex items-center gap-2">
                 <MessageSquare className="w-6 h-6 text-blue-500" />
@@ -450,7 +452,7 @@ export default function Home() {
               </div>
               <p className="text-xs text-neutral-500 mt-1">Các ý kiến đóng góp và trao đổi nổi bật từ các thành viên</p>
             </div>
-            <Link to="/feedbacks" className="text-xs font-semibold text-neutral-500 hover:text-black dark:hover:text-white flex items-center gap-1">
+            <Link to="/feedbacks" className="text-xs font-semibold text-neutral-500 hover:text-black dark:hover:text-white flex items-center gap-1 self-start sm:self-auto shrink-0">
               <span>Xem tất cả Feedback</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
