@@ -16,13 +16,15 @@ import { CreatorItem } from '../../types';
 import { getValidAvatar } from '../../lib/avatar';
 import { useNavigate } from 'react-router-dom';
 
-type ActionType = 'DELETE' | 'SUSPEND' | 'UNSUSPEND' | 'RESTRICT' | 'LIFT_RESTRICTION' | 'REMOVE_CREATOR' | 'PROMOTE_ADMIN' | 'PROMOTE_MOD' | 'DEMOTE' | 'HISTORY' | null;
+type ActionType = 'DELETE' | 'RESTORE' | 'SUSPEND' | 'UNSUSPEND' | 'RESTRICT' | 'LIFT_RESTRICTION' | 'REMOVE_CREATOR' | 'PROMOTE_ADMIN' | 'PROMOTE_MOD' | 'DEMOTE' | 'HISTORY' | null;
+type FilterTab = 'ALL' | 'ACTIVE' | 'SUSPENDED' | 'DELETED';
 
 export default function UserManagement() {
   const { user: currentUser, firebaseUser } = useAuthStore();
   const [users, setUsers] = useState<CreatorItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [filterTab, setFilterTab] = useState<FilterTab>('ALL');
   
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   
@@ -116,37 +118,65 @@ export default function UserManagement() {
       expiresAt.setDate(expiresAt.getDate() + parseInt(duration));
 
       switch (actionType) {
-        case 'DELETE':
-          try {
-            const idToken = await firebaseUser?.getIdToken();
-            const response = await fetch('/api/admin/delete-user', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': idToken ? `Bearer ${idToken}` : '',
-                'x-user-id': currentUser?.id || ''
-              },
-              body: JSON.stringify({
-                targetUid: selectedUser.id,
-                reason: reason.trim() || 'Xóa tài khoản bởi Admin'
-              })
-            });
+        case 'DELETE': {
+          const deleteReasonText = reason.trim() || 'Tài khoản đã bị xóa/vô hiệu hóa bởi Quản trị viên do vi phạm quy tắc cộng đồng.';
+          const nowIso = new Date().toISOString();
+          
+          await updateDoc(userRef, {
+            isDeleted: true,
+            status: 'DELETED',
+            deletedAt: nowIso,
+            deletedBy: currentUser?.id || 'admin',
+            deletedByName: currentUser?.displayName || 'Admin',
+            deleteReason: deleteReasonText,
+            isLocked: true,
+            lockReason: deleteReasonText,
+            lockExpiresAt: null
+          });
 
-            const data = await response.json();
-            if (!response.ok) {
-              throw new Error(data.error || 'Không thể xóa tài khoản');
-            }
+          await addDoc(collection(db, 'notifications'), {
+            userId: selectedUser.id,
+            recipientId: selectedUser.id,
+            type: 'ACCOUNT_DELETED',
+            title: 'Tài khoản đã bị xóa/vô hiệu hóa',
+            message: `Tài khoản của bạn đã bị vô hiệu hóa vĩnh viễn bởi Quản trị viên. Lý do: ${deleteReasonText}`,
+            read: false,
+            createdAt: nowIso
+          });
 
-            await logAction('DELETE_USER', selectedUser.id, `Xóa vĩnh viễn tài khoản: ${selectedUser.displayName}`);
-            toast.success("Đã xóa vĩnh viễn tài khoản người dùng.");
-          } catch (err: any) {
-            console.error("Delete user API error:", err);
-            // Fallback to client doc deletion
-            await deleteDoc(userRef);
-            await logAction('DELETE_USER', selectedUser.id, `Xóa tài khoản người dùng: ${selectedUser.displayName}`);
-            toast.success("Đã xóa dữ liệu tài khoản.");
-          }
+          await logAction('DELETE_USER', selectedUser.id, `Vô hiệu hóa vĩnh viễn tài khoản: ${selectedUser.displayName} (${deleteReasonText})`);
+          toast.success("Đã vô hiệu hóa và chuyển tài khoản sang trạng thái đã xóa.");
           break;
+        }
+        case 'RESTORE': {
+          const nowIso = new Date().toISOString();
+          await updateDoc(userRef, {
+            isDeleted: false,
+            status: 'ACTIVE',
+            deletedAt: null,
+            deletedBy: null,
+            deletedByName: null,
+            deleteReason: null,
+            isLocked: false,
+            lockReason: null,
+            lockExpiresAt: null,
+            appealStatus: 'APPROVED'
+          });
+
+          await addDoc(collection(db, 'notifications'), {
+            userId: selectedUser.id,
+            recipientId: selectedUser.id,
+            type: 'ACCOUNT_RESTORED',
+            title: 'Tài khoản đã được khôi phục',
+            message: `Tài khoản của bạn đã được Quản trị viên khôi phục hoạt động bình thường.`,
+            read: false,
+            createdAt: nowIso
+          });
+
+          await logAction('RESTORE_USER', selectedUser.id, `Khôi phục tài khoản hoạt động: ${selectedUser.displayName}`);
+          toast.success("Đã khôi phục tài khoản thành công.");
+          break;
+        }
         case 'SUSPEND':
           await updateDoc(userRef, {
             isLocked: true,
@@ -279,11 +309,31 @@ export default function UserManagement() {
     }
   };
 
-  const filteredUsers = users.filter(u => 
-    u.displayName?.toLowerCase().includes(search.toLowerCase()) ||
-    u.email?.toLowerCase().includes(search.toLowerCase()) ||
-    u.role?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredUsers = users.filter(u => {
+    const matchesSearch = 
+      u.displayName?.toLowerCase().includes(search.toLowerCase()) ||
+      u.email?.toLowerCase().includes(search.toLowerCase()) ||
+      u.role?.toLowerCase().includes(search.toLowerCase()) ||
+      (u.numericId && u.numericId.toString().includes(search));
+
+    if (!matchesSearch) return false;
+
+    if (filterTab === 'ACTIVE') {
+      return !u.isDeleted && !u.isLocked && (!u.restrictedActivities || u.restrictedActivities.length === 0);
+    }
+    if (filterTab === 'SUSPENDED') {
+      return !u.isDeleted && (u.isLocked || (u.restrictedActivities && u.restrictedActivities.length > 0));
+    }
+    if (filterTab === 'DELETED') {
+      return u.isDeleted === true || u.status === 'DELETED';
+    }
+
+    return true;
+  });
+
+  const activeCount = users.filter(u => !u.isDeleted && !u.isLocked && (!u.restrictedActivities || u.restrictedActivities.length === 0)).length;
+  const suspendedCount = users.filter(u => !u.isDeleted && (u.isLocked || (u.restrictedActivities && u.restrictedActivities.length > 0))).length;
+  const deletedCount = users.filter(u => u.isDeleted === true || u.status === 'DELETED').length;
 
   const openModal = (user: CreatorItem, type: ActionType) => {
     setSelectedUser(user);
@@ -310,7 +360,7 @@ export default function UserManagement() {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div className="space-y-1">
             <h1 className="text-3xl font-black tracking-tight uppercase">Quản Lý Thành Viên</h1>
-            <p className="text-sm text-neutral-500 font-medium">Danh sách toàn bộ người dùng, Creator, Admin, và Moderator.</p>
+            <p className="text-sm text-neutral-500 font-medium">Danh sách toàn bộ người dùng, Creator, Admin, Moderator và tài khoản đã xóa.</p>
           </div>
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
@@ -322,6 +372,53 @@ export default function UserManagement() {
               className="w-full md:w-80 pl-11 pr-4 py-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all shadow-sm"
             />
           </div>
+        </div>
+
+        {/* Filter Tabs */}
+        <div className="flex items-center gap-2 p-1.5 bg-neutral-100 dark:bg-neutral-800/50 rounded-2xl w-fit">
+          <button
+            onClick={() => setFilterTab('ALL')}
+            className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
+              filterTab === 'ALL'
+                ? 'bg-white dark:bg-neutral-900 text-black dark:text-white shadow-sm'
+                : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
+            }`}
+          >
+            Tất cả ({users.length})
+          </button>
+          <button
+            onClick={() => setFilterTab('ACTIVE')}
+            className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
+              filterTab === 'ACTIVE'
+                ? 'bg-white dark:bg-neutral-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+            Hoạt động ({activeCount})
+          </button>
+          <button
+            onClick={() => setFilterTab('SUSPENDED')}
+            className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
+              filterTab === 'SUSPENDED'
+                ? 'bg-white dark:bg-neutral-900 text-amber-600 dark:text-amber-400 shadow-sm'
+                : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+            Đình chỉ / Giới hạn ({suspendedCount})
+          </button>
+          <button
+            onClick={() => setFilterTab('DELETED')}
+            className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
+              filterTab === 'DELETED'
+                ? 'bg-white dark:bg-neutral-900 text-red-600 dark:text-red-400 shadow-sm'
+                : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-red-500"></span>
+            Đã xóa ({deletedCount})
+          </button>
         </div>
 
         {/* User Table */}
@@ -357,11 +454,13 @@ export default function UserManagement() {
                           <img 
                             src={getValidAvatar(u.avatar)} 
                             alt={u.displayName}
-                            className="w-12 h-12 rounded-full object-cover border border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800"
+                            className={`w-12 h-12 rounded-full object-cover border border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800 ${
+                              u.isDeleted ? 'grayscale opacity-60' : ''
+                            }`}
                           />
                           <div>
                             <div className="font-bold text-sm flex items-center gap-2">
-                              {u.displayName}
+                              <span className={u.isDeleted ? 'line-through text-neutral-400' : ''}>{u.displayName}</span>
                               {u.role === 'ADMIN' && <ShieldCheck className="w-3 h-3 text-red-500" />}
                               {(u.role === 'MODERATOR' || u.role === 'MOD') && !u.creatorStatus && <Shield className="w-3 h-3 text-amber-500" />}
                               {u.creatorStatus && <BadgeCheck className="w-3 h-3 text-blue-500" />}
@@ -384,18 +483,22 @@ export default function UserManagement() {
                       </td>
                       <td className="p-6">
                         <div className="flex flex-col gap-1">
-                          {u.isLocked ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-red-500">
+                          {u.isDeleted || u.status === 'DELETED' ? (
+                            <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-2.5 py-1 rounded-lg border border-red-200 dark:border-red-500/20 w-fit">
+                              <Trash2 className="w-3 h-3" /> Đã xóa / Vô hiệu
+                            </span>
+                          ) : u.isLocked ? (
+                            <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-500/10 px-2.5 py-1 rounded-lg border border-orange-200 dark:border-orange-500/20 w-fit">
                               <Lock className="w-3 h-3" /> Bị đình chỉ
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-emerald-500">
+                            <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-500/20 w-fit">
                               <Unlock className="w-3 h-3" /> Hoạt động
                             </span>
                           )}
-                          {u.restrictedActivities && u.restrictedActivities.length > 0 && (
+                          {!u.isDeleted && u.restrictedActivities && u.restrictedActivities.length > 0 && (
                             <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-amber-500">
-                              <AlertTriangle className="w-3 h-3" /> Bị giới hạn
+                              <AlertTriangle className="w-3 h-3" /> Bị giới hạn ({u.restrictedActivities.length})
                             </span>
                           )}
                         </div>
@@ -416,101 +519,121 @@ export default function UserManagement() {
                           <div className="absolute right-6 top-16 w-56 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-xl z-10 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
                                onClick={(e) => e.stopPropagation()}>
                             <div className="p-2 flex flex-col gap-1">
-                              {u.creatorStatus && (
-                                <button 
-                                  onClick={() => { navigate(`/creator/${u.id}`); setActiveMenuId(null); }}
-                                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-xl text-xs font-bold transition-colors text-left"
-                                >
-                                  <User className="w-4 h-4" /> Xem Profile
-                                </button>
-                              )}
-                              
-                              <button 
-                                onClick={() => { openModal(u, 'HISTORY'); setActiveMenuId(null); }}
-                                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-xl text-xs font-bold transition-colors text-left"
-                              >
-                                <History className="w-4 h-4" /> Lịch sử hoạt động
-                              </button>
-                              
-                              <div className="h-px bg-neutral-100 dark:bg-neutral-800 my-1"></div>
-
-                              {!u.isLocked ? (
-                                <button 
-                                  onClick={() => { openModal(u, 'SUSPEND'); setActiveMenuId(null); }}
-                                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-orange-500/10 text-orange-600 dark:text-orange-500 rounded-xl text-xs font-bold transition-colors text-left"
-                                >
-                                  <Ban className="w-4 h-4" /> Đình chỉ tài khoản
-                                </button>
-                              ) : (
-                                <button 
-                                  onClick={() => { openModal(u, 'UNSUSPEND'); setActiveMenuId(null); }}
-                                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 rounded-xl text-xs font-bold transition-colors text-left"
-                                >
-                                  <Unlock className="w-4 h-4" /> Mở khóa tài khoản
-                                </button>
-                              )}
-                              
-                              {u.restrictedActivities && u.restrictedActivities.length > 0 ? (
-                                <button 
-                                  onClick={() => { openModal(u, 'LIFT_RESTRICTION'); setActiveMenuId(null); }}
-                                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 rounded-xl text-xs font-bold transition-colors text-left"
-                                >
-                                  <ShieldCheck className="w-4 h-4" /> Gỡ giới hạn hoạt động
-                                </button>
-                              ) : (
-                                <button 
-                                  onClick={() => { openModal(u, 'RESTRICT'); setActiveMenuId(null); }}
-                                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-amber-500/10 text-amber-600 dark:text-amber-500 rounded-xl text-xs font-bold transition-colors text-left"
-                                >
-                                  <EyeOff className="w-4 h-4" /> Giới hạn hoạt động
-                                </button>
-                              )}
-
-                              {u.creatorStatus && (
-                                <button 
-                                  onClick={() => { openModal(u, 'REMOVE_CREATOR'); setActiveMenuId(null); }}
-                                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-500/10 text-red-600 dark:text-red-500 rounded-xl text-xs font-bold transition-colors text-left"
-                                >
-                                  <BadgeMinus className="w-4 h-4" /> Hủy quyền Creator
-                                </button>
-                              )}
-
-                              {isAdmin && (
+                              {/* If account is DELETED */}
+                              {u.isDeleted ? (
                                 <>
-                                  <div className="h-px bg-neutral-100 dark:bg-neutral-800 my-1"></div>
-
                                   <button 
-                                    onClick={() => { openModal(u, 'DELETE'); setActiveMenuId(null); }}
-                                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-500/10 text-red-600 dark:text-red-500 rounded-xl text-xs font-bold transition-colors text-left"
+                                    onClick={() => { openModal(u, 'RESTORE'); setActiveMenuId(null); }}
+                                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 rounded-xl text-xs font-bold transition-colors text-left"
                                   >
-                                    <Trash2 className="w-4 h-4" /> Xóa tài khoản
+                                    <Unlock className="w-4 h-4" /> Khôi phục tài khoản
+                                  </button>
+                                  <button 
+                                    onClick={() => { openModal(u, 'HISTORY'); setActiveMenuId(null); }}
+                                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-xl text-xs font-bold transition-colors text-left"
+                                  >
+                                    <History className="w-4 h-4" /> Lịch sử hoạt động
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  {u.creatorStatus && (
+                                    <button 
+                                      onClick={() => { navigate(`/creator/${u.id}`); setActiveMenuId(null); }}
+                                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-xl text-xs font-bold transition-colors text-left"
+                                    >
+                                      <User className="w-4 h-4" /> Xem Profile
+                                    </button>
+                                  )}
+                                  
+                                  <button 
+                                    onClick={() => { openModal(u, 'HISTORY'); setActiveMenuId(null); }}
+                                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-xl text-xs font-bold transition-colors text-left"
+                                  >
+                                    <History className="w-4 h-4" /> Lịch sử hoạt động
                                   </button>
                                   
-                                  {u.role !== 'ADMIN' && (
+                                  <div className="h-px bg-neutral-100 dark:bg-neutral-800 my-1"></div>
+
+                                  {!u.isLocked ? (
                                     <button 
-                                      onClick={() => { openModal(u, 'PROMOTE_ADMIN'); setActiveMenuId(null); }}
+                                      onClick={() => { openModal(u, 'SUSPEND'); setActiveMenuId(null); }}
+                                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-orange-500/10 text-orange-600 dark:text-orange-500 rounded-xl text-xs font-bold transition-colors text-left"
+                                    >
+                                      <Ban className="w-4 h-4" /> Đình chỉ tài khoản
+                                    </button>
+                                  ) : (
+                                    <button 
+                                      onClick={() => { openModal(u, 'UNSUSPEND'); setActiveMenuId(null); }}
                                       className="w-full flex items-center gap-3 px-4 py-3 hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 rounded-xl text-xs font-bold transition-colors text-left"
                                     >
-                                      <ShieldAlert className="w-4 h-4" /> Chỉ định Admin
+                                      <Unlock className="w-4 h-4" /> Mở khóa tài khoản
                                     </button>
                                   )}
-
-                                  {u.role !== 'MODERATOR' && u.role !== 'ADMIN' && (
+                                  
+                                  {u.restrictedActivities && u.restrictedActivities.length > 0 ? (
                                     <button 
-                                      onClick={() => { openModal(u, 'PROMOTE_MOD'); setActiveMenuId(null); }}
-                                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-blue-500/10 text-blue-600 dark:text-blue-500 rounded-xl text-xs font-bold transition-colors text-left"
+                                      onClick={() => { openModal(u, 'LIFT_RESTRICTION'); setActiveMenuId(null); }}
+                                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 rounded-xl text-xs font-bold transition-colors text-left"
                                     >
-                                      <ShieldPlus className="w-4 h-4" /> Chỉ định Moderator
+                                      <ShieldCheck className="w-4 h-4" /> Gỡ giới hạn hoạt động
+                                    </button>
+                                  ) : (
+                                    <button 
+                                      onClick={() => { openModal(u, 'RESTRICT'); setActiveMenuId(null); }}
+                                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-amber-500/10 text-amber-600 dark:text-amber-500 rounded-xl text-xs font-bold transition-colors text-left"
+                                    >
+                                      <EyeOff className="w-4 h-4" /> Giới hạn hoạt động
                                     </button>
                                   )}
 
-                                  {(u.role === 'ADMIN' || u.role === 'MODERATOR') && u.id !== currentUser?.id && (
+                                  {u.creatorStatus && (
                                     <button 
-                                      onClick={() => { openModal(u, 'DEMOTE'); setActiveMenuId(null); }}
+                                      onClick={() => { openModal(u, 'REMOVE_CREATOR'); setActiveMenuId(null); }}
                                       className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-500/10 text-red-600 dark:text-red-500 rounded-xl text-xs font-bold transition-colors text-left"
                                     >
-                                      <UserMinus className="w-4 h-4" /> Hủy quyền Quản trị
+                                      <BadgeMinus className="w-4 h-4" /> Hủy quyền Creator
                                     </button>
+                                  )}
+
+                                  {isAdmin && (
+                                    <>
+                                      <div className="h-px bg-neutral-100 dark:bg-neutral-800 my-1"></div>
+
+                                      <button 
+                                        onClick={() => { openModal(u, 'DELETE'); setActiveMenuId(null); }}
+                                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-500/10 text-red-600 dark:text-red-500 rounded-xl text-xs font-bold transition-colors text-left"
+                                      >
+                                        <Trash2 className="w-4 h-4" /> Xóa tài khoản
+                                      </button>
+                                      
+                                      {u.role !== 'ADMIN' && (
+                                        <button 
+                                          onClick={() => { openModal(u, 'PROMOTE_ADMIN'); setActiveMenuId(null); }}
+                                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 rounded-xl text-xs font-bold transition-colors text-left"
+                                        >
+                                          <ShieldAlert className="w-4 h-4" /> Chỉ định Admin
+                                        </button>
+                                      )}
+
+                                      {u.role !== 'MODERATOR' && u.role !== 'ADMIN' && (
+                                        <button 
+                                          onClick={() => { openModal(u, 'PROMOTE_MOD'); setActiveMenuId(null); }}
+                                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-blue-500/10 text-blue-600 dark:text-blue-500 rounded-xl text-xs font-bold transition-colors text-left"
+                                        >
+                                          <ShieldPlus className="w-4 h-4" /> Chỉ định Moderator
+                                        </button>
+                                      )}
+
+                                      {(u.role === 'ADMIN' || u.role === 'MODERATOR') && u.id !== currentUser?.id && (
+                                        <button 
+                                          onClick={() => { openModal(u, 'DEMOTE'); setActiveMenuId(null); }}
+                                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-500/10 text-red-600 dark:text-red-500 rounded-xl text-xs font-bold transition-colors text-left"
+                                        >
+                                          <UserMinus className="w-4 h-4" /> Hủy quyền Quản trị
+                                        </button>
+                                      )}
+                                    </>
                                   )}
                                 </>
                               )}
@@ -536,6 +659,7 @@ export default function UserManagement() {
                   <div className="space-y-1">
                     <h3 className="text-xl font-black tracking-tight uppercase">
                       {actionType === 'DELETE' && 'Xóa Tài Khoản'}
+                      {actionType === 'RESTORE' && 'Khôi Phục Tài Khoản'}
                       {actionType === 'SUSPEND' && 'Đình Chỉ Thành Viên'}
                       {actionType === 'UNSUSPEND' && 'Mở Khóa Tài Khoản'}
                       {actionType === 'RESTRICT' && 'Giới Hạn Hoạt Động'}
@@ -621,14 +745,16 @@ export default function UserManagement() {
                       </div>
                     )}
 
-                    {actionType !== 'DELETE' && (
+                    {actionType !== 'RESTORE' && (
                       <div className="space-y-2">
-                        <label className="text-xs font-black uppercase tracking-widest text-neutral-500">Lý do cụ thể</label>
+                        <label className="text-xs font-black uppercase tracking-widest text-neutral-500">
+                          {actionType === 'DELETE' ? 'Lý do xóa / vô hiệu hóa tài khoản' : 'Lý do cụ thể'}
+                        </label>
                         <textarea 
                           rows={3}
                           value={reason}
                           onChange={(e) => setReason(e.target.value)}
-                          placeholder="Nhập lý do chi tiết..."
+                          placeholder={actionType === 'DELETE' ? 'Nhập lý do xóa/vô hiệu hóa tài khoản (sẽ hiển thị cho người dùng)...' : 'Nhập lý do chi tiết...'}
                           className="w-full px-4 py-3 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-800 rounded-2xl text-sm focus:outline-none resize-none"
                         />
                       </div>
@@ -636,8 +762,16 @@ export default function UserManagement() {
 
                     {actionType === 'DELETE' && (
                       <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-2xl">
-                        <p className="text-sm text-red-600 dark:text-red-400 font-medium leading-relaxed">
-                          Bạn có chắc chắn muốn xóa tài khoản này không? Hành động này sẽ lập tức thu hồi quyền truy cập của người dùng và không thể hoàn tác.
+                        <p className="text-xs text-red-600 dark:text-red-400 font-medium leading-relaxed">
+                          Hành động này sẽ <strong>vô hiệu hóa tài khoản vĩnh viễn</strong> và ngăn chặn mọi tương tác của người dùng. Tài khoản vẫn được lưu trữ an toàn trong hệ thống để người dùng có thể xem lý do xử lý và gửi Kháng nghị (Appeal) nếu cần.
+                        </p>
+                      </div>
+                    )}
+
+                    {actionType === 'RESTORE' && (
+                      <div className="p-4 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-2xl">
+                        <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium leading-relaxed">
+                          Xác nhận khôi phục tài khoản này về trạng thái <strong>Hoạt động</strong> bình thường? Mọi giới hạn và trạng thái đã xóa sẽ được gỡ bỏ ngay lập tức.
                         </p>
                       </div>
                     )}
@@ -654,6 +788,7 @@ export default function UserManagement() {
                         className={`flex-1 px-6 py-4 font-black text-xs rounded-2xl transition-all shadow-xl uppercase tracking-widest ${
                           ['DELETE', 'SUSPEND', 'REMOVE_CREATOR', 'DEMOTE'].includes(actionType) ? 'bg-red-600 text-white shadow-red-600/20 hover:bg-red-700' :
                           actionType === 'RESTRICT' ? 'bg-amber-500 text-white shadow-amber-500/20 hover:bg-amber-600' :
+                          actionType === 'RESTORE' ? 'bg-emerald-600 text-white shadow-emerald-600/20 hover:bg-emerald-700' :
                           'bg-black dark:bg-white text-white dark:text-black hover:bg-neutral-800 dark:hover:bg-neutral-200'
                         }`}
                       >

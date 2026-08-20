@@ -86,7 +86,7 @@ export default function CreatorDetail() {
       const userData = userSnap.data();
 
       // Check deleted or locked or hidden state
-      if (userData.deletedAt || userData.isHidden || userData.isLocked) {
+      if (userData.deletedAt || userData.isHidden || userData.isLocked || userData.isDeleted || userData.status === 'DELETED') {
         setError(true);
         return;
       }

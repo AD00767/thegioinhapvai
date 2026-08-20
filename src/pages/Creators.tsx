@@ -45,7 +45,9 @@ export default function Creators() {
 
       snap.docs.forEach(docSnap => {
         const data = docSnap.data();
-        list.push({ id: docSnap.id, ...data } as CreatorItem);
+        if (!data.deletedAt && data.status !== 'DELETED' && !data.isDeleted) {
+          list.push({ id: docSnap.id, ...data } as CreatorItem);
+        }
       });
 
       setCreators(list);
