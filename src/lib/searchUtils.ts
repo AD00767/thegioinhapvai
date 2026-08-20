@@ -260,9 +260,21 @@ export async function lookupIdInFirebase(numericId: string, typeHint?: string): 
       }
 
       if (col.name === 'users') {
+        if (docData.role === 'ADMIN' || docData.role === 'MODERATOR') {
+          return {
+            found: false,
+            type: col.type,
+            id: docSnap.id,
+            numericId,
+            path: '',
+            error: "ID không tồn tại hoặc đã bị xóa khỏi hệ thống."
+          };
+        }
+
         const isCreator = !!docData.creatorStatus;
         const targetType = isCreator ? 'creator' : 'user';
-        const path = `/creator/${docSnap.id}`;
+        const numId = docData.numericId || numericId || docSnap.id;
+        const path = isCreator ? `/creator/${numId}` : `/user/${numId}`;
 
         const publicResult: CreatorItem = {
           id: docSnap.id,
@@ -282,7 +294,7 @@ export async function lookupIdInFirebase(numericId: string, typeHint?: string): 
           found: true,
           type: targetType,
           id: docSnap.id,
-          numericId,
+          numericId: docData.numericId || numericId,
           path,
           result: publicResult
         };
@@ -306,12 +318,13 @@ export async function lookupIdInFirebase(numericId: string, typeHint?: string): 
           createdAt: docData.createdAt
         };
 
+        const numId = docData.numericId || numericId || docSnap.id;
         return {
           found: true,
           type: 'character',
           id: docSnap.id,
-          numericId,
-          path: `/character/${numericId || docSnap.id}`,
+          numericId: docData.numericId || numericId,
+          path: `/character/${numId}`,
           result: publicResult
         };
       } else if (col.name === 'prompts') {
@@ -330,12 +343,13 @@ export async function lookupIdInFirebase(numericId: string, typeHint?: string): 
           createdAt: docData.createdAt
         };
 
+        const numId = docData.numericId || numericId || docSnap.id;
         return {
           found: true,
           type: 'prompt',
           id: docSnap.id,
-          numericId,
-          path: `/prompt/${docSnap.id}`,
+          numericId: docData.numericId || numericId,
+          path: `/prompt/${numId}`,
           result: publicResult
         };
       }
