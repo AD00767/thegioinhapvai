@@ -4,7 +4,7 @@ import { doc, updateDoc, increment } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import toast from 'react-hot-toast';
 
-import { buildCharacterUrl, buildPromptUrl, buildCreatorUrl, getCanonicalBaseUrl } from '../lib/urls.ts';
+import { buildCharacterUrl, buildPromptUrl, buildCreatorUrl, buildUserUrl, getCanonicalBaseUrl } from '../lib/urls.ts';
 import { cn } from '../lib/utils';
 import { getValidAvatar } from '../lib/avatar';
 
@@ -12,7 +12,7 @@ interface ShareModalProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
-  type: 'CHARACTER' | 'PROMPT' | 'CREATOR';
+  type: 'CHARACTER' | 'PROMPT' | 'CREATOR' | 'USER';
   targetId: string;
   avatar?: string;
   description?: string;
@@ -32,8 +32,6 @@ export default function ShareModal({
 
   if (!isOpen) return null;
 
-  const isDev = import.meta.env.DEV;
-
   let shareUrl = "";
   let urlError: string | null = null;
   
@@ -41,7 +39,8 @@ export default function ShareModal({
     shareUrl = 
       type === 'CHARACTER' ? buildCharacterUrl(targetId) :
       type === 'PROMPT' ? buildPromptUrl(targetId) :
-      buildCreatorUrl(targetId);
+      type === 'CREATOR' ? buildCreatorUrl(targetId) :
+      buildUserUrl(targetId);
   } catch (error: any) {
     urlError = error.message;
     shareUrl = "Lỗi cấu hình URL: " + error.message;
@@ -50,12 +49,14 @@ export default function ShareModal({
   const generatedPath = 
     type === 'CHARACTER' ? `/character/${targetId}` :
     type === 'PROMPT' ? `/prompt/${targetId}` :
-    `/creator/${targetId}`;
+    type === 'CREATOR' ? `/creator/${targetId}` :
+    `/user/${targetId}`;
 
   const typeLabel = 
     type === 'CHARACTER' ? 'Character Roleplay' :
     type === 'PROMPT' ? 'Prompt AI Studio' :
-    'Hồ sơ Creator';
+    type === 'CREATOR' ? 'Hồ sơ Creator' :
+    'Hồ sơ Người dùng';
 
   const handleCopyLink = async (e?: React.MouseEvent) => {
     if (urlError) {
@@ -68,19 +69,6 @@ export default function ShareModal({
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
       toast.success("Đã sao chép liên kết.");
-
-      if (isDev) {
-        console.log("DEBUG SHARE INFO:", {
-          environment: import.meta.env.MODE,
-          currentOrigin: window.location.origin,
-          configuredBaseUrl: import.meta.env.VITE_PUBLIC_APP_URL || 'Not Set',
-          resourceType: type.toLowerCase(),
-          resourceId: targetId,
-          generatedPath,
-          generatedShareUrl: shareUrl,
-          finalClipboardValue: shareUrl
-        });
-      }
 
       // Record share in Firestore with throttle check
       const storageKey = `shared_${type}_${targetId}`;
@@ -234,41 +222,6 @@ export default function ShareModal({
             </button>
           </div>
         </div>
-
-        {/* Debug Info (Development Only) */}
-        {isDev && (
-          <div className="p-3 bg-neutral-100 dark:bg-neutral-800 rounded-xl text-[10px] font-mono text-neutral-500 overflow-auto max-h-48 border border-neutral-200 dark:border-neutral-700">
-            <div className="font-bold border-b border-neutral-200 dark:border-neutral-700 pb-1 mb-1 text-neutral-700 dark:text-neutral-300">
-              DEBUG INFO (Dev Mode Only)
-            </div>
-            <div className="grid grid-cols-2 gap-1">
-              <span className="font-bold">Environment:</span> <span>{import.meta.env.MODE}</span>
-              <span className="font-bold">Current Origin:</span> <span className="truncate">{window.location.origin}</span>
-              <span className="font-bold">Configured Canonical URL:</span> 
-              <span className={cn(
-                "truncate font-bold",
-                !getCanonicalBaseUrl() ? "text-amber-500" : "text-green-600"
-              )}>
-                {getCanonicalBaseUrl() || 'NOT CONFIGURED'}
-              </span>
-              <span className="font-bold">Canonical URL Valid:</span> 
-              <span className={cn("font-bold", getCanonicalBaseUrl() ? "text-green-600" : "text-red-500")}>
-                {getCanonicalBaseUrl() ? 'YES' : 'NO'}
-              </span>
-              <span className="font-bold">URL Source:</span> 
-              <span className="font-bold text-blue-500">
-                {getCanonicalBaseUrl() ? 'CANONICAL_PUBLIC_URL' : 'ERROR_NO_FALLBACK'}
-              </span>
-              <span className="font-bold">Share Link Status:</span>
-              <span className={cn("font-bold", getCanonicalBaseUrl() ? "text-green-600" : "text-amber-600")}>
-                {getCanonicalBaseUrl() ? 'STABLE' : 'DISABLED (ERROR)'}
-              </span>
-              <span className="font-bold">Resource:</span> <span>{type.toLowerCase()} / {targetId.substring(0, 8)}...</span>
-              <span className="font-bold">Generated Path:</span> <span className="truncate">{generatedPath}</span>
-              <span className="font-bold">Generated Share URL:</span> <span className="truncate text-amber-600 select-all font-bold">{shareUrl}</span>
-            </div>
-          </div>
-        )}
 
         {/* Social Share Buttons */}
         <div className="space-y-2 pt-1">

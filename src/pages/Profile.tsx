@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   User as UserIcon, Settings, Plus, Pin, Heart, Bookmark, Users, UserCheck, 
-  Sparkles, PenTool, ExternalLink, Edit3, Trash2, Copy, Check, Facebook, Instagram, Music, MessageSquare, ShieldAlert, ShieldCheck, X, Globe
+  Sparkles, PenTool, ExternalLink, Edit3, Trash2, Copy, Check, Facebook, Instagram, Music, MessageSquare, ShieldAlert, ShieldCheck, X, Globe, Share2
 } from 'lucide-react';
 import { collection, query, where, getDocs, doc, updateDoc, deleteDoc, getDoc, addDoc, increment } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -17,6 +17,7 @@ import UserBadge from '../components/UserBadge';
 import DeleteConfirmModal from '../components/DeleteConfirmModal';
 import AppealModal from '../components/AppealModal';
 import DisplayId from '../components/DisplayId';
+import ShareModal from '../components/ShareModal';
 import { getValidAvatar } from '../lib/avatar';
 import toast from 'react-hot-toast';
 import { reconcileFollowerCount } from '../lib/followService';
@@ -38,6 +39,7 @@ export default function Profile() {
   const [promptToEdit, setPromptToEdit] = useState<PromptItem | null>(null);
   const [characterToDelete, setCharacterToDelete] = useState<string | null>(null);
   const [promptToDelete, setPromptToDelete] = useState<string | null>(null);
+  const [isShareOpen, setIsShareOpen] = useState(false);
 
   // Followers / Following Modal
   const [followModalTitle, setFollowModalTitle] = useState('');
@@ -558,6 +560,16 @@ export default function Profile() {
                     <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
                     Chờ Xét Duyệt Creator
                   </span>
+                )}
+                {user.role !== 'ADMIN' && user.role !== 'MODERATOR' && (
+                  <button 
+                    onClick={() => setIsShareOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-xs font-semibold transition-colors"
+                    title="Chia sẻ hồ sơ cá nhân"
+                  >
+                    <Share2 className="w-4 h-4 text-amber-500" />
+                    <span>Chia sẻ</span>
+                  </button>
                 )}
                 <button 
                   onClick={() => setIsEditProfileOpen(true)}
@@ -1299,6 +1311,19 @@ export default function Profile() {
           await executeDeletePrompt(targetId);
         }}
       />
+
+      {/* Share Modal */}
+      {user && user.role !== 'ADMIN' && user.role !== 'MODERATOR' && (
+        <ShareModal
+          isOpen={isShareOpen}
+          onClose={() => setIsShareOpen(false)}
+          type={user.creatorStatus ? 'CREATOR' : 'USER'}
+          targetId={user.numericId || user.id}
+          title={user.displayName}
+          avatar={user.avatar}
+          description={user.bio}
+        />
+      )}
     </div>
   );
 }

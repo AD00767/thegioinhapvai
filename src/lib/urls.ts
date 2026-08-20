@@ -77,6 +77,11 @@ export const buildCreatorUrl = (id: string) => {
   return `${baseUrl}/creator/${id}`;
 };
 
+export const buildUserUrl = (id: string) => {
+  const baseUrl = getBaseUrl();
+  return `${baseUrl}/user/${id}`;
+};
+
 /**
  * Returns a canonical URL for a given path, ensuring it starts with the production base URL.
  */

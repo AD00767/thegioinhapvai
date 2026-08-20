@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
   Sparkles, UserCheck, UserPlus, Users, BookOpen, PenTool, ArrowLeft, Flag, AlertCircle, RefreshCw,
-  Facebook, Instagram, Music, MessageSquare
+  Facebook, Instagram, Music, MessageSquare, Share2
 } from 'lucide-react';
 import { doc, getDoc, collection, query, where, getDocs, addDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -15,6 +15,7 @@ import ReportModal from '../components/ReportModal';
 import DeleteConfirmModal from '../components/DeleteConfirmModal';
 import UserBadge from '../components/UserBadge';
 import DisplayId from '../components/DisplayId';
+import ShareModal from '../components/ShareModal';
 import toast from 'react-hot-toast';
 import { getValidAvatar } from '../lib/avatar';
 import { checkIsFollowing, toggleFollow, reconcileFollowerCount } from '../lib/followService';
@@ -38,6 +39,7 @@ export default function CreatorDetail() {
 
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [promptToDelete, setPromptToDelete] = useState<string | null>(null);
+  const [isShareOpen, setIsShareOpen] = useState(false);
 
   useSeo({
     title: creator?.displayName,
@@ -334,6 +336,17 @@ export default function CreatorDetail() {
 
           {/* Action buttons */}
           <div className="flex items-center gap-2 w-full md:w-auto shrink-0">
+            {creator.role !== 'ADMIN' && creator.role !== 'MODERATOR' && (
+              <button
+                onClick={() => setIsShareOpen(true)}
+                className="p-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 transition-colors flex items-center justify-center gap-1.5 text-xs font-bold"
+                title="Chia sẻ hồ sơ"
+              >
+                <Share2 className="w-4 h-4 text-amber-500" />
+                <span className="hidden sm:inline">Chia sẻ</span>
+              </button>
+            )}
+
             {!isSelf && (
               <button
                 onClick={handleToggleFollow}
@@ -497,6 +510,19 @@ export default function CreatorDetail() {
           }
         }}
       />
+
+      {/* Share Modal */}
+      {creator && creator.role !== 'ADMIN' && creator.role !== 'MODERATOR' && (
+        <ShareModal
+          isOpen={isShareOpen}
+          onClose={() => setIsShareOpen(false)}
+          type={creator.creatorStatus ? 'CREATOR' : 'USER'}
+          targetId={creator.numericId || creator.id}
+          title={creator.displayName}
+          avatar={creator.avatar}
+          description={creator.bio}
+        />
+      )}
     </div>
   );
 }

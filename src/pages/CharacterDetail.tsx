@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
-  Heart, Bookmark, Eye, ExternalLink, Sparkles, User as UserIcon, Tag, MessageSquare, ArrowLeft, Flag, AlertCircle, Trash2 
+  Heart, Bookmark, Eye, ExternalLink, Sparkles, User as UserIcon, Tag, MessageSquare, ArrowLeft, Flag, AlertCircle, Trash2, Share2 
 } from 'lucide-react';
 import { doc, getDoc, updateDoc, increment, collection, addDoc, query, where, getDocs, deleteDoc, serverTimestamp, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -13,6 +13,7 @@ import ReportModal from '../components/ReportModal';
 import DeleteConfirmModal from '../components/DeleteConfirmModal';
 import CharacterCard from '../components/CharacterCard';
 import DisplayId from '../components/DisplayId';
+import ShareModal from '../components/ShareModal';
 import { getValidAvatar } from '../lib/avatar';
 import toast from 'react-hot-toast';
 
@@ -33,6 +34,7 @@ export default function CharacterDetail() {
 
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
 
   const [relatedCharacters, setRelatedCharacters] = useState<CharacterItem[]>([]);
 
@@ -398,6 +400,15 @@ export default function CharacterDetail() {
             </button>
 
             <button
+              onClick={() => setIsShareOpen(true)}
+              className="p-3 md:p-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 transition-colors flex items-center justify-center gap-1.5 text-xs font-bold"
+              title="Chia sẻ Character"
+            >
+              <Share2 className="w-4 h-4 text-amber-500" />
+              <span>Chia sẻ</span>
+            </button>
+
+            <button
               onClick={() => setIsReportOpen(true)}
               className="p-3 md:p-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-400 hover:text-red-500 transition-colors"
               title="Báo cáo"
@@ -568,6 +579,19 @@ export default function CharacterDetail() {
         confirmText="Xác nhận xóa"
         cancelText="Hủy bỏ"
       />
+
+      {/* Share Modal */}
+      {character && (
+        <ShareModal
+          isOpen={isShareOpen}
+          onClose={() => setIsShareOpen(false)}
+          type="CHARACTER"
+          targetId={character.numericId || character.id}
+          title={character.name}
+          avatar={character.avatar}
+          description={character.slogan}
+        />
+      )}
     </div>
   );
 }

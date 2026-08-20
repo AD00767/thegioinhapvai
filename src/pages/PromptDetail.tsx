@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
-  Copy, Check, Bookmark, BookmarkCheck, ArrowLeft, Flag, AlertCircle, Eye, MessageSquare, Sparkles, Trash2, Edit3, Link as LinkIcon, Image as ImageIcon, FileText, ExternalLink 
+  Copy, Check, Bookmark, BookmarkCheck, ArrowLeft, Flag, AlertCircle, Eye, MessageSquare, Sparkles, Trash2, Edit3, Link as LinkIcon, Image as ImageIcon, FileText, ExternalLink, Share2 
 } from 'lucide-react';
 import { doc, getDoc, updateDoc, increment, collection, addDoc, query, where, getDocs, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -13,6 +13,7 @@ import ReportModal from '../components/ReportModal';
 import CreatePromptModal from '../components/profile/CreatePromptModal';
 import DeleteConfirmModal from '../components/DeleteConfirmModal';
 import DisplayId from '../components/DisplayId';
+import ShareModal from '../components/ShareModal';
 import { getValidAvatar } from '../lib/avatar';
 import toast from 'react-hot-toast';
 
@@ -35,6 +36,7 @@ export default function PromptDetail() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
 
   useSeo({
     title: prompt?.name || prompt?.title,
@@ -301,6 +303,15 @@ export default function PromptDetail() {
             )}
 
             <button
+              onClick={() => setIsShareOpen(true)}
+              className="p-3 md:p-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 transition-colors flex items-center justify-center gap-1.5 text-xs font-bold"
+              title="Chia sẻ Prompt"
+            >
+              <Share2 className="w-4 h-4 text-amber-500" />
+              <span>Chia sẻ</span>
+            </button>
+
+            <button
               onClick={() => setIsReportOpen(true)}
               className="p-3 md:p-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-400 hover:text-red-500 transition-colors"
               title="Báo cáo vi phạm"
@@ -480,6 +491,19 @@ export default function PromptDetail() {
           await executeDeletePrompt();
         }}
       />
+
+      {/* Share Modal */}
+      {prompt && (
+        <ShareModal
+          isOpen={isShareOpen}
+          onClose={() => setIsShareOpen(false)}
+          type="PROMPT"
+          targetId={prompt.numericId || prompt.id}
+          title={prompt.name || prompt.title}
+          avatar={prompt.authorAvatar}
+          description={prompt.purpose}
+        />
+      )}
     </div>
   );
 }
