@@ -165,32 +165,36 @@ export default function ReportQueue() {
 
     try {
       const collectionName = selectedReport.targetType === 'CHARACTER' ? 'characters' : 
-                            selectedReport.targetType === 'PROMPT' ? 'prompts' : 'comments';
+                            selectedReport.targetType === 'PROMPT' ? 'prompts' : 
+                            selectedReport.targetType === 'FEEDBACK' ? 'feedbacks' : 'comments';
       
-      await deleteDoc(doc(db, collectionName, selectedReport.targetId));
+      await updateDoc(doc(db, collectionName, selectedReport.targetId), {
+        isHidden: true,
+        deletedAt: serverTimestamp()
+      });
       
       // Also resolve the report as RESOLVED
       await handleResolve('RESOLVED');
       
-      // Audit Log for deletion
+      // Audit Log for soft deletion
       if (currentUser) {
         await addDoc(collection(db, 'audit_logs'), {
           executorId: currentUser.id,
           executorName: currentUser.displayName,
           executorRole: currentUser.role,
-          action: `DELETE_${selectedReport.targetType}`,
+          action: `HIDE_${selectedReport.targetType}`,
           targetId: selectedReport.targetId,
           targetType: selectedReport.targetType,
-          details: `Xóa nội dung bị báo cáo: ${selectedReport.targetId}`,
+          details: `Ẩn nội dung bị báo cáo: ${selectedReport.targetId}`,
           reason: note || "Nội dung vi phạm tiêu chuẩn cộng đồng.",
           createdAt: new Date().toISOString()
         });
       }
 
-      toast.success("Đã xóa hoàn toàn nội dung bị báo cáo khỏi hệ thống!");
+      toast.success("Đã ẩn nội dung bị báo cáo khỏi hệ thống!");
     } catch (err) {
       console.error("Delete content error:", err);
-      toast.error("Xóa nội dung thất bại.");
+      toast.error("Thao tác ẩn nội dung thất bại.");
     }
   };
 

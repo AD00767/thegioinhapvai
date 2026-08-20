@@ -60,7 +60,7 @@ export default function Explore() {
       const charsSnap = await getDocs(collection(db, 'characters'));
       const rawChars: CharacterItem[] = charsSnap.docs
         .map(d => ({ id: d.id, ...d.data() } as CharacterItem))
-        .filter(c => !c.deletedAt);
+        .filter((c: any) => !c.deletedAt && !c.isHidden);
       setAllCharacters(rawChars);
 
       // Extract unique tags
@@ -71,7 +71,7 @@ export default function Explore() {
       const promptsSnap = await getDocs(collection(db, 'prompts'));
       const rawPrompts: PromptItem[] = promptsSnap.docs
         .map(d => ({ id: d.id, ...d.data() } as PromptItem))
-        .filter(p => !p.deletedAt);
+        .filter((p: any) => !p.deletedAt && !p.isHidden);
       setAllPrompts(rawPrompts);
 
       rawPrompts.forEach(p => p.tags?.forEach(t => tagsSet.add(t)));
@@ -81,7 +81,7 @@ export default function Explore() {
       const creatorsSnap = await getDocs(collection(db, 'users'));
       const rawCreators: CreatorItem[] = creatorsSnap.docs
         .map(d => ({ id: d.id, ...d.data() } as CreatorItem))
-        .filter(u => u.creatorStatus === true && !u.deletedAt && !u.isLocked);
+        .filter((u: any) => u.creatorStatus === true && !u.deletedAt && !u.isHidden && !u.isLocked);
       setAllCreators(rawCreators);
 
     } catch (err) {

@@ -79,7 +79,7 @@ export default function PromptDetail() {
       }
 
       const data = snap.data();
-      if (data.deletedAt) {
+      if (data.deletedAt || data.isHidden) {
         setError(true);
         return;
       }

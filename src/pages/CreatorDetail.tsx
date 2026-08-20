@@ -85,8 +85,8 @@ export default function CreatorDetail() {
 
       const userData = userSnap.data();
 
-      // Check deleted or locked state
-      if (userData.deletedAt || userData.isLocked) {
+      // Check deleted or locked or hidden state
+      if (userData.deletedAt || userData.isHidden || userData.isLocked) {
         setError(true);
         return;
       }
@@ -116,7 +116,7 @@ export default function CreatorDetail() {
 
       snapChar.docs.forEach(d => {
         const data = d.data();
-        if (!data.deletedAt) {
+        if (!data.deletedAt && !data.isHidden) {
           const item = { id: d.id, ...data } as CharacterItem;
           charList.push(item);
           totalLikesReceived += Number(data.likesCount || 0);
@@ -151,7 +151,7 @@ export default function CreatorDetail() {
       const promptList: PromptItem[] = [];
       snapPrompt.docs.forEach(d => {
         const data = d.data();
-        if (!data.deletedAt) promptList.push({ id: d.id, ...data } as PromptItem);
+        if (!data.deletedAt && !data.isHidden) promptList.push({ id: d.id, ...data } as PromptItem);
       });
       // Sort pinned first, then newest
       promptList.sort((a, b) => {

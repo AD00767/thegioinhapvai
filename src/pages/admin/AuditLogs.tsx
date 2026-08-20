@@ -85,13 +85,24 @@ export default function AuditLogs() {
               className="px-4 py-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl text-xs font-black uppercase tracking-widest focus:outline-none"
             >
               <option value="ALL">Tất Cả Hành Động</option>
-              <option value="LOCK_USER">Khóa Tài Khoản</option>
-              <option value="BAN_USER">Cấm Vĩnh Viễn</option>
-              <option value="GIVE_STRIKE">Cảnh Cáo</option>
-              <option value="DELETE_CHARACTER">Xóa Character</option>
-              <option value="DELETE_PROMPT">Xóa Prompt</option>
-              <option value="CHANGE_ROLE">Đổi Vai Trò</option>
+              <option value="DELETE_USER">Xóa Tài Khoản</option>
+              <option value="SUSPEND_USER">Đình Chỉ Thành Viên</option>
+              <option value="RESTRICT_USER">Giới Hạn Hoạt Động</option>
+              <option value="REMOVE_CREATOR">Hủy Quyền Creator</option>
+              <option value="APPROVE_CREATOR">Duyệt Creator</option>
+              <option value="REJECT_CREATOR">Từ Chối Creator</option>
+              <option value="PROMOTE_ADMIN">Thăng Cấp Admin</option>
+              <option value="INVITE_MODERATOR">Mời Moderator</option>
+              <option value="DEMOTE_STAFF">Hủy Quyền Quản Trị</option>
+              <option value="UPDATE_STAFF_ROLE">Cập Nhật Vai Trò Staff</option>
+              <option value="ADD_BADGE">Cấp Huy Hiệu</option>
+              <option value="REMOVE_BADGE">Gỡ Huy Hiệu</option>
+              <option value="HIDE_CHARACTER">Ẩn Character</option>
+              <option value="HIDE_PROMPT">Ẩn Prompt</option>
+              <option value="HIDE_COMMENT">Ẩn Bình Luận</option>
+              <option value="HIDE_FEEDBACK">Ẩn Feedback</option>
               <option value="RESOLVE_REPORT">Xử Lý Báo Cáo</option>
+              <option value="RESOLVE_SUPPORT">Xử Lý Hỗ Trợ</option>
             </select>
             <button className="p-3 bg-neutral-900 dark:bg-white text-white dark:text-black rounded-2xl shadow-lg hover:opacity-90 transition-opacity">
               <Download className="w-5 h-5" />

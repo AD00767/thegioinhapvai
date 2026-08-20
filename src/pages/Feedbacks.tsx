@@ -43,7 +43,7 @@ export default function Feedbacks() {
         const snap = await getDocs(q);
         snap.docs.forEach(docSnap => {
           const d = docSnap.data();
-          if (!d.deletedAt) {
+          if (!d.deletedAt && !d.isHidden) {
             list.push({ id: docSnap.id, ...d } as FeedbackItem);
           }
         });
@@ -56,7 +56,7 @@ export default function Feedbacks() {
           const snap = await getDocs(q);
           snap.docs.forEach(docSnap => {
             const d = docSnap.data();
-            if (!d.deletedAt) {
+            if (!d.deletedAt && !d.isHidden) {
               list.push({ id: docSnap.id, ...d } as FeedbackItem);
             }
           });
@@ -68,7 +68,7 @@ export default function Feedbacks() {
           const snap = await getDocs(q);
           snap.docs.forEach(docSnap => {
             const d = docSnap.data();
-            if (!d.deletedAt) {
+            if (!d.deletedAt && !d.isHidden) {
               list.push({ id: docSnap.id, ...d } as FeedbackItem);
             }
           });
@@ -94,7 +94,7 @@ export default function Feedbacks() {
             if (seenIds.has(docSnap.id)) return;
             seenIds.add(docSnap.id);
             const d = docSnap.data();
-            if (!d.deletedAt) {
+            if (!d.deletedAt && !d.isHidden) {
               list.push({ id: docSnap.id, ...d } as FeedbackItem);
             }
           };

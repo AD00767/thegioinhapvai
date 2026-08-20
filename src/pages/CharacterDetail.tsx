@@ -80,7 +80,7 @@ export default function CharacterDetail() {
       }
 
       const data = snap.data();
-      if (data.deletedAt) {
+      if (data.deletedAt || data.isHidden) {
         setError(true);
         setLoading(false);
         return;
@@ -131,7 +131,7 @@ export default function CharacterDetail() {
 
       snap.docs.forEach(d => {
         const data = d.data();
-        if (d.id !== currentChar.id && !data.deletedAt) {
+        if (d.id !== currentChar.id && !data.deletedAt && !data.isHidden) {
           list.push({ id: d.id, ...data } as CharacterItem);
         }
       });

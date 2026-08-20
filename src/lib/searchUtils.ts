@@ -247,8 +247,8 @@ export async function lookupIdInFirebase(numericId: string, typeHint?: string): 
     if (docSnap) {
       const docData = docSnap.data();
 
-      // Check if soft deleted
-      if (docData.deletedAt) {
+      // Check if soft deleted or hidden
+      if (docData.deletedAt || docData.isHidden) {
         return {
           found: false,
           type: col.type,
@@ -445,7 +445,7 @@ export async function searchAllCollections(
       const snap = await getDocs(collection(db, 'characters'));
       snap.docs.forEach(docSnap => {
         const data = docSnap.data();
-        if (data.deletedAt) return;
+        if (data.deletedAt || data.isHidden) return;
 
         const charItem: CharacterItem = {
           id: docSnap.id,
@@ -532,7 +532,7 @@ export async function searchAllCollections(
       const snap = await getDocs(collection(db, 'prompts'));
       snap.docs.forEach(docSnap => {
         const data = docSnap.data();
-        if (data.deletedAt) return;
+        if (data.deletedAt || data.isHidden) return;
 
         const promptItem: PromptItem = {
           id: docSnap.id,
@@ -606,7 +606,7 @@ export async function searchAllCollections(
       const snap = await getDocs(collection(db, 'users'));
       snap.docs.forEach(docSnap => {
         const data = docSnap.data();
-        if (data.deletedAt || data.isLocked) return;
+        if (data.deletedAt || data.isHidden || data.isLocked) return;
 
         const creatorItem: CreatorItem = {
           id: docSnap.id,

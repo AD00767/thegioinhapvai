@@ -55,7 +55,7 @@ export default function Prompts() {
 
       snap.docs.forEach(docSnap => {
         const data = docSnap.data();
-        if (!data.deletedAt) {
+        if (!data.deletedAt && !data.isHidden) {
           list.push({ id: docSnap.id, ...data } as PromptItem);
         }
       });

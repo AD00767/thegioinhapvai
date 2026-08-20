@@ -139,7 +139,7 @@ export default function Profile() {
 
       charSnap.docs.forEach(d => {
         const data = d.data();
-        if (!data.deletedAt) {
+        if (!data.deletedAt && !data.isHidden) {
           const charItem = { id: d.id, ...data } as CharacterItem;
           fetchedChars.push(charItem);
           totalLikesOnMyCharsSum += Number(data.likesCount || 0);
@@ -156,7 +156,7 @@ export default function Profile() {
 
       promptSnap.docs.forEach(d => {
         const data = d.data();
-        if (!data.deletedAt) {
+        if (!data.deletedAt && !data.isHidden) {
           const pItem = { id: d.id, ...data } as PromptItem;
           fetchedPrompts.push(pItem);
           totalPromptSavesOnMyPromptsSum += Number(data.savesCount || 0);
@@ -190,7 +190,7 @@ export default function Profile() {
         charDocsResults.forEach(snap => {
           snap.docs.forEach(d => {
             const data = d.data();
-            if (!data.deletedAt) {
+            if (!data.deletedAt && !data.isHidden) {
               likedCharsFetched.push({ id: d.id, ...data } as CharacterItem);
             }
           });
@@ -223,7 +223,7 @@ export default function Profile() {
             const chunks = [];
             for (let i = 0; i < uniqueSavedCharIds.length; i += 30) chunks.push(uniqueSavedCharIds.slice(i, i + 30));
             const snaps = await Promise.all(chunks.map(c => getDocs(query(collection(db, 'characters'), where('__name__', 'in', c)))));
-            snaps.forEach(s => s.docs.forEach(d => { if (!d.data().deletedAt) list.push({ id: d.id, ...d.data() } as CharacterItem); }));
+            snaps.forEach(s => s.docs.forEach(d => { if (!d.data().deletedAt && !d.data().isHidden) list.push({ id: d.id, ...d.data() } as CharacterItem); }));
           }
           return list;
         })(),
@@ -233,7 +233,7 @@ export default function Profile() {
             const chunks = [];
             for (let i = 0; i < uniqueSavedPromptIds.length; i += 30) chunks.push(uniqueSavedPromptIds.slice(i, i + 30));
             const snaps = await Promise.all(chunks.map(c => getDocs(query(collection(db, 'prompts'), where('__name__', 'in', c)))));
-            snaps.forEach(s => s.docs.forEach(d => { if (!d.data().deletedAt) list.push({ id: d.id, ...d.data() } as PromptItem); }));
+            snaps.forEach(s => s.docs.forEach(d => { if (!d.data().deletedAt && !d.data().isHidden) list.push({ id: d.id, ...d.data() } as PromptItem); }));
           }
           return list;
         })()

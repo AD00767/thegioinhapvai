@@ -61,7 +61,7 @@ export default function Home() {
         const charSnap = await getDocs(collection(db, "characters"));
         loadedChars = charSnap.docs
           .map(doc => ({ id: doc.id, ...doc.data() } as CharacterItem))
-          .filter(c => !c.deletedAt);
+          .filter((c: any) => !c.deletedAt && !c.isHidden);
 
         const sortedChars = [...loadedChars].sort((a, b) => {
           const scoreA = (a.likesCount || 0) * 3 + (a.savesCount || 0) * 2 + (a.viewsCount || 0);
@@ -78,7 +78,7 @@ export default function Home() {
         const promptSnap = await getDocs(collection(db, "prompts"));
         loadedPrompts = promptSnap.docs
           .map(doc => ({ id: doc.id, ...doc.data() } as PromptItem))
-          .filter(p => !p.deletedAt);
+          .filter((p: any) => !p.deletedAt && !p.isHidden);
 
         const sortedPrompts = [...loadedPrompts].sort((a, b) => {
           const scoreA = (a.copyCount || 0) * 3 + (a.savesCount || 0) * 2 + (a.viewsCount || 0);
@@ -95,7 +95,7 @@ export default function Home() {
         const userSnap = await getDocs(collection(db, "users"));
         const rawCreators: CreatorItem[] = userSnap.docs
           .map(doc => ({ id: doc.id, ...doc.data() } as CreatorItem))
-          .filter(u => u.creatorStatus === true);
+          .filter((u: any) => u.creatorStatus === true && !u.deletedAt && !u.isHidden && !u.isLocked);
 
         const sortedCreators = [...rawCreators].sort((a, b) => {
           const scoreA = (a.followerCount || 0) * 5 + (a.characterCount || 0);
@@ -133,7 +133,7 @@ export default function Home() {
         const fbSnap = await getDocs(fbQuery);
         const fbList = fbSnap.docs
           .map(doc => ({ id: doc.id, ...doc.data() }))
-          .filter((f: any) => !f.deletedAt);
+          .filter((f: any) => !f.deletedAt && !f.isHidden);
         setPublicFeedbacks(fbList);
       } catch (e) {
         console.error("Error fetching public feedbacks:", e);
