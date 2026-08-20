@@ -58,9 +58,16 @@ export default function SuspendedAccountModal() {
     }
   };
 
-  const lockExpiresDate = user.lockExpiresAt 
+  const isDeleted = Boolean(user.deletedAt || user.status === 'DELETED');
+
+  const lockExpiresDate = isDeleted 
+    ? 'Vô thời hạn (Đã xóa / vô hiệu hóa)' 
+    : user.lockExpiresAt 
     ? new Date(user.lockExpiresAt).toLocaleString('vi-VN') 
     : 'Vô thời hạn';
+
+  const displayReason = user.deleteReason || user.lockReason || (isDeleted ? 'Tài khoản đã bị xóa/vô hiệu hóa bởi Quản trị viên do vi phạm quy tắc cộng đồng.' : 'Vi phạm điều khoản và quy định cộng đồng.');
+  const appliedTime = user.deletedAt ? new Date(user.deletedAt).toLocaleString('vi-VN') : (user.updatedAt ? new Date(user.updatedAt).toLocaleString('vi-VN') : 'Gần đây');
 
   return (
     <>
@@ -84,13 +91,13 @@ export default function SuspendedAccountModal() {
 
           <div className="space-y-2">
             <span className="text-[10px] font-black uppercase tracking-widest text-red-500 px-3 py-1 rounded-full bg-red-500/10 inline-block">
-              Tài Khoản Đang Bị Tạm Khóa / Đình Chỉ
+              {isDeleted ? 'Tài Khoản Đã Bị Vô Hiệu Hóa / Xóa' : 'Tài Khoản Đang Bị Tạm Khóa / Đình Chỉ'}
             </span>
             <h2 className="text-2xl font-black tracking-tight text-neutral-900 dark:text-neutral-100">
-              Quyền Truy Cập Bị Hạn Chế
+              {isDeleted ? 'Tài Khoản Đã Bị Vô Hiệu Hóa' : 'Quyền Truy Cập Bị Hạn Chế'}
             </h2>
             <p className="text-xs text-neutral-500 dark:text-neutral-400 max-w-sm mx-auto">
-              Tài khoản <strong className="text-neutral-900 dark:text-neutral-200">{user.displayName}</strong> ({user.email}) đã bị khóa do vi phạm tiêu chuẩn cộng đồng.
+              Tài khoản <strong className="text-neutral-900 dark:text-neutral-200">{user.displayName}</strong> {user.email ? `(${user.email})` : ''} đã bị {isDeleted ? 'xóa và vô hiệu hóa quyền truy cập' : 'tạm khóa'} do vi phạm tiêu chuẩn cộng đồng.
             </p>
           </div>
 
@@ -101,12 +108,17 @@ export default function SuspendedAccountModal() {
                 Lý do từ Ban Quản Trị:
               </span>
               <p className="font-bold text-red-600 dark:text-red-400 bg-red-500/10 p-3 rounded-xl border border-red-500/20">
-                {user.lockReason || 'Vi phạm điều khoản và quy định cộng đồng.'}
+                {displayReason}
               </p>
             </div>
 
             <div className="flex items-center justify-between text-[11px] pt-1 border-t border-neutral-200/60 dark:border-neutral-800/60">
-              <span className="text-neutral-400 font-medium">Thời hạn khóa:</span>
+              <span className="text-neutral-400 font-medium">Thời điểm áp dụng:</span>
+              <span className="font-bold text-neutral-700 dark:text-neutral-300">{appliedTime}</span>
+            </div>
+
+            <div className="flex items-center justify-between text-[11px] pt-1 border-t border-neutral-200/60 dark:border-neutral-800/60">
+              <span className="text-neutral-400 font-medium">Thời hạn:</span>
               <span className="font-extrabold text-neutral-800 dark:text-neutral-200">{lockExpiresDate}</span>
             </div>
           </div>
@@ -180,9 +192,9 @@ export default function SuspendedAccountModal() {
           targetType="ACCOUNT"
           targetId={user.id}
           targetName={user.displayName || 'Tài khoản cá nhân'}
-          removalReason={user.lockReason || 'Vi phạm quy định cộng đồng'}
-          removalDetails={`Thời hạn khóa: ${lockExpiresDate}`}
-          removalTime={user.updatedAt || new Date().toISOString()}
+          removalReason={displayReason}
+          removalDetails={`Thời điểm áp dụng: ${appliedTime} - Thời hạn: ${lockExpiresDate}`}
+          removalTime={user.deletedAt || user.updatedAt || new Date().toISOString()}
         />
       )}
     </>

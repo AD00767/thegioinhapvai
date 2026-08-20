@@ -91,8 +91,14 @@ export interface CreatorItem {
   totalLikes?: number;
   totalSaves?: number;
   sharesCount?: number;
+  status?: 'ACTIVE' | 'SUSPENDED' | 'DELETED' | 'DISABLED';
   deletedAt?: string | null;
+  deletedBy?: string | null;
+  deletedByName?: string | null;
+  deleteReason?: string | null;
+  appealStatus?: 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED' | string | null;
   createdAt?: any;
+  updatedAt?: any;
 }
 
 export interface ReportItem {

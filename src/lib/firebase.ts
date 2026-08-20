@@ -81,8 +81,17 @@ export const syncAuthUser = async (firebaseUser: any, customBackendData?: any) =
     if (userSnap.exists()) {
       let userData = userSnap.data();
 
-      // Auto-unlock if lock expired
-      if (userData.isLocked && userData.lockExpiresAt && new Date(userData.lockExpiresAt).getTime() < Date.now()) {
+      const isDeleted = Boolean(userData.deletedAt || userData.status === 'DELETED');
+      if (isDeleted) {
+        userData.isLocked = true;
+        userData.status = 'DELETED';
+        if (!userData.lockReason && userData.deleteReason) {
+          userData.lockReason = userData.deleteReason;
+        }
+      }
+
+      // Auto-unlock if lock expired (only for standard temporary suspensions, not deleted accounts)
+      if (userData.isLocked && !isDeleted && userData.lockExpiresAt && new Date(userData.lockExpiresAt).getTime() < Date.now()) {
         await updateDoc(userRef, { isLocked: false, lockReason: null, lockExpiresAt: null, appealStatus: null }).catch(() => {});
         userData.isLocked = false;
         userData.lockReason = null;
@@ -90,8 +99,8 @@ export const syncAuthUser = async (firebaseUser: any, customBackendData?: any) =
         userData.appealStatus = null;
       }
 
-      // If user is locked, query latest appeal directly from Firestore to ensure exact status
-      if (userData.isLocked) {
+      // If user is locked or deleted, query latest appeal directly from Firestore to ensure exact status
+      if (userData.isLocked || isDeleted) {
         try {
           const appealQ = query(
             collection(db, 'appeals'),
@@ -104,8 +113,21 @@ export const syncAuthUser = async (firebaseUser: any, customBackendData?: any) =
             appealDocs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
             const latestAppeal = appealDocs[0];
             if (latestAppeal.status === 'APPROVED') {
-              await updateDoc(userRef, { isLocked: false, lockReason: null, lockExpiresAt: null, appealStatus: 'APPROVED' }).catch(() => {});
+              await updateDoc(userRef, { 
+                isLocked: false, 
+                status: 'ACTIVE',
+                deletedAt: null,
+                deletedBy: null,
+                deletedByName: null,
+                deleteReason: null,
+                lockReason: null, 
+                lockExpiresAt: null, 
+                appealStatus: 'APPROVED' 
+              }).catch(() => {});
               userData.isLocked = false;
+              userData.status = 'ACTIVE';
+              userData.deletedAt = null;
+              userData.deleteReason = null;
               userData.lockReason = null;
               userData.lockExpiresAt = null;
               userData.appealStatus = 'APPROVED';

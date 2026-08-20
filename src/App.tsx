@@ -86,12 +86,16 @@ function UserRealtimeSync() {
 
       const userData = docSnap.data() as any;
 
-      // Check lock status
-      if (userData.isLocked) {
+      const isDeleted = Boolean(userData.deletedAt || userData.status === 'DELETED');
+      const isLocked = Boolean(userData.isLocked || isDeleted);
+
+      // Check lock status (only auto-unlock non-deleted accounts with expired lock)
+      if (userData.isLocked && !isDeleted) {
         const lockExpired = userData.lockExpiresAt && new Date(userData.lockExpiresAt).getTime() < Date.now();
         if (lockExpired) {
           // Auto unlock if expired
           await updateDoc(userRef, { isLocked: false, lockReason: null, lockExpiresAt: null, appealStatus: null }).catch(() => {});
+          userData.isLocked = false;
         }
       }
 
@@ -101,6 +105,9 @@ function UserRealtimeSync() {
         setAuth(firebaseUser, {
           ...currentAuthUser,
           ...userData,
+          isLocked: isLocked,
+          status: isDeleted ? 'DELETED' : (userData.status || 'ACTIVE'),
+          lockReason: userData.lockReason || userData.deleteReason || (isDeleted ? 'Tài khoản đã bị xóa/vô hiệu hóa bởi Quản trị viên.' : null),
           id: user.id
         });
       }
@@ -138,14 +145,23 @@ export default function App() {
               const userSnap = await getDoc(userRef);
               if (userSnap.exists()) {
                 const userData = userSnap.data();
+                const isDeleted = Boolean(userData.deletedAt || userData.status === 'DELETED');
+                if (isDeleted) {
+                  userData.isLocked = true;
+                  userData.status = 'DELETED';
+                  if (!userData.lockReason && userData.deleteReason) {
+                    userData.lockReason = userData.deleteReason;
+                  }
+                }
+
                 // Check if expired lock
-                if (userData.isLocked && userData.lockExpiresAt && new Date(userData.lockExpiresAt).getTime() < Date.now()) {
+                if (userData.isLocked && !isDeleted && userData.lockExpiresAt && new Date(userData.lockExpiresAt).getTime() < Date.now()) {
                   await updateDoc(userRef, { isLocked: false, lockReason: null, lockExpiresAt: null, appealStatus: null }).catch(() => {});
                   userData.isLocked = false;
                 }
 
-                // If user is locked, query latest appeal
-                if (userData.isLocked) {
+                // If user is locked or deleted, query latest appeal
+                if (userData.isLocked || isDeleted) {
                   try {
                     const appealQ = query(
                       collection(db, 'appeals'),
@@ -158,8 +174,21 @@ export default function App() {
                       appealDocs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
                       const latestAppeal = appealDocs[0];
                       if (latestAppeal.status === 'APPROVED') {
-                        await updateDoc(userRef, { isLocked: false, lockReason: null, lockExpiresAt: null, appealStatus: 'APPROVED' }).catch(() => {});
+                        await updateDoc(userRef, { 
+                          isLocked: false, 
+                          status: 'ACTIVE',
+                          deletedAt: null,
+                          deletedBy: null,
+                          deletedByName: null,
+                          deleteReason: null,
+                          lockReason: null, 
+                          lockExpiresAt: null, 
+                          appealStatus: 'APPROVED' 
+                        }).catch(() => {});
                         userData.isLocked = false;
+                        userData.status = 'ACTIVE';
+                        userData.deletedAt = null;
+                        userData.deleteReason = null;
                         userData.appealStatus = 'APPROVED';
                       } else {
                         userData.appealStatus = latestAppeal.status || 'PENDING';
