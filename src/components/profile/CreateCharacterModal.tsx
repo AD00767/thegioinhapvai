@@ -9,6 +9,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { CharacterItem } from '../../types';
 import { getValidAvatar } from '../../lib/avatar';
 import { enforceActivityCheck } from '../../lib/restrictions';
+import { generateUniqueId } from '../../lib/generateId';
 import toast from 'react-hot-toast';
 
 interface CreateCharacterModalProps {
@@ -241,7 +242,6 @@ export default function CreateCharacterModal({
         });
         toast.success("Cập nhật Character thành công!");
       } else {
-        const { generateUniqueId } = await import('../../lib/generateId');
         const numericId = await generateUniqueId(db, 'character', '');
 
         await addDoc(collection(db, 'characters'), {

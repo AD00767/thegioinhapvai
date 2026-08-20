@@ -7,6 +7,7 @@ import { db } from '../../lib/firebase';
 import { useAuthStore } from '../../store/useAuthStore';
 import { PromptItem } from '../../types';
 import { enforceActivityCheck } from '../../lib/restrictions';
+import { generateUniqueId } from '../../lib/generateId';
 import toast from 'react-hot-toast';
 
 interface CreatePromptModalProps {
@@ -168,7 +169,6 @@ export default function CreatePromptModal({ isOpen, onClose, onSuccess, promptTo
         });
         toast.success("Cập nhật Prompt thành công!");
       } else {
-        const { generateUniqueId } = await import('../../lib/generateId');
         const numericId = await generateUniqueId(db, 'prompt', '');
 
         await addDoc(collection(db, 'prompts'), {

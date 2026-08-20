@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { collection, getDocs, query, where, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
+import { generateUniqueId } from '../../lib/generateId';
 import { 
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, 
   CartesianGrid, Tooltip, BarChart, Bar 
@@ -162,8 +163,6 @@ export default function DashboardStats() {
     };
 
     try {
-      const { generateUniqueId } = await import('../../lib/generateId');
-
       // 1. Migrate Users
       addLog("Đang quét danh sách người dùng...");
       const usersSnap = await getDocs(collection(db, 'users'));

@@ -25,6 +25,7 @@ import firebaseConfig from "../../firebase-applet-config.json";
 import { useAuthStore } from "../store/useAuthStore";
 import { applyTheme } from "./themeFont";
 import { DEFAULT_AVATAR, getValidAvatar } from "./avatar";
+import { generateUniqueId } from "./generateId";
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
@@ -168,7 +169,6 @@ export const syncAuthUser = async (firebaseUser: any, customBackendData?: any) =
       return payload;
     } else {
       // First time profile creation
-      const { generateUniqueId } = await import('./generateId');
       const numericId = await generateUniqueId(db, 'user', firebaseUser.uid);
 
       const newUserData = {
@@ -385,7 +385,6 @@ export const registerWithEmail = async (email: string, password: string) => {
         }
 
         const customUid = "usr_" + Date.now().toString(36) + "_" + Math.random().toString(36).substring(2, 7);
-        const { generateUniqueId } = await import('./generateId');
         const numericId = await generateUniqueId(db, 'user', customUid);
         const passwordHash = await hashPassword(password);
 
