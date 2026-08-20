@@ -115,17 +115,24 @@ export interface ReportItem {
 
 export interface AppealItem {
   id: string;
-  decisionId: string;
+  decisionId?: string;
   userId: string;
   userName: string;
-  targetType: string;
+  userEmail?: string;
+  targetType: 'CHARACTER' | 'PROMPT' | 'FEEDBACK' | 'COMMENT' | 'ACCOUNT' | string;
+  targetId: string;
   targetName: string;
+  removalReason?: string;
+  removalDetails?: string;
+  removalTime?: string;
   reason: string;
-  description: string;
+  description?: string;
   proofImageUrl?: string;
-  status: 'PENDING' | 'REVIEWING' | 'RESOLVED' | 'REJECTED';
+  status: 'PENDING' | 'REVIEWING' | 'APPROVED' | 'REJECTED';
   adminResponse?: string;
   processedBy?: string;
+  processedByName?: string;
+  processedAt?: any;
   createdAt: any;
   updatedAt: any;
 }

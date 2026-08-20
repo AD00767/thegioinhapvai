@@ -161,35 +161,72 @@ export default function ReportQueue() {
   };
 
   const executeDeleteContent = async () => {
-    if (!selectedReport) return;
+    if (!selectedReport || !currentUser) return;
 
     try {
       const collectionName = selectedReport.targetType === 'CHARACTER' ? 'characters' : 
                             selectedReport.targetType === 'PROMPT' ? 'prompts' : 
                             selectedReport.targetType === 'FEEDBACK' ? 'feedbacks' : 'comments';
       
-      await updateDoc(doc(db, collectionName, selectedReport.targetId), {
+      const targetRef = doc(db, collectionName, selectedReport.targetId);
+      const targetSnap = await getDoc(targetRef);
+      let ownerId = null;
+      let targetName = selectedReport.targetName || 'Nội dung';
+      
+      if (targetSnap.exists()) {
+        const d = targetSnap.data();
+        ownerId = d.creatorId || d.userId || d.senderId || d.authorId;
+        targetName = d.name || d.title || d.message || targetName;
+      }
+
+      const now = new Date().toISOString();
+      const removalReasonText = selectedReport.reason || note || "Vi phạm tiêu chuẩn cộng đồng";
+      const removalDetailsText = note || selectedReport.description || "Nội dung vi phạm quy định cộng đồng nền tảng.";
+
+      await updateDoc(targetRef, {
         isHidden: true,
-        deletedAt: serverTimestamp()
+        deletedAt: now,
+        deletedBy: currentUser.id,
+        removalReason: removalReasonText,
+        removalDetails: removalDetailsText,
+        removalTime: now,
+        appealStatus: 'NONE'
       });
+
+      // Send notification to owner
+      if (ownerId) {
+        await addDoc(collection(db, 'notifications'), {
+          userId: ownerId,
+          recipientId: ownerId,
+          type: 'CONTENT_REMOVED',
+          title: `Nội dung "${targetName}" đã bị gỡ/ẩn`,
+          message: `Nội dung của bạn đã bị ẩn do: ${removalReasonText}. Nhấp vào để xem chi tiết và gửi kháng nghị.`,
+          targetType: selectedReport.targetType,
+          targetId: selectedReport.targetId,
+          targetName,
+          removalReason: removalReasonText,
+          removalDetails: removalDetailsText,
+          removalTime: now,
+          read: false,
+          createdAt: now
+        });
+      }
       
       // Also resolve the report as RESOLVED
       await handleResolve('RESOLVED');
       
       // Audit Log for soft deletion
-      if (currentUser) {
-        await addDoc(collection(db, 'audit_logs'), {
-          executorId: currentUser.id,
-          executorName: currentUser.displayName,
-          executorRole: currentUser.role,
-          action: `HIDE_${selectedReport.targetType}`,
-          targetId: selectedReport.targetId,
-          targetType: selectedReport.targetType,
-          details: `Ẩn nội dung bị báo cáo: ${selectedReport.targetId}`,
-          reason: note || "Nội dung vi phạm tiêu chuẩn cộng đồng.",
-          createdAt: new Date().toISOString()
-        });
-      }
+      await addDoc(collection(db, 'audit_logs'), {
+        executorId: currentUser.id,
+        executorName: currentUser.displayName,
+        executorRole: currentUser.role,
+        action: `HIDE_${selectedReport.targetType}`,
+        targetId: selectedReport.targetId,
+        targetType: selectedReport.targetType,
+        details: `Ẩn nội dung bị báo cáo: ${selectedReport.targetId}`,
+        reason: removalReasonText,
+        createdAt: now
+      });
 
       toast.success("Đã ẩn nội dung bị báo cáo khỏi hệ thống!");
     } catch (err) {

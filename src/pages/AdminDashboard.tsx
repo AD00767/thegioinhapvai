@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { 
   collection, query, getDocs, doc, updateDoc, deleteDoc,
-  orderBy, addDoc, where
+  orderBy, addDoc, where, getDoc
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuthStore } from '../store/useAuthStore';
@@ -75,13 +75,63 @@ export default function AdminDashboard() {
 
   const handleToggleHide = async (id: string, currentStatus: boolean, collectionName: string) => {
     try {
-      await updateDoc(doc(db, collectionName, id), {
-        isHidden: !currentStatus
-      });
+      const isHiding = !currentStatus;
+      const now = new Date().toISOString();
+      const targetRef = doc(db, collectionName, id);
+
+      if (isHiding) {
+        const targetSnap = await getDoc(targetRef);
+        let ownerId = null;
+        let targetName = 'Nội dung';
+        if (targetSnap.exists()) {
+          const d = targetSnap.data();
+          ownerId = d.creatorId || d.userId || d.senderId || d.authorId;
+          targetName = d.name || d.title || d.message || targetName;
+        }
+
+        const reasonText = "Vi phạm tiêu chuẩn cộng đồng";
+        const detailsText = "Nội dung bị tạm ẩn bởi quản trị viên.";
+
+        await updateDoc(targetRef, {
+          isHidden: true,
+          deletedAt: now,
+          deletedBy: currentUser?.id || 'admin',
+          removalReason: reasonText,
+          removalDetails: detailsText,
+          removalTime: now,
+          appealStatus: 'NONE'
+        });
+
+        if (ownerId) {
+          await addDoc(collection(db, 'notifications'), {
+            userId: ownerId,
+            recipientId: ownerId,
+            type: 'CONTENT_REMOVED',
+            title: `Nội dung "${targetName}" đã bị gỡ/ẩn`,
+            message: `Nội dung của bạn đã bị ẩn do: ${reasonText}. Nhấp vào để xem chi tiết và gửi kháng nghị.`,
+            targetType: collectionName.toUpperCase().slice(0, -1),
+            targetId: id,
+            targetName,
+            removalReason: reasonText,
+            removalDetails: detailsText,
+            removalTime: now,
+            read: false,
+            createdAt: now
+          });
+        }
+      } else {
+        await updateDoc(targetRef, {
+          isHidden: false,
+          deletedAt: null,
+          appealStatus: 'APPROVED'
+        });
+      }
+
       await logAction('TOGGLE_VISIBILITY', id, `${currentStatus ? 'Hiển thị' : 'Ẩn'} nội dung trong ${collectionName}`);
       toast.success(`Đã ${currentStatus ? 'hiển thị' : 'ẩn'} nội dung.`);
       fetchData();
     } catch (err) {
+      console.error("Toggle hide error:", err);
       toast.error("Thao tác thất bại.");
     }
   };

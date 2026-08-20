@@ -13,6 +13,7 @@ import toast from 'react-hot-toast';
 import { getDoc } from 'firebase/firestore';
 import { getValidAvatar } from '../lib/avatar';
 import DeletedContentModal from '../components/DeletedContentModal';
+import RemovalDetailModal from '../components/modals/RemovalDetailModal';
 
 export interface NotificationItem {
   id: string;
@@ -44,6 +45,20 @@ export default function Notifications() {
   const [isDeletedModalOpen, setIsDeletedModalOpen] = useState(false);
   const [deletedType, setDeletedType] = useState<string>('');
   const [checkingContent, setCheckingContent] = useState(false);
+
+  const [removalModalData, setRemovalModalData] = useState<{
+    isOpen: boolean;
+    targetType: string;
+    targetId: string;
+    targetName?: string;
+    removalReason?: string;
+    removalDetails?: string;
+    removalTime?: string;
+  }>({
+    isOpen: false,
+    targetType: 'CHARACTER',
+    targetId: ''
+  });
 
   const fetchNotifications = async () => {
     if (!user) return;
@@ -553,6 +568,25 @@ export default function Notifications() {
                         Xem chi tiết →
                       </button>
                     )}
+                    {(['CONTENT_REMOVED', 'ACCOUNT_LOCKED', 'APPEAL_APPROVED', 'APPEAL_REJECTED'].includes(notif.type) || notif.targetId) && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setRemovalModalData({
+                            isOpen: true,
+                            targetType: notif.targetType || 'CHARACTER',
+                            targetId: notif.targetId || user?.id || '',
+                            targetName: notif.title,
+                            removalReason: (notif as any).removalReason || notif.message,
+                            removalDetails: (notif as any).removalDetails,
+                            removalTime: (notif as any).removalTime || notif.createdAt
+                          });
+                        }}
+                        className="text-red-600 dark:text-red-400 font-black hover:underline flex items-center gap-1"
+                      >
+                        🛡️ Chi tiết xử lý & Kháng nghị
+                      </button>
+                    )}
                   </div>
 
                   {notif.type === 'MODERATOR_INVITE' && !notif.read && notif.inviteStatus !== 'ACCEPTED' && notif.inviteStatus !== 'REJECTED' && (
@@ -597,6 +631,20 @@ export default function Notifications() {
         onClose={() => setIsDeletedModalOpen(false)}
         type={deletedType}
       />
+
+      {/* Removal & Appeal Modal */}
+      {removalModalData.targetId && (
+        <RemovalDetailModal
+          isOpen={removalModalData.isOpen}
+          onClose={() => setRemovalModalData(prev => ({ ...prev, isOpen: false }))}
+          targetType={removalModalData.targetType}
+          targetId={removalModalData.targetId}
+          targetName={removalModalData.targetName}
+          removalReason={removalModalData.removalReason}
+          removalDetails={removalModalData.removalDetails}
+          removalTime={removalModalData.removalTime}
+        />
+      )}
     </div>
   );
 }

@@ -37,11 +37,13 @@ import BadgeManager from './pages/admin/BadgeManager';
 import SupportManager from './pages/admin/SupportManager';
 import AdminModeratorManager from './pages/admin/AdminModeratorManager';
 import CreatorManager from './pages/admin/CreatorManager';
+import AppealManagement from './pages/admin/AppealManagement';
 import CreatorDetail from './pages/CreatorDetail';
 import CharacterDetail from './pages/CharacterDetail';
 import PromptDetail from './pages/PromptDetail';
 import { initThemeAndFont, applyTheme } from './lib/themeFont';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import SuspendedAccountModal from './components/modals/SuspendedAccountModal';
 
 function RootGate() {
   const { user, isInitialized } = useAuthStore();
@@ -89,15 +91,7 @@ function UserRealtimeSync() {
         const lockExpired = userData.lockExpiresAt && new Date(userData.lockExpiresAt).getTime() < Date.now();
         if (lockExpired) {
           // Auto unlock if expired
-          await updateDoc(userRef, { isLocked: false, lockReason: null, lockExpiresAt: null }).catch(() => {});
-        } else {
-          toast.error(`Tài khoản của bạn đã bị khóa/đình chỉ! Lý do: ${userData.lockReason || 'Vi phạm quy định cộng đồng.'}`, {
-            duration: 6000
-          });
-          await signOut(auth).catch(() => {});
-          localStorage.removeItem('custom_auth_user');
-          setAuth(null, null);
-          return;
+          await updateDoc(userRef, { isLocked: false, lockReason: null, lockExpiresAt: null, appealStatus: null }).catch(() => {});
         }
       }
 
@@ -187,6 +181,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <UserRealtimeSync />
+      <SuspendedAccountModal />
       <Toaster position="top-center" />
       <Routes>
         <Route path="/welcome" element={<Welcome />} />
@@ -216,6 +211,7 @@ export default function App() {
           <Route path="/admin/dashboard" element={<ProtectedRoute><DashboardStats /></ProtectedRoute>} />
           <Route path="/admin/users" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
           <Route path="/admin/reports" element={<ProtectedRoute><ReportQueue /></ProtectedRoute>} />
+          <Route path="/admin/appeals" element={<ProtectedRoute><AppealManagement /></ProtectedRoute>} />
           <Route path="/admin/audit" element={<ProtectedRoute><AuditLogs /></ProtectedRoute>} />
           <Route path="/admin/badges" element={<ProtectedRoute><BadgeManager /></ProtectedRoute>} />
           <Route path="/admin/support" element={<ProtectedRoute><SupportManager /></ProtectedRoute>} />
