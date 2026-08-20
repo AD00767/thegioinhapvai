@@ -13,6 +13,7 @@ import { AppealItem } from '../../types';
 interface RemovalDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSuccess?: (appeal: AppealItem) => void;
   targetType: string;
   targetId: string;
   targetName?: string;
@@ -24,6 +25,7 @@ interface RemovalDetailModalProps {
 export default function RemovalDetailModal({
   isOpen,
   onClose,
+  onSuccess,
   targetType,
   targetId,
   targetName: initialName,
@@ -50,7 +52,7 @@ export default function RemovalDetailModal({
   const [appealReason, setAppealReason] = useState('');
   const [proofImageUrl, setProofImageUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showAppealForm, setShowAppealForm] = useState(false);
+  const [showAppealForm, setShowAppealForm] = useState(true);
 
   useEffect(() => {
     if (isOpen && user && targetId) {
@@ -103,8 +105,10 @@ export default function RemovalDetailModal({
         const docs = appealSnap.docs.map(d => ({ id: d.id, ...d.data() } as AppealItem));
         docs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         setAppeal(docs[0]);
+        setShowAppealForm(false);
       } else {
         setAppeal(null);
+        setShowAppealForm(true);
       }
     } catch (err) {
       console.error("Error fetching appeal details:", err);
@@ -142,6 +146,7 @@ export default function RemovalDetailModal({
       };
 
       const docRef = await addDoc(collection(db, 'appeals'), appealData);
+      const newAppealItem = { id: docRef.id, ...appealData } as AppealItem;
 
       // Update target document's appealStatus
       if (targetType !== 'ACCOUNT') {
@@ -164,10 +169,14 @@ export default function RemovalDetailModal({
       }
 
       toast.success("Đã gửi đơn kháng nghị thành công! Ban quản trị sẽ xem xét sớm nhất.");
-      setAppeal({ id: docRef.id, ...appealData } as AppealItem);
+      setAppeal(newAppealItem);
       setShowAppealForm(false);
       setAppealReason('');
       setProofImageUrl('');
+
+      if (onSuccess) {
+        onSuccess(newAppealItem);
+      }
     } catch (err) {
       console.error("Submit appeal error:", err);
       toast.error("Gửi kháng nghị thất bại. Vui lòng thử lại.");
@@ -179,8 +188,14 @@ export default function RemovalDetailModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-neutral-900 rounded-[2.5rem] w-full max-w-xl overflow-hidden shadow-2xl border border-neutral-200 dark:border-neutral-800 relative flex flex-col max-h-[90vh]">
+    <div 
+      id="removal-detail-modal-overlay"
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+    >
+      <div 
+        id="removal-detail-modal-card"
+        className="bg-white dark:bg-neutral-900 rounded-[2.5rem] w-full max-w-xl overflow-hidden shadow-2xl border border-neutral-200 dark:border-neutral-800 relative flex flex-col max-h-[90vh]"
+      >
         
         {/* Header */}
         <div className="p-6 md:p-8 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between shrink-0 bg-neutral-50/50 dark:bg-neutral-900/50">
@@ -198,8 +213,9 @@ export default function RemovalDetailModal({
             </div>
           </div>
           <button 
+            id="close-removal-modal-btn"
             onClick={onClose}
-            className="p-2.5 rounded-full hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-400 transition-colors"
+            className="p-2.5 rounded-full hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-400 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -274,7 +290,7 @@ export default function RemovalDetailModal({
               </div>
 
               {/* Submitted Appeal Detail view if exists */}
-              {appeal && (
+              {appeal && !showAppealForm && (
                 <div className="bg-amber-500/5 border border-amber-500/20 rounded-3xl p-6 space-y-3">
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <h4 className="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-2">
@@ -313,74 +329,84 @@ export default function RemovalDetailModal({
                       <p className="italic">{appeal.adminResponse}</p>
                     </div>
                   )}
+
+                  {/* If Rejected, allow user to submit a new appeal */}
+                  {appeal.status === 'REJECTED' && (
+                    <div className="pt-2">
+                      <button
+                        id="re-appeal-btn"
+                        type="button"
+                        onClick={() => setShowAppealForm(true)}
+                        className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs uppercase tracking-widest rounded-2xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <Send className="w-4 h-4" /> Gửi Lại Đơn Kháng Nghị Mới
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* Appeal Form Section */}
-              {!appeal && (
+              {(!appeal || showAppealForm) && (
                 <div className="space-y-4 pt-2">
-                  {!showAppealForm ? (
-                    <button
-                      onClick={() => setShowAppealForm(true)}
-                      className="w-full py-4 bg-black dark:bg-white text-white dark:text-black font-black text-xs uppercase tracking-widest rounded-2xl hover:scale-[1.01] active:scale-95 transition-all shadow-xl flex items-center justify-center gap-2"
-                    >
-                      <Send className="w-4 h-4" /> Gửi Đơn Kháng Nghị
-                    </button>
-                  ) : (
-                    <form onSubmit={handleSubmitAppeal} className="space-y-4 animate-in fade-in duration-300 bg-neutral-50 dark:bg-neutral-800/20 p-6 rounded-3xl border border-neutral-200 dark:border-neutral-800">
-                      <div className="space-y-1">
-                        <h4 className="text-xs font-black uppercase tracking-wider text-neutral-900 dark:text-neutral-100">
-                          Nhập Lý Do Kháng Nghị
-                        </h4>
-                        <p className="text-[11px] text-neutral-500">
-                          Hãy giải thích rõ lý do tại sao bạn tin rằng nội dung/tài khoản của mình tuân thủ quy định cộng đồng.
-                        </p>
-                      </div>
+                  <form onSubmit={handleSubmitAppeal} className="space-y-4 animate-in fade-in duration-300 bg-neutral-50 dark:bg-neutral-800/20 p-6 rounded-3xl border border-neutral-200 dark:border-neutral-800">
+                    <div className="space-y-1">
+                      <h4 className="text-xs font-black uppercase tracking-wider text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+                        <Send className="w-4 h-4 text-amber-500" /> Nhập Lý Do Kháng Nghị
+                      </h4>
+                      <p className="text-[11px] text-neutral-500">
+                        Hãy giải thích rõ lý do tại sao bạn tin rằng tài khoản/nội dung của mình tuân thủ quy định cộng đồng.
+                      </p>
+                    </div>
 
-                      <textarea
-                        rows={4}
-                        value={appealReason}
-                        onChange={(e) => setAppealReason(e.target.value)}
-                        placeholder="Trình bày chi tiết lý do và lập luận của bạn..."
-                        className="w-full p-4 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
+                    <textarea
+                      id="appeal-reason-textarea"
+                      rows={4}
+                      value={appealReason}
+                      onChange={(e) => setAppealReason(e.target.value)}
+                      placeholder="Trình bày chi tiết lý do và lập luận của bạn (tối thiểu 10 ký tự)..."
+                      className="w-full p-4 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none text-neutral-900 dark:text-neutral-100"
+                    />
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400">
+                        Đường dẫn ảnh minh chứng (Không bắt buộc)
+                      </label>
+                      <input
+                        id="appeal-proof-input"
+                        type="url"
+                        value={proofImageUrl}
+                        onChange={(e) => setProofImageUrl(e.target.value)}
+                        placeholder="https://..."
+                        className="w-full px-4 py-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 text-neutral-900 dark:text-neutral-100"
                       />
+                    </div>
 
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400">
-                          Đường dẫn ảnh minh chứng (Không bắt buộc)
-                        </label>
-                        <input
-                          type="url"
-                          value={proofImageUrl}
-                          onChange={(e) => setProofImageUrl(e.target.value)}
-                          placeholder="https://..."
-                          className="w-full px-4 py-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
-                        />
-                      </div>
-
-                      <div className="flex items-center gap-3 pt-2">
+                    <div className="flex items-center gap-3 pt-2">
+                      {appeal && (
                         <button
                           type="button"
                           onClick={() => setShowAppealForm(false)}
-                          className="px-5 py-3.5 bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 text-neutral-700 dark:text-neutral-300 font-black text-xs uppercase tracking-widest rounded-2xl transition-colors"
+                          className="px-5 py-3.5 bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 text-neutral-700 dark:text-neutral-300 font-black text-xs uppercase tracking-widest rounded-2xl transition-colors cursor-pointer"
                         >
                           Hủy
                         </button>
-                        <button
-                          type="submit"
-                          disabled={isSubmitting}
-                          className="flex-1 py-3.5 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs uppercase tracking-widest rounded-2xl transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
-                        >
-                          {isSubmitting ? (
-                            <Clock className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Send className="w-4 h-4" />
-                          )}
-                          <span>Xác Nhận Gửi Kháng Nghị</span>
-                        </button>
-                      </div>
-                    </form>
-                  )}
+                      )}
+                      <button
+                        id="submit-appeal-btn"
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="flex-1 py-3.5 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs uppercase tracking-widest rounded-2xl transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                      >
+                        {isSubmitting ? (
+                          <Clock className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Send className="w-4 h-4" />
+                        )}
+                        <span>Xác Nhận Gửi Kháng Nghị</span>
+                      </button>
+                    </div>
+                  </form>
                 </div>
               )}
             </>
