@@ -61,9 +61,10 @@ export const getBaseUrl = () => {
   return 'http://localhost:3000';
 };
 
-export const buildCharacterUrl = (id: string) => {
+export const buildCharacterUrl = (id: string, numericId?: string) => {
   const baseUrl = getBaseUrl();
-  return `${baseUrl}/character/${id}`;
+  const finalId = numericId || id;
+  return `${baseUrl}/character/${finalId}`;
 };
 
 export const buildPromptUrl = (id: string) => {

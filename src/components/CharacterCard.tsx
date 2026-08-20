@@ -180,7 +180,11 @@ export default function CharacterCard({ character, onUpdate }: CharacterCardProp
   };
 
   const handleOpenDetail = () => {
-    navigate(`/character/${character.id}`);
+    if (character.numericId) {
+      navigate(`/character/${character.numericId}`);
+    } else {
+      navigate(`/character/${character.id}`);
+    }
   };
 
   return (

@@ -978,7 +978,7 @@ export default function Profile() {
                       <div className="flex gap-3">
                         <img src={char.avatar} alt={char.name} className="w-16 h-16 rounded-xl object-cover shrink-0" />
                         <div className="min-w-0 flex-1">
-                          <Link to={`/character/${char.id}`} className="font-bold text-sm truncate hover:underline block">{char.name}</Link>
+                          <Link to={`/character/${char.numericId || char.id}`} className="font-bold text-sm truncate hover:underline block">{char.name}</Link>
                           <div className="text-xs text-neutral-500 truncate mt-0.5">{char.slogan}</div>
                           <div className="text-[11px] text-neutral-400 mt-2">Bởi: {char.creatorName}</div>
                         </div>
@@ -1018,7 +1018,7 @@ export default function Profile() {
                         <div className="flex gap-3">
                           <img src={char.avatar} alt={char.name} className="w-16 h-16 rounded-xl object-cover shrink-0" />
                           <div className="min-w-0 flex-1">
-                            <Link to={`/character/${char.id}`} className="font-bold text-sm truncate hover:underline block">{char.name}</Link>
+                            <Link to={`/character/${char.numericId || char.id}`} className="font-bold text-sm truncate hover:underline block">{char.name}</Link>
                             <div className="text-xs text-neutral-500 truncate mt-0.5">{char.slogan}</div>
                             <div className="text-[11px] text-neutral-400 mt-2">Bởi: {char.creatorName}</div>
                           </div>

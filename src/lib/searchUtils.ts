@@ -311,7 +311,7 @@ export async function lookupIdInFirebase(numericId: string, typeHint?: string): 
           type: 'character',
           id: docSnap.id,
           numericId,
-          path: `/character/${docSnap.id}`,
+          path: `/character/${numericId || docSnap.id}`,
           result: publicResult
         };
       } else if (col.name === 'prompts') {

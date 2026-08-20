@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
   Heart, Bookmark, Eye, ExternalLink, Sparkles, User as UserIcon, Tag, MessageSquare, ArrowLeft, Flag, AlertCircle, Trash2 
 } from 'lucide-react';
-import { doc, getDoc, updateDoc, increment, collection, addDoc, query, where, getDocs, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, increment, collection, addDoc, query, where, getDocs, deleteDoc, serverTimestamp, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuthStore } from '../store/useAuthStore';
 import { CharacterItem } from '../types';
@@ -49,27 +49,45 @@ export default function CharacterDetail() {
     setError(false);
 
     try {
-      const docRef = doc(db, 'characters', id);
-      const snap = await getDoc(docRef);
+      let snap;
+      let docId = '';
+      const isNumeric = /^[0-9]{9}$/.test(id);
 
-      if (!snap.exists()) {
-        setError(true);
-        return;
+      if (isNumeric) {
+        const q = query(collection(db, 'characters'), where('numericId', '==', id), limit(1));
+        const querySnap = await getDocs(q);
+        if (querySnap.empty) {
+          setError(true);
+          setLoading(false);
+          return;
+        }
+        snap = querySnap.docs[0];
+        docId = snap.id;
+      } else {
+        const docRef = doc(db, 'characters', id);
+        snap = await getDoc(docRef);
+        if (!snap.exists()) {
+          setError(true);
+          setLoading(false);
+          return;
+        }
+        docId = snap.id;
       }
 
       const data = snap.data();
       if (data.deletedAt) {
         setError(true);
+        setLoading(false);
         return;
       }
 
-      const item = { id: snap.id, ...data } as CharacterItem;
+      const item = { id: docId, ...data } as CharacterItem;
       setCharacter(item);
       setLikesCount(item.likesCount || 0);
       setSavesCount(item.savesCount || 0);
 
       // Requirement 18 & 19: View count with throttle
-      const storageKey = `vviewed_char_${id}`;
+      const storageKey = `vviewed_char_${docId}`;
       const lastViewed = localStorage.getItem(storageKey);
       const now = Date.now();
       const throttleTime = 5 * 60 * 1000; // 5 minutes
@@ -78,7 +96,8 @@ export default function CharacterDetail() {
         setViewsCount((item.viewsCount || 0) + 1);
         localStorage.setItem(storageKey, now.toString());
         try {
-          await updateDoc(docRef, { viewsCount: increment(1) });
+          const docRefReal = doc(db, 'characters', docId);
+          await updateDoc(docRefReal, { viewsCount: increment(1) });
         } catch (e) {
           console.error("View count update error:", e);
         }
@@ -126,14 +145,14 @@ export default function CharacterDetail() {
 
   // Check initial likes & bookmarks
   useEffect(() => {
-    if (!user?.id || !id) return;
+    if (!user?.id || !character?.id) return;
 
     const checkInteractions = async () => {
       try {
         const qLike = query(
           collection(db, 'character_likes'),
           where('userId', '==', user.id),
-          where('characterId', '==', id)
+          where('characterId', '==', character.id)
         );
         const snapLike = await getDocs(qLike);
         setIsLiked(!snapLike.empty);
@@ -141,7 +160,7 @@ export default function CharacterDetail() {
         const qBook = query(
           collection(db, 'bookmarks'),
           where('userId', '==', user.id),
-          where('targetId', '==', id),
+          where('targetId', '==', character.id),
           where('targetType', '==', 'CHARACTER')
         );
         const snapBook = await getDocs(qBook);
@@ -152,7 +171,7 @@ export default function CharacterDetail() {
     };
 
     checkInteractions();
-  }, [user?.id, id]);
+  }, [user?.id, character?.id]);
 
   useEffect(() => {
     fetchCharacter();
