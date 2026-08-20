@@ -16,7 +16,7 @@ import { CreatorItem } from '../../types';
 import { getValidAvatar } from '../../lib/avatar';
 import { useNavigate } from 'react-router-dom';
 
-type ActionType = 'DELETE' | 'SUSPEND' | 'RESTRICT' | 'REMOVE_CREATOR' | 'PROMOTE_ADMIN' | 'PROMOTE_MOD' | 'DEMOTE' | 'HISTORY' | null;
+type ActionType = 'DELETE' | 'SUSPEND' | 'UNSUSPEND' | 'RESTRICT' | 'LIFT_RESTRICTION' | 'REMOVE_CREATOR' | 'PROMOTE_ADMIN' | 'PROMOTE_MOD' | 'DEMOTE' | 'HISTORY' | null;
 
 export default function UserManagement() {
   const { user: currentUser } = useAuthStore();
@@ -99,7 +99,7 @@ export default function UserManagement() {
       toast.error("Bạn không có quyền thực hiện thao tác này.");
       return;
     }
-    if (actionType !== 'HISTORY' && !reason.trim() && actionType !== 'DELETE') {
+    if (actionType !== 'HISTORY' && !reason.trim() && !['DELETE', 'UNSUSPEND', 'LIFT_RESTRICTION'].includes(actionType)) {
       toast.error("Vui lòng nhập lý do.");
       return;
     }
@@ -127,16 +127,78 @@ export default function UserManagement() {
             lockReason: reason,
             lockExpiresAt: expiresAt.toISOString()
           });
-          await logAction('SUSPEND_USER', selectedUser.id, `Đình chỉ tài khoản đến ${expiresAt.toLocaleDateString()}`);
+          await addDoc(collection(db, 'notifications'), {
+            userId: selectedUser.id,
+            recipientId: selectedUser.id,
+            type: 'ACCOUNT_SUSPENDED',
+            title: 'Tài khoản bị đình chỉ',
+            message: `Tài khoản của bạn đã bị đình chỉ hoạt động. Lý do: ${reason}. Thời hạn: đến ${expiresAt.toLocaleDateString('vi-VN')}.`,
+            read: false,
+            createdAt: new Date().toISOString()
+          });
+          await logAction('SUSPEND_USER', selectedUser.id, `Đình chỉ tài khoản đến ${expiresAt.toLocaleDateString('vi-VN')}`);
           toast.success("Đã đình chỉ tài khoản.");
+          break;
+        case 'UNSUSPEND':
+          await updateDoc(userRef, {
+            isLocked: false,
+            lockReason: null,
+            lockExpiresAt: null
+          });
+          await addDoc(collection(db, 'notifications'), {
+            userId: selectedUser.id,
+            recipientId: selectedUser.id,
+            type: 'ACCOUNT_UNLOCKED',
+            title: 'Tài khoản đã được mở khóa',
+            message: `Tài khoản của bạn đã được mở khóa bởi quản trị viên. ${reason ? `Ghi chú: ${reason}` : ''}`,
+            read: false,
+            createdAt: new Date().toISOString()
+          });
+          await logAction('UNSUSPEND_USER', selectedUser.id, `Mở khóa tài khoản`);
+          toast.success("Đã mở khóa tài khoản.");
           break;
         case 'RESTRICT':
           await updateDoc(userRef, {
             restrictedActivities,
-            restrictionExpiresAt: expiresAt.toISOString()
+            restrictionExpiresAt: expiresAt.toISOString(),
+            restrictionReason: reason
           });
-          await logAction('RESTRICT_USER', selectedUser.id, `Giới hạn hoạt động (${restrictedActivities.join(', ')}) đến ${expiresAt.toLocaleDateString()}`);
+          const actLabelsMap: Record<string, string> = {
+            'POST_CHARACTER': 'Đăng Character',
+            'POST_PROMPT': 'Đăng Prompt',
+            'POST_FEEDBACK': 'Gửi Feedback',
+            'POST_COMMENT': 'Bình luận'
+          };
+          const labelList = restrictedActivities.map(a => actLabelsMap[a] || a).join(', ');
+          await addDoc(collection(db, 'notifications'), {
+            userId: selectedUser.id,
+            recipientId: selectedUser.id,
+            type: 'ACTIVITY_RESTRICTED',
+            title: 'Tài khoản bị giới hạn hoạt động',
+            message: `Tài khoản của bạn đã bị giới hạn các hoạt động: ${labelList}. Lý do: ${reason}. Thời hạn: đến ${expiresAt.toLocaleDateString('vi-VN')}.`,
+            read: false,
+            createdAt: new Date().toISOString()
+          });
+          await logAction('RESTRICT_USER', selectedUser.id, `Giới hạn hoạt động (${labelList}) đến ${expiresAt.toLocaleDateString('vi-VN')}`);
           toast.success("Đã giới hạn hoạt động.");
+          break;
+        case 'LIFT_RESTRICTION':
+          await updateDoc(userRef, {
+            restrictedActivities: [],
+            restrictionExpiresAt: null,
+            restrictionReason: null
+          });
+          await addDoc(collection(db, 'notifications'), {
+            userId: selectedUser.id,
+            recipientId: selectedUser.id,
+            type: 'RESTRICTION_LIFTED',
+            title: 'Đã gỡ giới hạn hoạt động',
+            message: `Quản trị viên đã gỡ bỏ các giới hạn hoạt động đối với tài khoản của bạn.`,
+            read: false,
+            createdAt: new Date().toISOString()
+          });
+          await logAction('LIFT_RESTRICTION', selectedUser.id, `Gỡ giới hạn hoạt động`);
+          toast.success("Đã gỡ giới hạn hoạt động.");
           break;
         case 'REMOVE_CREATOR':
           if ((selectedUser.role === 'MODERATOR' || selectedUser.role === 'MOD') && !isAdmin) {
@@ -346,21 +408,37 @@ export default function UserManagement() {
                               
                               <div className="h-px bg-neutral-100 dark:bg-neutral-800 my-1"></div>
 
-                              {!u.isLocked && (
+                              {!u.isLocked ? (
                                 <button 
                                   onClick={() => { openModal(u, 'SUSPEND'); setActiveMenuId(null); }}
                                   className="w-full flex items-center gap-3 px-4 py-3 hover:bg-orange-500/10 text-orange-600 dark:text-orange-500 rounded-xl text-xs font-bold transition-colors text-left"
                                 >
                                   <Ban className="w-4 h-4" /> Đình chỉ tài khoản
                                 </button>
+                              ) : (
+                                <button 
+                                  onClick={() => { openModal(u, 'UNSUSPEND'); setActiveMenuId(null); }}
+                                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 rounded-xl text-xs font-bold transition-colors text-left"
+                                >
+                                  <Unlock className="w-4 h-4" /> Mở khóa tài khoản
+                                </button>
                               )}
                               
-                              <button 
-                                onClick={() => { openModal(u, 'RESTRICT'); setActiveMenuId(null); }}
-                                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-amber-500/10 text-amber-600 dark:text-amber-500 rounded-xl text-xs font-bold transition-colors text-left"
-                              >
-                                <EyeOff className="w-4 h-4" /> Giới hạn hoạt động
-                              </button>
+                              {u.restrictedActivities && u.restrictedActivities.length > 0 ? (
+                                <button 
+                                  onClick={() => { openModal(u, 'LIFT_RESTRICTION'); setActiveMenuId(null); }}
+                                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 rounded-xl text-xs font-bold transition-colors text-left"
+                                >
+                                  <ShieldCheck className="w-4 h-4" /> Gỡ giới hạn hoạt động
+                                </button>
+                              ) : (
+                                <button 
+                                  onClick={() => { openModal(u, 'RESTRICT'); setActiveMenuId(null); }}
+                                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-amber-500/10 text-amber-600 dark:text-amber-500 rounded-xl text-xs font-bold transition-colors text-left"
+                                >
+                                  <EyeOff className="w-4 h-4" /> Giới hạn hoạt động
+                                </button>
+                              )}
 
                               {u.creatorStatus && (
                                 <button 
@@ -433,7 +511,9 @@ export default function UserManagement() {
                     <h3 className="text-xl font-black tracking-tight uppercase">
                       {actionType === 'DELETE' && 'Xóa Tài Khoản'}
                       {actionType === 'SUSPEND' && 'Đình Chỉ Thành Viên'}
+                      {actionType === 'UNSUSPEND' && 'Mở Khóa Tài Khoản'}
                       {actionType === 'RESTRICT' && 'Giới Hạn Hoạt Động'}
+                      {actionType === 'LIFT_RESTRICTION' && 'Gỡ Giới Hạn Hoạt Động'}
                       {actionType === 'REMOVE_CREATOR' && 'Hủy Quyền Creator'}
                       {actionType === 'PROMOTE_ADMIN' && 'Chỉ Định Admin'}
                       {actionType === 'PROMOTE_MOD' && 'Chỉ Định Moderator'}

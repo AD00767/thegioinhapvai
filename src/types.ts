@@ -73,6 +73,7 @@ export interface CreatorItem {
   lockReason?: string;
   lockExpiresAt?: string;
   restrictedActivities?: string[];
+  restrictionReason?: string;
   restrictionExpiresAt?: string;
   strikeCount?: number;
   badges?: string[];

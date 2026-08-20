@@ -7,9 +7,10 @@ import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db, syncAuthUser } from './lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { signOut } from 'firebase/auth';
 import { useAuthStore } from './store/useAuthStore';
-import { Toaster } from 'react-hot-toast';
+import toast, { Toaster } from 'react-hot-toast';
 
 import Layout from './components/layout/Layout';
 import Welcome from './pages/Welcome';
@@ -69,6 +70,54 @@ function RootGate() {
 
   // Otherwise, show full screen Welcome Page on first visit
   return <Welcome onStart={() => setHasEntered(true)} />;
+}
+
+function UserRealtimeSync() {
+  const { user, firebaseUser, setAuth } = useAuthStore();
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const userRef = doc(db, 'users', user.id);
+    const unsubscribe = onSnapshot(userRef, async (docSnap) => {
+      if (!docSnap.exists()) return;
+
+      const userData = docSnap.data() as any;
+
+      // Check lock status
+      if (userData.isLocked) {
+        const lockExpired = userData.lockExpiresAt && new Date(userData.lockExpiresAt).getTime() < Date.now();
+        if (lockExpired) {
+          // Auto unlock if expired
+          await updateDoc(userRef, { isLocked: false, lockReason: null, lockExpiresAt: null }).catch(() => {});
+        } else {
+          toast.error(`Tài khoản của bạn đã bị khóa/đình chỉ! Lý do: ${userData.lockReason || 'Vi phạm quy định cộng đồng.'}`, {
+            duration: 6000
+          });
+          await signOut(auth).catch(() => {});
+          localStorage.removeItem('custom_auth_user');
+          setAuth(null, null);
+          return;
+        }
+      }
+
+      // Sync user data to Zustand store
+      const currentAuthUser = useAuthStore.getState().user;
+      if (currentAuthUser) {
+        setAuth(firebaseUser, {
+          ...currentAuthUser,
+          ...userData,
+          id: user.id
+        });
+      }
+    }, (err) => {
+      console.error("Realtime user sync error:", err);
+    });
+
+    return () => unsubscribe();
+  }, [user?.id]);
+
+  return null;
 }
 
 export default function App() {
@@ -137,6 +186,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <UserRealtimeSync />
       <Toaster position="top-center" />
       <Routes>
         <Route path="/welcome" element={<Welcome />} />
