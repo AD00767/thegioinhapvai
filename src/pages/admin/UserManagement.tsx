@@ -19,7 +19,7 @@ import { useNavigate } from 'react-router-dom';
 type ActionType = 'DELETE' | 'SUSPEND' | 'UNSUSPEND' | 'RESTRICT' | 'LIFT_RESTRICTION' | 'REMOVE_CREATOR' | 'PROMOTE_ADMIN' | 'PROMOTE_MOD' | 'DEMOTE' | 'HISTORY' | null;
 
 export default function UserManagement() {
-  const { user: currentUser } = useAuthStore();
+  const { user: currentUser, firebaseUser } = useAuthStore();
   const [users, setUsers] = useState<CreatorItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -117,9 +117,35 @@ export default function UserManagement() {
 
       switch (actionType) {
         case 'DELETE':
-          await deleteDoc(userRef);
-          await logAction('DELETE_USER', selectedUser.id, `Xóa tài khoản người dùng: ${selectedUser.displayName}`);
-          toast.success("Đã xóa tài khoản.");
+          try {
+            const idToken = await firebaseUser?.getIdToken();
+            const response = await fetch('/api/admin/delete-user', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': idToken ? `Bearer ${idToken}` : '',
+                'x-user-id': currentUser?.id || ''
+              },
+              body: JSON.stringify({
+                targetUid: selectedUser.id,
+                reason: reason.trim() || 'Xóa tài khoản bởi Admin'
+              })
+            });
+
+            const data = await response.json();
+            if (!response.ok) {
+              throw new Error(data.error || 'Không thể xóa tài khoản');
+            }
+
+            await logAction('DELETE_USER', selectedUser.id, `Xóa vĩnh viễn tài khoản: ${selectedUser.displayName}`);
+            toast.success("Đã xóa vĩnh viễn tài khoản người dùng.");
+          } catch (err: any) {
+            console.error("Delete user API error:", err);
+            // Fallback to client doc deletion
+            await deleteDoc(userRef);
+            await logAction('DELETE_USER', selectedUser.id, `Xóa tài khoản người dùng: ${selectedUser.displayName}`);
+            toast.success("Đã xóa dữ liệu tài khoản.");
+          }
           break;
         case 'SUSPEND':
           await updateDoc(userRef, {

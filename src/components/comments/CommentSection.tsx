@@ -12,6 +12,7 @@ import ReportModal from '../ReportModal';
 import UserBadge from '../UserBadge';
 import DeleteConfirmModal from '../DeleteConfirmModal';
 import { getValidAvatar, DEFAULT_AVATAR } from '../../lib/avatar';
+import { enforceActivityCheck } from '../../lib/restrictions';
 import toast from 'react-hot-toast';
 
 export interface CommentItem {
@@ -116,6 +117,10 @@ export default function CommentSection({
   const handleAddComment = async (parentId?: string | null, parentAuthorName?: string) => {
     if (!user) {
       toast.error("Vui lòng đăng nhập để bình luận!");
+      return;
+    }
+
+    if (!enforceActivityCheck(user, 'POST_COMMENT')) {
       return;
     }
 

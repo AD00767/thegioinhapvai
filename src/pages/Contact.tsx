@@ -6,6 +6,7 @@ import {
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuthStore } from '../store/useAuthStore';
+import { enforceActivityCheck } from '../lib/restrictions';
 import toast from 'react-hot-toast';
 import CaptchaModal from '../components/CaptchaModal';
 
@@ -60,6 +61,10 @@ export default function Contact() {
   const handleSubmitTrigger = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+
+    if (user && !enforceActivityCheck(user, 'CONTACT')) {
+      return;
+    }
 
     // 1. Validation: Content not empty
     if (!content.trim()) {

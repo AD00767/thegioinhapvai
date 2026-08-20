@@ -6,6 +6,7 @@ import { collection, addDoc, doc, updateDoc, serverTimestamp, query, where, getD
 import { db } from '../../lib/firebase';
 import { useAuthStore } from '../../store/useAuthStore';
 import { PromptItem } from '../../types';
+import { enforceActivityCheck } from '../../lib/restrictions';
 import toast from 'react-hot-toast';
 
 interface CreatePromptModalProps {
@@ -133,6 +134,10 @@ export default function CreatePromptModal({ isOpen, onClose, onSuccess, promptTo
   // --- Form Submit ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!enforceActivityCheck(user, 'POST_PROMPT')) {
+      return;
+    }
 
     if (!name.trim()) {
       toast.error("Vui lòng nhập tên Prompt.");

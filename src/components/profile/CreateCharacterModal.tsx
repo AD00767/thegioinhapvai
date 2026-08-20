@@ -8,6 +8,7 @@ import { db } from '../../lib/firebase';
 import { useAuthStore } from '../../store/useAuthStore';
 import { CharacterItem } from '../../types';
 import { getValidAvatar } from '../../lib/avatar';
+import { enforceActivityCheck } from '../../lib/restrictions';
 import toast from 'react-hot-toast';
 
 interface CreateCharacterModalProps {
@@ -174,6 +175,10 @@ export default function CreateCharacterModal({
   // --- Form Submit Handler ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!enforceActivityCheck(user, 'POST_CHARACTER')) {
+      return;
+    }
 
     if (!name.trim()) {
       toast.error("Vui lòng nhập tên Character.");

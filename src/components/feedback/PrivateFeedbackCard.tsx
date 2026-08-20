@@ -9,6 +9,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import UserBadge from '../UserBadge';
 import { FeedbackItem } from './PublicFeedbackCard';
 import { getValidAvatar, DEFAULT_AVATAR } from '../../lib/avatar';
+import { enforceActivityCheck } from '../../lib/restrictions';
 import toast from 'react-hot-toast';
 
 interface PrivateReply {
@@ -176,6 +177,10 @@ export default function PrivateFeedbackCard({
   // Send Reply (Recipient or Sender)
   const handleSendReply = async () => {
     if (!replyText.trim()) return;
+
+    if (!enforceActivityCheck(user, 'POST_FEEDBACK')) {
+      return;
+    }
 
     setSubmittingReply(true);
     try {

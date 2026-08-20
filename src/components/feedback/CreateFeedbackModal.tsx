@@ -7,6 +7,7 @@ import { collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore
 import { db } from '../../lib/firebase';
 import { useAuthStore } from '../../store/useAuthStore';
 import { getValidAvatar } from '../../lib/avatar';
+import { enforceActivityCheck } from '../../lib/restrictions';
 import toast from 'react-hot-toast';
 
 export interface UserOption {
@@ -160,6 +161,10 @@ export default function CreateFeedbackModal({
 
     if (!user) {
       toast.error("Vui lòng đăng nhập để gửi Feedback!");
+      return;
+    }
+
+    if (!enforceActivityCheck(user, 'POST_FEEDBACK')) {
       return;
     }
 

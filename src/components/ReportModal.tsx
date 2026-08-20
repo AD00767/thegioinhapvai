@@ -3,6 +3,7 @@ import { X, AlertTriangle, Upload, FileText, CheckCircle2 } from 'lucide-react';
 import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuthStore } from '../store/useAuthStore';
+import { enforceActivityCheck } from '../lib/restrictions';
 import toast from 'react-hot-toast';
 import CaptchaModal from './CaptchaModal';
 
@@ -46,6 +47,10 @@ export default function ReportModal({ isOpen, onClose, targetType, targetId, tar
     e.preventDefault();
     if (!user) {
       toast.error('Vui lòng đăng nhập để gửi báo cáo');
+      return;
+    }
+
+    if (!enforceActivityCheck(user, 'REPORT')) {
       return;
     }
 
