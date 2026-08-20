@@ -159,6 +159,7 @@ export default function App() {
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           <Route path="/creator/dashboard" element={<ProtectedRoute><CreatorDashboard /></ProtectedRoute>} />
           <Route path="/creator/:id" element={<CreatorDetail />} />
+          <Route path="/user/:id" element={<CreatorDetail />} />
           <Route path="/character/:id" element={<CharacterDetail />} />
           <Route path="/prompt/:id" element={<PromptDetail />} />
           <Route path="/admin" element={<ProtectedRoute><DashboardStats /></ProtectedRoute>} />

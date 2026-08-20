@@ -58,22 +58,25 @@ export default function CharacterDetail() {
       if (isNumeric) {
         const q = query(collection(db, 'characters'), where('numericId', '==', id), limit(1));
         const querySnap = await getDocs(q);
-        if (querySnap.empty) {
-          setError(true);
-          setLoading(false);
-          return;
+        if (!querySnap.empty) {
+          snap = querySnap.docs[0];
+          docId = snap.id;
         }
-        snap = querySnap.docs[0];
-        docId = snap.id;
-      } else {
+      }
+
+      if (!snap) {
         const docRef = doc(db, 'characters', id);
-        snap = await getDoc(docRef);
-        if (!snap.exists()) {
-          setError(true);
-          setLoading(false);
-          return;
+        const directSnap = await getDoc(docRef);
+        if (directSnap.exists()) {
+          snap = directSnap;
+          docId = directSnap.id;
         }
-        docId = snap.id;
+      }
+
+      if (!snap || !snap.exists()) {
+        setError(true);
+        setLoading(false);
+        return;
       }
 
       const data = snap.data();

@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
   Copy, Check, Bookmark, BookmarkCheck, ArrowLeft, Flag, AlertCircle, Eye, MessageSquare, Sparkles, Trash2, Edit3, Link as LinkIcon, Image as ImageIcon, FileText, ExternalLink, Share2 
 } from 'lucide-react';
-import { doc, getDoc, updateDoc, increment, collection, addDoc, query, where, getDocs, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, increment, collection, addDoc, query, where, getDocs, deleteDoc, serverTimestamp, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuthStore } from '../store/useAuthStore';
 import { PromptItem } from '../types';
@@ -51,10 +51,29 @@ export default function PromptDetail() {
     setError(false);
 
     try {
-      const docRef = doc(db, 'prompts', id);
-      const snap = await getDoc(docRef);
+      let snap;
+      let docId = id;
+      const isNumeric = /^[0-9]{9}$/.test(id);
 
-      if (!snap.exists()) {
+      if (isNumeric) {
+        const q = query(collection(db, 'prompts'), where('numericId', '==', id), limit(1));
+        const querySnap = await getDocs(q);
+        if (!querySnap.empty) {
+          snap = querySnap.docs[0];
+          docId = snap.id;
+        }
+      }
+
+      if (!snap) {
+        const docRef = doc(db, 'prompts', id);
+        const directSnap = await getDoc(docRef);
+        if (directSnap.exists()) {
+          snap = directSnap;
+          docId = directSnap.id;
+        }
+      }
+
+      if (!snap) {
         setError(true);
         return;
       }
@@ -65,22 +84,24 @@ export default function PromptDetail() {
         return;
       }
 
-      const item = { id: snap.id, ...data } as PromptItem;
+      const item = { id: docId, ...data } as PromptItem;
       setPrompt(item);
       setCopyCount(item.copyCount || 0);
       setSavesCount(item.savesCount || 0);
 
       // Requirement 18 & 19: View count with throttle
-      const storageKey = `vviewed_prompt_${id}`;
+      const storageKey = `vviewed_prompt_${docId}`;
       const lastViewed = localStorage.getItem(storageKey);
       const now = Date.now();
       const throttleTime = 5 * 60 * 1000; // 5 minutes
+
+      const targetDocRef = doc(db, 'prompts', docId);
 
       if (!lastViewed || (now - parseInt(lastViewed, 10)) > throttleTime) {
         setViewsCount((item.viewsCount || 0) + 1);
         localStorage.setItem(storageKey, now.toString());
         try {
-          await updateDoc(docRef, { viewsCount: increment(1) });
+          await updateDoc(targetDocRef, { viewsCount: increment(1) });
         } catch (e) {
           console.error("View count update error:", e);
         }

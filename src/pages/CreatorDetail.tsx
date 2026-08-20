@@ -4,7 +4,7 @@ import {
   Sparkles, UserCheck, UserPlus, Users, BookOpen, PenTool, ArrowLeft, Flag, AlertCircle, RefreshCw,
   Facebook, Instagram, Music, MessageSquare, Share2
 } from 'lucide-react';
-import { doc, getDoc, collection, query, where, getDocs, addDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, addDoc, deleteDoc, serverTimestamp, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuthStore } from '../store/useAuthStore';
 import { CreatorItem, CharacterItem, PromptItem } from '../types';
@@ -54,33 +54,60 @@ export default function CreatorDetail() {
     setError(false);
 
     try {
-      // 1. Fetch user doc
-      const userRef = doc(db, 'users', id);
-      const userSnap = await getDoc(userRef);
+      let userSnap;
+      let targetDocId = id;
+      const isNumeric = /^[0-9]{9}$/.test(id);
 
-      // Allow any user who is not deleted
-      if (!userSnap.exists()) {
+      // Try numericId lookup first if param is 9 digits
+      if (isNumeric) {
+        const q = query(collection(db, 'users'), where('numericId', '==', id), limit(1));
+        const querySnap = await getDocs(q);
+        if (!querySnap.empty) {
+          userSnap = querySnap.docs[0];
+          targetDocId = userSnap.id;
+        }
+      }
+
+      // Fallback to direct document ID lookup for backward compatibility
+      if (!userSnap) {
+        const userRef = doc(db, 'users', id);
+        const directSnap = await getDoc(userRef);
+        if (directSnap.exists()) {
+          userSnap = directSnap;
+          targetDocId = directSnap.id;
+        }
+      }
+
+      if (!userSnap) {
         setError(true);
         return;
       }
 
       const userData = userSnap.data();
-      if (userData.deletedAt) {
+
+      // Check deleted or locked state
+      if (userData.deletedAt || userData.isLocked) {
         setError(true);
         return;
       }
 
-      const cItem = { id: userSnap.id, ...userData } as CreatorItem;
+      // Admin and Moderator profiles are strictly non-public
+      if (userData.role === 'ADMIN' || userData.role === 'MODERATOR') {
+        setError(true);
+        return;
+      }
+
+      const cItem = { id: targetDocId, ...userData } as CreatorItem;
       setCreator(cItem);
 
       // Reconcile and get exact database follower count
-      const exactFollowerCount = await reconcileFollowerCount(id);
+      const exactFollowerCount = await reconcileFollowerCount(targetDocId);
       setFollowerCount(exactFollowerCount);
 
       document.title = `${cItem.displayName} - Creator Profile | Thế giới nhập vai_AD`;
 
-      // 2. Fetch Creator's characters
-      const qChar = query(collection(db, 'characters'), where('creatorId', '==', id));
+      // 2. Fetch Creator's characters using resolved docId
+      const qChar = query(collection(db, 'characters'), where('creatorId', '==', targetDocId));
       const snapChar = await getDocs(qChar);
       const charList: CharacterItem[] = [];
       let totalLikesReceived = 0;
@@ -118,8 +145,8 @@ export default function CreatorDetail() {
         viewsCount: totalViewsReceived
       } : null);
 
-      // 3. Fetch Creator's prompts
-      const qPrompt = query(collection(db, 'prompts'), where('authorId', '==', id));
+      // 3. Fetch Creator's prompts using resolved docId
+      const qPrompt = query(collection(db, 'prompts'), where('authorId', '==', targetDocId));
       const snapPrompt = await getDocs(qPrompt);
       const promptList: PromptItem[] = [];
       snapPrompt.docs.forEach(d => {
@@ -142,13 +169,13 @@ export default function CreatorDetail() {
     }
   };
 
-  // Check follow status
+  // Check follow status using resolved creator.id
   useEffect(() => {
-    if (!user?.id || !id || user.id === id) return;
+    if (!user?.id || !creator?.id || user.id === creator.id) return;
 
     const checkFollow = async () => {
       try {
-        const hasFollow = await checkIsFollowing(user.id, id);
+        const hasFollow = await checkIsFollowing(user.id, creator.id);
         setIsFollowing(hasFollow);
       } catch (e) {
         console.error("Check follow error:", e);
@@ -156,7 +183,7 @@ export default function CreatorDetail() {
     };
 
     checkFollow();
-  }, [user?.id, id]);
+  }, [user?.id, creator?.id]);
 
   useEffect(() => {
     fetchCreatorData();
