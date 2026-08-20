@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db, syncAuthUser } from './lib/firebase';
-import { doc, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { useAuthStore } from './store/useAuthStore';
 import toast, { Toaster } from 'react-hot-toast';
@@ -138,21 +138,50 @@ export default function App() {
               const userSnap = await getDoc(userRef);
               if (userSnap.exists()) {
                 const userData = userSnap.data();
-                if (!userData.isLocked) {
-                  const simulatedUser: any = {
-                    uid: parsed.id,
-                    email: userData.email,
-                    displayName: userData.displayName,
-                    photoURL: userData.avatar
-                  };
-                  if (userData.themePreference) {
-                    applyTheme(userData.themePreference);
-                  }
-                  setAuth(simulatedUser, { id: parsed.id, ...userData });
-                } else {
-                  localStorage.removeItem('custom_auth_user');
-                  setAuth(null, null);
+                // Check if expired lock
+                if (userData.isLocked && userData.lockExpiresAt && new Date(userData.lockExpiresAt).getTime() < Date.now()) {
+                  await updateDoc(userRef, { isLocked: false, lockReason: null, lockExpiresAt: null, appealStatus: null }).catch(() => {});
+                  userData.isLocked = false;
                 }
+
+                // If user is locked, query latest appeal
+                if (userData.isLocked) {
+                  try {
+                    const appealQ = query(
+                      collection(db, 'appeals'),
+                      where('userId', '==', parsed.id),
+                      where('targetType', '==', 'ACCOUNT')
+                    );
+                    const appealSnap = await getDocs(appealQ);
+                    if (!appealSnap.empty) {
+                      const appealDocs = appealSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+                      appealDocs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                      const latestAppeal = appealDocs[0];
+                      if (latestAppeal.status === 'APPROVED') {
+                        await updateDoc(userRef, { isLocked: false, lockReason: null, lockExpiresAt: null, appealStatus: 'APPROVED' }).catch(() => {});
+                        userData.isLocked = false;
+                        userData.appealStatus = 'APPROVED';
+                      } else {
+                        userData.appealStatus = latestAppeal.status || 'PENDING';
+                      }
+                    } else {
+                      userData.appealStatus = 'NONE';
+                    }
+                  } catch (appealErr) {
+                    console.warn("Check appeal during custom session restoration error:", appealErr);
+                  }
+                }
+
+                const simulatedUser: any = {
+                  uid: parsed.id,
+                  email: userData.email,
+                  displayName: userData.displayName,
+                  photoURL: userData.avatar
+                };
+                if (userData.themePreference) {
+                  applyTheme(userData.themePreference);
+                }
+                setAuth(simulatedUser, { id: parsed.id, ...userData });
               } else {
                 setAuth({
                   uid: parsed.id,

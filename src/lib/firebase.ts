@@ -80,12 +80,44 @@ export const syncAuthUser = async (firebaseUser: any, customBackendData?: any) =
 
     if (userSnap.exists()) {
       let userData = userSnap.data();
+
+      // Auto-unlock if lock expired
+      if (userData.isLocked && userData.lockExpiresAt && new Date(userData.lockExpiresAt).getTime() < Date.now()) {
+        await updateDoc(userRef, { isLocked: false, lockReason: null, lockExpiresAt: null, appealStatus: null }).catch(() => {});
+        userData.isLocked = false;
+        userData.lockReason = null;
+        userData.lockExpiresAt = null;
+        userData.appealStatus = null;
+      }
+
+      // If user is locked, query latest appeal directly from Firestore to ensure exact status
       if (userData.isLocked) {
-        await signOut(auth).catch(() => {});
-        localStorage.removeItem('custom_auth_user');
-        useAuthStore.getState().setAuth(null, null);
-        useAuthStore.getState().setInitialized(true);
-        throw new Error("Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.");
+        try {
+          const appealQ = query(
+            collection(db, 'appeals'),
+            where('userId', '==', firebaseUser.uid),
+            where('targetType', '==', 'ACCOUNT')
+          );
+          const appealSnap = await getDocs(appealQ);
+          if (!appealSnap.empty) {
+            const appealDocs = appealSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+            appealDocs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            const latestAppeal = appealDocs[0];
+            if (latestAppeal.status === 'APPROVED') {
+              await updateDoc(userRef, { isLocked: false, lockReason: null, lockExpiresAt: null, appealStatus: 'APPROVED' }).catch(() => {});
+              userData.isLocked = false;
+              userData.lockReason = null;
+              userData.lockExpiresAt = null;
+              userData.appealStatus = 'APPROVED';
+            } else {
+              userData.appealStatus = latestAppeal.status || 'PENDING';
+            }
+          } else {
+            userData.appealStatus = 'NONE';
+          }
+        } catch (appealErr) {
+          console.warn("Check latest appeal during syncAuthUser error:", appealErr);
+        }
       }
 
       // Auto-promote if no admin exists
@@ -217,8 +249,38 @@ export const loginWithEmail = async (email: string, password: string) => {
         const userDoc = userSnap.docs[0];
         const userData = userDoc.data();
 
+        // Check if locked and expired
+        if (userData.isLocked && userData.lockExpiresAt && new Date(userData.lockExpiresAt).getTime() < Date.now()) {
+          await updateDoc(userDoc.ref, { isLocked: false, lockReason: null, lockExpiresAt: null, appealStatus: null }).catch(() => {});
+          userData.isLocked = false;
+        }
+
+        // If user is locked, query latest appeal
         if (userData.isLocked) {
-          throw new Error("Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.");
+          try {
+            const appealQ = query(
+              collection(db, 'appeals'),
+              where('userId', '==', userDoc.id),
+              where('targetType', '==', 'ACCOUNT')
+            );
+            const appealSnap = await getDocs(appealQ);
+            if (!appealSnap.empty) {
+              const appealDocs = appealSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+              appealDocs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+              const latestAppeal = appealDocs[0];
+              if (latestAppeal.status === 'APPROVED') {
+                await updateDoc(userDoc.ref, { isLocked: false, lockReason: null, lockExpiresAt: null, appealStatus: 'APPROVED' }).catch(() => {});
+                userData.isLocked = false;
+                userData.appealStatus = 'APPROVED';
+              } else {
+                userData.appealStatus = latestAppeal.status || 'PENDING';
+              }
+            } else {
+              userData.appealStatus = 'NONE';
+            }
+          } catch (appealErr) {
+            console.warn("Check appeal during fallback login error:", appealErr);
+          }
         }
 
         // Verify password hash
