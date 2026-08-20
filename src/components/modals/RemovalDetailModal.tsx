@@ -100,8 +100,9 @@ export default function RemovalDetailModal({
       );
       const appealSnap = await getDocs(appealsQuery);
       if (!appealSnap.empty) {
-        const firstDoc = appealSnap.docs[0];
-        setAppeal({ id: firstDoc.id, ...firstDoc.data() } as AppealItem);
+        const docs = appealSnap.docs.map(d => ({ id: d.id, ...d.data() } as AppealItem));
+        docs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setAppeal(docs[0]);
       } else {
         setAppeal(null);
       }
@@ -178,7 +179,7 @@ export default function RemovalDetailModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
       <div className="bg-white dark:bg-neutral-900 rounded-[2.5rem] w-full max-w-xl overflow-hidden shadow-2xl border border-neutral-200 dark:border-neutral-800 relative flex flex-col max-h-[90vh]">
         
         {/* Header */}
@@ -275,12 +276,16 @@ export default function RemovalDetailModal({
               {/* Submitted Appeal Detail view if exists */}
               {appeal && (
                 <div className="bg-amber-500/5 border border-amber-500/20 rounded-3xl p-6 space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
                     <h4 className="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-2">
                       <FileText className="w-4 h-4" /> Đơn kháng nghị của bạn
                     </h4>
-                    <span className="text-[10px] text-neutral-400 font-medium">
-                      {new Date(appeal.createdAt).toLocaleString('vi-VN')}
+                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                      appeal.status === 'PENDING' ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30' :
+                      appeal.status === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30' :
+                      'bg-red-500/20 text-red-600 dark:text-red-400 border border-red-500/30'
+                    }`}>
+                      {appeal.status === 'PENDING' ? 'Đang Chờ Xem Xét' : appeal.status === 'APPROVED' ? 'Đã Chấp Nhận' : 'Đã Từ Chối'}
                     </span>
                   </div>
                   <div className="p-4 bg-white dark:bg-neutral-900 rounded-2xl text-xs text-neutral-700 dark:text-neutral-300 space-y-2 border border-neutral-200 dark:border-neutral-800">
@@ -312,21 +317,14 @@ export default function RemovalDetailModal({
               )}
 
               {/* Appeal Form Section */}
-              {(!appeal || (appeal.status === 'REJECTED' && showAppealForm)) && (
+              {!appeal && (
                 <div className="space-y-4 pt-2">
-                  {!showAppealForm && !appeal ? (
+                  {!showAppealForm ? (
                     <button
                       onClick={() => setShowAppealForm(true)}
                       className="w-full py-4 bg-black dark:bg-white text-white dark:text-black font-black text-xs uppercase tracking-widest rounded-2xl hover:scale-[1.01] active:scale-95 transition-all shadow-xl flex items-center justify-center gap-2"
                     >
                       <Send className="w-4 h-4" /> Gửi Đơn Kháng Nghị
-                    </button>
-                  ) : !showAppealForm && appeal?.status === 'REJECTED' ? (
-                    <button
-                      onClick={() => setShowAppealForm(true)}
-                      className="w-full py-3.5 bg-neutral-800 text-white font-bold text-xs rounded-2xl hover:bg-neutral-700 transition-colors flex items-center justify-center gap-2"
-                    >
-                      <Send className="w-4 h-4" /> Gửi Lại Đơn Kháng Nghị
                     </button>
                   ) : (
                     <form onSubmit={handleSubmitAppeal} className="space-y-4 animate-in fade-in duration-300 bg-neutral-50 dark:bg-neutral-800/20 p-6 rounded-3xl border border-neutral-200 dark:border-neutral-800">

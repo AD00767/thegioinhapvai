@@ -1,13 +1,43 @@
-import React, { useState } from 'react';
-import { Lock, AlertOctagon, LogOut, FileText, Send, ShieldAlert } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Lock, LogOut, Send, Clock, XCircle } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
-import { auth } from '../../lib/firebase';
+import { auth, db } from '../../lib/firebase';
 import { signOut } from 'firebase/auth';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import RemovalDetailModal from './RemovalDetailModal';
 
 export default function SuspendedAccountModal() {
   const { user, setAuth } = useAuthStore();
   const [showAppealModal, setShowAppealModal] = useState(false);
+  const [appealStatus, setAppealStatus] = useState<'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED'>('NONE');
+
+  useEffect(() => {
+    if (user?.id && user.isLocked) {
+      checkUserAppeal();
+    }
+  }, [user?.id, user?.isLocked, user?.appealStatus, showAppealModal]);
+
+  const checkUserAppeal = async () => {
+    if (!user?.id) return;
+    try {
+      const q = query(
+        collection(db, 'appeals'),
+        where('userId', '==', user.id),
+        where('targetType', '==', 'ACCOUNT')
+      );
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const docs = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+        docs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setAppealStatus(docs[0].status || 'PENDING');
+      } else {
+        setAppealStatus(user.appealStatus || 'NONE');
+      }
+    } catch (err) {
+      console.error("Error checking user appeal status:", err);
+      setAppealStatus(user?.appealStatus || 'NONE');
+    }
+  };
 
   if (!user || !user.isLocked) return null;
 
@@ -71,13 +101,36 @@ export default function SuspendedAccountModal() {
           {/* Actions */}
           <div className="space-y-3 pt-2">
             <button
+              type="button"
               onClick={() => setShowAppealModal(true)}
-              className="w-full py-4 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs uppercase tracking-widest rounded-2xl transition-all shadow-xl shadow-amber-500/10 flex items-center justify-center gap-2"
+              className={`w-full py-4 font-black text-xs uppercase tracking-widest rounded-2xl transition-all shadow-xl flex items-center justify-center gap-2 ${
+                appealStatus === 'PENDING'
+                  ? 'bg-amber-400 text-black shadow-amber-500/20'
+                  : appealStatus === 'REJECTED'
+                  ? 'bg-neutral-800 text-neutral-300 dark:bg-neutral-800 hover:bg-neutral-700'
+                  : 'bg-amber-500 hover:bg-amber-400 text-black shadow-amber-500/10'
+              }`}
             >
-              <Send className="w-4 h-4" /> Xem Chi Tiết & Gửi Kháng Nghị
+              {appealStatus === 'PENDING' ? (
+                <>
+                  <Clock className="w-4 h-4 animate-spin text-black" />
+                  <span>Đang Chờ Xem Xét Kháng Nghị</span>
+                </>
+              ) : appealStatus === 'REJECTED' ? (
+                <>
+                  <XCircle className="w-4 h-4 text-red-400" />
+                  <span>Kháng Nghị Bị Từ Chối - Xem Chi Tiết</span>
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4" />
+                  <span>Xem Chi Tiết & Gửi Kháng Nghị</span>
+                </>
+              )}
             </button>
 
             <button
+              type="button"
               onClick={handleLogout}
               className="w-full py-3.5 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 font-black text-xs uppercase tracking-widest rounded-2xl transition-colors flex items-center justify-center gap-2"
             >
