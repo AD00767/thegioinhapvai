@@ -150,6 +150,7 @@ export default function UserManagement() {
         }
         case 'RESTORE': {
           const nowIso = new Date().toISOString();
+          const restoreReasonText = reason.trim() || 'Tài khoản đã được khôi phục hoạt động bởi Quản trị viên.';
           await updateDoc(userRef, {
             isDeleted: false,
             status: 'ACTIVE',
@@ -168,12 +169,12 @@ export default function UserManagement() {
             recipientId: selectedUser.id,
             type: 'ACCOUNT_RESTORED',
             title: 'Tài khoản đã được khôi phục',
-            message: `Tài khoản của bạn đã được Quản trị viên khôi phục hoạt động bình thường.`,
+            message: `Tài khoản của bạn đã được Quản trị viên khôi phục hoạt động bình thường.${reason.trim() ? ` Lý do: ${reason.trim()}` : ''}`,
             read: false,
             createdAt: nowIso
           });
 
-          await logAction('RESTORE_USER', selectedUser.id, `Khôi phục tài khoản hoạt động: ${selectedUser.displayName}`);
+          await logAction('RESTORE_USER', selectedUser.id, `Khôi phục tài khoản hoạt động: ${selectedUser.displayName} (${restoreReasonText})`);
           toast.success("Đã khôi phục tài khoản thành công.");
           break;
         }
@@ -745,20 +746,28 @@ export default function UserManagement() {
                       </div>
                     )}
 
-                    {actionType !== 'RESTORE' && (
-                      <div className="space-y-2">
-                        <label className="text-xs font-black uppercase tracking-widest text-neutral-500">
-                          {actionType === 'DELETE' ? 'Lý do xóa / vô hiệu hóa tài khoản' : 'Lý do cụ thể'}
-                        </label>
-                        <textarea 
-                          rows={3}
-                          value={reason}
-                          onChange={(e) => setReason(e.target.value)}
-                          placeholder={actionType === 'DELETE' ? 'Nhập lý do xóa/vô hiệu hóa tài khoản (sẽ hiển thị cho người dùng)...' : 'Nhập lý do chi tiết...'}
-                          className="w-full px-4 py-3 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-800 rounded-2xl text-sm focus:outline-none resize-none"
-                        />
-                      </div>
-                    )}
+                    <div className="space-y-2">
+                      <label className="text-xs font-black uppercase tracking-widest text-neutral-500">
+                        {actionType === 'DELETE' 
+                          ? 'Lý do xóa / vô hiệu hóa tài khoản' 
+                          : actionType === 'RESTORE'
+                          ? 'Lý do khôi phục tài khoản'
+                          : 'Lý do cụ thể'}
+                      </label>
+                      <textarea 
+                        rows={3}
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                        placeholder={
+                          actionType === 'DELETE' 
+                            ? 'Nhập lý do xóa/vô hiệu hóa tài khoản (sẽ hiển thị cho người dùng)...' 
+                            : actionType === 'RESTORE'
+                            ? 'Nhập lý do khôi phục tài khoản (sẽ gửi thông báo cho người dùng)...'
+                            : 'Nhập lý do chi tiết...'
+                        }
+                        className="w-full px-4 py-3 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-800 rounded-2xl text-sm focus:outline-none resize-none"
+                      />
+                    </div>
 
                     {actionType === 'DELETE' && (
                       <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-2xl">

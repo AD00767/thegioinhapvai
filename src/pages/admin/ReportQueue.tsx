@@ -25,9 +25,101 @@ export default function ReportQueue() {
   const [note, setNote] = useState('');
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
+  // Target content details state (for author info and parent links)
+  const [targetContentData, setTargetContentData] = useState<{
+    id?: string;
+    authorId?: string;
+    authorName?: string;
+    content?: string;
+    parentTargetId?: string;
+    parentTargetType?: string;
+    notFound?: boolean;
+  } | null>(null);
+  const [loadingTargetContent, setLoadingTargetContent] = useState<boolean>(false);
+
   useEffect(() => {
     fetchReports();
   }, [filter]);
+
+  // Fetch target content details whenever selectedReport changes
+  useEffect(() => {
+    if (!selectedReport) {
+      setTargetContentData(null);
+      return;
+    }
+
+    const fetchTargetContent = async () => {
+      setLoadingTargetContent(true);
+      try {
+        if (selectedReport.targetType === 'COMMENT') {
+          const commentRef = doc(db, 'comments', selectedReport.targetId);
+          const commentSnap = await getDoc(commentRef);
+          if (commentSnap.exists()) {
+            const cData = commentSnap.data();
+            setTargetContentData({
+              id: commentSnap.id,
+              authorId: cData.authorId || cData.userId,
+              authorName: cData.authorName || 'Người dùng',
+              content: cData.content,
+              parentTargetId: cData.targetId,
+              parentTargetType: cData.targetType
+            });
+          } else {
+            setTargetContentData({ notFound: true });
+          }
+        } else if (selectedReport.targetType === 'CHARACTER') {
+          const charRef = doc(db, 'characters', selectedReport.targetId);
+          const charSnap = await getDoc(charRef);
+          if (charSnap.exists()) {
+            const d = charSnap.data();
+            setTargetContentData({
+              id: charSnap.id,
+              authorId: d.creatorId || d.userId,
+              authorName: d.creatorName || d.name,
+              content: d.slogan || d.name
+            });
+          }
+        } else if (selectedReport.targetType === 'PROMPT') {
+          const promptRef = doc(db, 'prompts', selectedReport.targetId);
+          const promptSnap = await getDoc(promptRef);
+          if (promptSnap.exists()) {
+            const d = promptSnap.data();
+            setTargetContentData({
+              id: promptSnap.id,
+              authorId: d.authorId || d.userId || d.creatorId,
+              authorName: d.authorName || d.name,
+              content: d.name
+            });
+          }
+        } else if (selectedReport.targetType === 'FEEDBACK') {
+          const fbRef = doc(db, 'feedbacks', selectedReport.targetId);
+          const fbSnap = await getDoc(fbRef);
+          if (fbSnap.exists()) {
+            const d = fbSnap.data();
+            setTargetContentData({
+              id: fbSnap.id,
+              authorId: d.senderId || d.authorId || d.userId,
+              authorName: d.senderName || 'Người dùng',
+              content: d.content || d.title
+            });
+          }
+        } else if (selectedReport.targetType === 'CREATOR') {
+          setTargetContentData({
+            id: selectedReport.targetId,
+            authorId: selectedReport.targetId,
+            authorName: selectedReport.targetName || 'Creator',
+            content: selectedReport.targetName
+          });
+        }
+      } catch (e) {
+        console.error("Error fetching target content:", e);
+      } finally {
+        setLoadingTargetContent(false);
+      }
+    };
+
+    fetchTargetContent();
+  }, [selectedReport?.id, selectedReport?.targetId, selectedReport?.targetType]);
 
   const fetchReports = async () => {
     setLoading(true);
@@ -145,6 +237,25 @@ export default function ReportQueue() {
         reason: note,
         createdAt: new Date().toISOString()
       });
+
+      // Send notification to content owner if resolved
+      if (status === 'RESOLVED' && targetContentData?.authorId) {
+        try {
+          await addDoc(collection(db, 'notifications'), {
+            userId: targetContentData.authorId,
+            recipientId: targetContentData.authorId,
+            type: 'REPORT_RESOLVED',
+            title: 'Xử lý báo cáo nội dung',
+            message: `Báo cáo liên quan đến nội dung ${selectedReport.targetType} của bạn đã được Ban Quản Trị xem xét và xử lý.${note ? ` Ghi chú: ${note}` : ''}`,
+            targetType: selectedReport.targetType,
+            targetId: selectedReport.targetId,
+            read: false,
+            createdAt: new Date().toISOString()
+          });
+        } catch (e) {
+          console.error("Failed to send notification to content owner:", e);
+        }
+      }
 
       toast.success(`Đã xử lý báo cáo: ${status}`);
       setSelectedReport(null);
@@ -337,26 +448,92 @@ export default function ReportQueue() {
 
                 <div className="space-y-6">
                   <div className="space-y-2">
-                    <p className="text-[10px] opacity-50 font-black uppercase tracking-widest">Loại Vi Phạm</p>
-                    <p className="font-black text-lg">{selectedReport.reason}</p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <p className="text-[10px] opacity-50 font-black uppercase tracking-widest">Mô Tả Từ Người Dùng</p>
-                    <div className="p-4 bg-white/10 dark:bg-black/10 rounded-2xl text-sm italic leading-relaxed">
-                      {selectedReport.description || "Không có mô tả chi tiết."}
+                    <p className="text-[10px] opacity-50 font-black uppercase tracking-widest">Thông Tin Người Liên Quan</p>
+                    <div className="p-4 bg-white/10 dark:bg-black/10 rounded-2xl text-xs space-y-2">
+                      <div>
+                        <span className="opacity-60 block font-bold">Người gửi báo cáo (Reporter ID):</span>
+                        <span className="font-mono font-bold select-all text-amber-400 dark:text-amber-600">{selectedReport.reporterId}</span>
+                        <span className="opacity-70 ml-2">({selectedReport.reporterName})</span>
+                      </div>
+                      <div className="pt-2 border-t border-white/10 dark:border-black/10">
+                        <span className="opacity-60 block font-bold">Người tạo nội dung bị báo cáo (ID người gửi):</span>
+                        {loadingTargetContent ? (
+                          <span className="opacity-50 italic">Đang tải thông tin...</span>
+                        ) : targetContentData?.authorId ? (
+                          <div>
+                            <span className="font-mono font-bold select-all text-emerald-400 dark:text-emerald-600">{targetContentData.authorId}</span>
+                            {targetContentData.authorName && (
+                              <span className="opacity-70 ml-2">({targetContentData.authorName})</span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="font-mono font-bold select-all opacity-80">{selectedReport.targetId}</span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <p className="text-[10px] opacity-50 font-black uppercase tracking-widest">Link Nội Dung</p>
-                    <Link 
-                      to={`/${selectedReport.targetType.toLowerCase()}/${selectedReport.targetId}`} 
-                      className="flex items-center justify-between p-4 bg-white/10 dark:bg-black/10 rounded-2xl hover:bg-white/20 dark:hover:bg-black/20 transition-all group"
-                    >
-                      <span className="text-xs font-bold truncate pr-4">Mở trang {selectedReport.targetType}</span>
-                      <ExternalLink className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                    </Link>
+                    <p className="text-[10px] opacity-50 font-black uppercase tracking-widest">Loại Vi Phạm & Mô Tả</p>
+                    <div className="p-4 bg-white/10 dark:bg-black/10 rounded-2xl text-xs space-y-2">
+                      <p className="font-black text-sm text-red-400 dark:text-red-600 uppercase">{selectedReport.reason}</p>
+                      <p className="italic leading-relaxed opacity-90">{selectedReport.description || "Không có mô tả chi tiết."}</p>
+                    </div>
+                  </div>
+
+                  {selectedReport.targetType === 'COMMENT' && targetContentData?.content && (
+                    <div className="space-y-2">
+                      <p className="text-[10px] opacity-50 font-black uppercase tracking-widest">Nội Dung Bình Luận Bị Báo Cáo</p>
+                      <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-xs italic font-medium leading-relaxed">
+                        "{targetContentData.content}"
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <p className="text-[10px] opacity-50 font-black uppercase tracking-widest">Link Nội Dung Kháng Nghị / Xem Chi Tiết</p>
+                    {(() => {
+                      let targetUrl = '#';
+                      let targetLabel = `Mở trang ${selectedReport.targetType}`;
+
+                      if (selectedReport.targetType === 'COMMENT') {
+                        if (targetContentData?.parentTargetType === 'CHARACTER') {
+                          targetUrl = `/character/${targetContentData.parentTargetId}`;
+                          targetLabel = 'Mở Character chứa Bình Luận này';
+                        } else if (targetContentData?.parentTargetType === 'PROMPT') {
+                          targetUrl = `/prompt/${targetContentData.parentTargetId}`;
+                          targetLabel = 'Mở Prompt chứa Bình Luận này';
+                        } else if (targetContentData?.parentTargetType === 'FEEDBACK') {
+                          targetUrl = `/feedbacks`;
+                          targetLabel = 'Mở Danh sách Feedback chứa Bình Luận này';
+                        } else {
+                          targetUrl = `/explore`;
+                          targetLabel = 'Mở trang Khám Phá chứa Nội Dung này';
+                        }
+                      } else if (selectedReport.targetType === 'CHARACTER') {
+                        targetUrl = `/character/${selectedReport.targetId}`;
+                        targetLabel = 'Mở trang Character';
+                      } else if (selectedReport.targetType === 'PROMPT') {
+                        targetUrl = `/prompt/${selectedReport.targetId}`;
+                        targetLabel = 'Mở trang Prompt';
+                      } else if (selectedReport.targetType === 'FEEDBACK') {
+                        targetUrl = `/feedbacks`;
+                        targetLabel = 'Mở trang Feedback';
+                      } else if (selectedReport.targetType === 'CREATOR') {
+                        targetUrl = `/creator/${selectedReport.targetId}`;
+                        targetLabel = 'Mở trang Hồ sơ Creator';
+                      }
+
+                      return (
+                        <Link 
+                          to={targetUrl} 
+                          className="flex items-center justify-between p-4 bg-white/10 dark:bg-black/10 rounded-2xl hover:bg-white/20 dark:hover:bg-black/20 transition-all group"
+                        >
+                          <span className="text-xs font-bold truncate pr-4">{targetLabel}</span>
+                          <ExternalLink className="w-4 h-4 group-hover:scale-110 transition-transform shrink-0" />
+                        </Link>
+                      );
+                    })()}
                   </div>
 
                   {filter === 'PENDING' && (
