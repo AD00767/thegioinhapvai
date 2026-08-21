@@ -6,6 +6,7 @@ import {
 import { doc, getDoc, updateDoc, increment, collection, addDoc, query, where, getDocs, deleteDoc, serverTimestamp, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuthStore } from '../store/useAuthStore';
+import { useUserInteractions } from '../context/UserInteractionsContext';
 import { CharacterItem } from '../types';
 import { useSeo } from '../hooks/useSeo';
 import CommentSection from '../components/comments/CommentSection';
@@ -163,35 +164,18 @@ export default function CharacterDetail() {
     }
   };
 
-  // Check initial likes & bookmarks
+  const { isCharacterLiked, isCharacterBookmarked, setLikedState, setBookmarkState } = useUserInteractions();
+
+  // Sync initial likes & bookmarks from UserInteractionsContext
   useEffect(() => {
-    if (!user?.id || !character?.id) return;
-
-    const checkInteractions = async () => {
-      try {
-        const qLike = query(
-          collection(db, 'character_likes'),
-          where('userId', '==', user.id),
-          where('characterId', '==', character.id)
-        );
-        const snapLike = await getDocs(qLike);
-        setIsLiked(!snapLike.empty);
-
-        const qBook = query(
-          collection(db, 'bookmarks'),
-          where('userId', '==', user.id),
-          where('targetId', '==', character.id),
-          where('targetType', '==', 'CHARACTER')
-        );
-        const snapBook = await getDocs(qBook);
-        setIsBookmarked(!snapBook.empty);
-      } catch (e) {
-        console.error("Check interaction error:", e);
-      }
-    };
-
-    checkInteractions();
-  }, [user?.id, character?.id]);
+    if (!user?.id || !character?.id) {
+      setIsLiked(false);
+      setIsBookmarked(false);
+      return;
+    }
+    setIsLiked(isCharacterLiked(character.id));
+    setIsBookmarked(isCharacterBookmarked(character.id));
+  }, [user?.id, character?.id, isCharacterLiked, isCharacterBookmarked]);
 
   useEffect(() => {
     fetchCharacter();

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   PenTool, Search, Plus, Sparkles, Filter, RefreshCw
 } from 'lucide-react';
-import { collection, query, getDocs, orderBy, where, doc, deleteDoc } from 'firebase/firestore';
+import { collection, query, getDocs, orderBy, where, doc, deleteDoc, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuthStore } from '../store/useAuthStore';
 import { useSeo } from '../hooks/useSeo';
@@ -49,7 +49,7 @@ export default function Prompts() {
   const fetchPrompts = async () => {
     setLoading(true);
     try {
-      const q = query(collection(db, 'prompts'), orderBy('createdAt', 'desc'));
+      const q = query(collection(db, 'prompts'), orderBy('createdAt', 'desc'), limit(60));
       const snap = await getDocs(q);
       const list: PromptItem[] = [];
 

@@ -44,6 +44,7 @@ import PromptDetail from './pages/PromptDetail';
 import { initThemeAndFont, applyTheme } from './lib/themeFont';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import SuspendedAccountModal from './components/modals/SuspendedAccountModal';
+import { UserInteractionsProvider } from './context/UserInteractionsContext';
 
 function RootGate() {
   const { user, isInitialized } = useAuthStore();
@@ -237,11 +238,12 @@ export default function App() {
   }, []);
 
   return (
-    <BrowserRouter>
-      <UserRealtimeSync />
-      <SuspendedAccountModal />
-      <Toaster position="top-center" />
-      <Routes>
+    <UserInteractionsProvider>
+      <BrowserRouter>
+        <UserRealtimeSync />
+        <SuspendedAccountModal />
+        <Toaster position="top-center" />
+        <Routes>
         <Route path="/welcome" element={<Welcome />} />
         <Route path="/" element={<RootGate />} />
         
@@ -281,6 +283,7 @@ export default function App() {
         </Route>
       </Routes>
     </BrowserRouter>
+  </UserInteractionsProvider>
   );
 }
 

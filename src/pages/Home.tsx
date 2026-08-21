@@ -56,9 +56,10 @@ export default function Home() {
     let loadedPrompts: PromptItem[] = [];
 
     try {
-      // 1. Fetch Characters
+      // 1. Fetch Characters (limit to 30 for Home)
       try {
-        const charSnap = await getDocs(collection(db, "characters"));
+        const charQuery = query(collection(db, "characters"), limit(30));
+        const charSnap = await getDocs(charQuery);
         loadedChars = charSnap.docs
           .map(doc => ({ id: doc.id, ...doc.data() } as CharacterItem))
           .filter((c: any) => !c.deletedAt && !c.isHidden);
@@ -73,9 +74,10 @@ export default function Home() {
         console.error("Error fetching characters:", e);
       }
 
-      // 2. Fetch Prompts
+      // 2. Fetch Prompts (limit to 30 for Home)
       try {
-        const promptSnap = await getDocs(collection(db, "prompts"));
+        const promptQuery = query(collection(db, "prompts"), limit(30));
+        const promptSnap = await getDocs(promptQuery);
         loadedPrompts = promptSnap.docs
           .map(doc => ({ id: doc.id, ...doc.data() } as PromptItem))
           .filter((p: any) => !p.deletedAt && !p.isHidden);
@@ -90,12 +92,13 @@ export default function Home() {
         console.error("Error fetching prompts:", e);
       }
 
-      // 3. Fetch Top Creators
+      // 3. Fetch Top Creators (limit to 30 creators for Home)
       try {
-        const userSnap = await getDocs(collection(db, "users"));
+        const creatorQuery = query(collection(db, "users"), where("creatorStatus", "==", true), limit(30));
+        const userSnap = await getDocs(creatorQuery);
         const rawCreators: CreatorItem[] = userSnap.docs
           .map(doc => ({ id: doc.id, ...doc.data() } as CreatorItem))
-          .filter((u: any) => u.creatorStatus === true && !u.deletedAt && !u.isHidden && !u.isLocked);
+          .filter((u: any) => !u.deletedAt && !u.isHidden && !u.isLocked);
 
         const sortedCreators = [...rawCreators].sort((a, b) => {
           const scoreA = (a.followerCount || 0) * 5 + (a.characterCount || 0);

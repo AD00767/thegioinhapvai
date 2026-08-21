@@ -8,6 +8,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuthStore } from '../store/useAuthStore';
+import { useUserInteractions } from '../context/UserInteractionsContext';
 import { PromptItem } from '../types';
 import CommentSection from './comments/CommentSection';
 import ReportModal from './ReportModal';
@@ -39,26 +40,16 @@ export default function PromptCard({ prompt, onEdit, onDelete, onPin, isOwner }:
   const [isReportOpen, setIsReportOpen] = useState(false);
 
   const isPinned = prompt.pinned || false;
+  const { isPromptBookmarked, setBookmarkState } = useUserInteractions();
 
-  // Check initial bookmark status for current user
+  // Sync initial bookmark status from context without sending per-card queries
   useEffect(() => {
-    if (!user?.id || !prompt.id) return;
-    const checkBookmark = async () => {
-      try {
-        const q = query(
-          collection(db, 'bookmarks'),
-          where('userId', '==', user.id),
-          where('targetId', '==', prompt.id),
-          where('targetType', '==', 'PROMPT')
-        );
-        const snap = await getDocs(q);
-        setIsBookmarked(!snap.empty);
-      } catch (e) {
-        console.error("Check bookmark error:", e);
-      }
-    };
-    checkBookmark();
-  }, [user?.id, prompt.id]);
+    if (!user?.id || !prompt.id) {
+      setIsBookmarked(false);
+      return;
+    }
+    setIsBookmarked(isPromptBookmarked(prompt.id));
+  }, [user?.id, prompt.id, isPromptBookmarked]);
 
   // Quick Copy Handler ("Sao chép nhanh")
   const handleQuickCopy = async () => {
@@ -109,6 +100,7 @@ export default function PromptCard({ prompt, onEdit, onDelete, onPin, isOwner }:
           savesCount: increment(-1)
         });
         setIsBookmarked(false);
+        setBookmarkState(prompt.id, 'PROMPT', false);
         setSavesCount(prev => Math.max(0, prev - 1));
         toast.success("Đã bỏ lưu Prompt.");
       } else {
@@ -123,6 +115,7 @@ export default function PromptCard({ prompt, onEdit, onDelete, onPin, isOwner }:
           savesCount: increment(1)
         });
         setIsBookmarked(true);
+        setBookmarkState(prompt.id, 'PROMPT', true);
         setSavesCount(prev => prev + 1);
         toast.success("Đã lưu Prompt vào bộ sưu tập!");
 

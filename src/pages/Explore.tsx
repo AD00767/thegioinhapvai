@@ -3,7 +3,7 @@ import {
   Compass, Sparkles, User as UserIcon, PenTool, BookOpen, 
   Search, Filter, Flame, Clock, Star, ArrowRight, Tag as TagIcon, RefreshCw, X, SlidersHorizontal
 } from 'lucide-react';
-import { collection, getDocs, doc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, deleteDoc, query, where, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { CharacterItem, PromptItem, CreatorItem } from '../types';
 import CharacterCard from '../components/CharacterCard';
@@ -56,8 +56,9 @@ export default function Explore() {
   const loadData = async () => {
     setLoading(true);
     try {
-      // 1. Fetch Characters
-      const charsSnap = await getDocs(collection(db, 'characters'));
+      // 1. Fetch Characters (limit 50)
+      const charsQuery = query(collection(db, 'characters'), limit(50));
+      const charsSnap = await getDocs(charsQuery);
       const rawChars: CharacterItem[] = charsSnap.docs
         .map(d => ({ id: d.id, ...d.data() } as CharacterItem))
         .filter((c: any) => !c.deletedAt && !c.isHidden);
@@ -67,8 +68,9 @@ export default function Explore() {
       const tagsSet = new Set<string>();
       rawChars.forEach(c => c.tags?.forEach(t => tagsSet.add(t)));
 
-      // 2. Fetch Prompts
-      const promptsSnap = await getDocs(collection(db, 'prompts'));
+      // 2. Fetch Prompts (limit 50)
+      const promptsQuery = query(collection(db, 'prompts'), limit(50));
+      const promptsSnap = await getDocs(promptsQuery);
       const rawPrompts: PromptItem[] = promptsSnap.docs
         .map(d => ({ id: d.id, ...d.data() } as PromptItem))
         .filter((p: any) => !p.deletedAt && !p.isHidden);
@@ -77,11 +79,12 @@ export default function Explore() {
       rawPrompts.forEach(p => p.tags?.forEach(t => tagsSet.add(t)));
       setAllTags(Array.from(tagsSet).slice(0, 15));
 
-      // 3. Fetch Creators
-      const creatorsSnap = await getDocs(collection(db, 'users'));
+      // 3. Fetch Creators (limit 50 creators)
+      const creatorsQuery = query(collection(db, 'users'), where('creatorStatus', '==', true), limit(50));
+      const creatorsSnap = await getDocs(creatorsQuery);
       const rawCreators: CreatorItem[] = creatorsSnap.docs
         .map(d => ({ id: d.id, ...d.data() } as CreatorItem))
-        .filter((u: any) => u.creatorStatus === true && !u.deletedAt && !u.isHidden && !u.isLocked);
+        .filter((u: any) => !u.deletedAt && !u.isHidden && !u.isLocked);
       setAllCreators(rawCreators);
 
     } catch (err) {

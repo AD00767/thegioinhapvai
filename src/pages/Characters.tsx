@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Users, Search, Plus, Sparkles, Filter, RefreshCw, Flame, Clock, Calendar, ArrowUpDown
 } from 'lucide-react';
-import { collection, query, getDocs } from 'firebase/firestore';
+import { collection, query, getDocs, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuthStore } from '../store/useAuthStore';
 import { useSeo } from '../hooks/useSeo';
@@ -50,7 +50,8 @@ export default function Characters() {
   const fetchCharacters = async () => {
     setLoading(true);
     try {
-      const snap = await getDocs(collection(db, 'characters'));
+      const q = query(collection(db, 'characters'), limit(60));
+      const snap = await getDocs(q);
       const list: CharacterItem[] = [];
 
       snap.docs.forEach(docSnap => {

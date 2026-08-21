@@ -4,6 +4,7 @@ import { Heart, Bookmark, Eye, ExternalLink, Sparkles, User as UserIcon, Tag, Me
 import { doc, updateDoc, increment, collection, addDoc, query, where, getDocs, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuthStore } from '../store/useAuthStore';
+import { useUserInteractions } from '../context/UserInteractionsContext';
 import { CharacterItem } from '../types';
 import CommentSection from './comments/CommentSection';
 import ReportModal from './ReportModal';
@@ -29,37 +30,18 @@ export default function CharacterCard({ character, onUpdate }: CharacterCardProp
   const [viewsCount, setViewsCount] = useState(character.viewsCount || 0);
   const [isReportOpen, setIsReportOpen] = useState(false);
 
-  // Check initial like & bookmark state
+  const { isCharacterLiked, isCharacterBookmarked, setLikedState, setBookmarkState } = useUserInteractions();
+
+  // Sync initial like & bookmark state from context without sending per-card queries
   useEffect(() => {
-    if (!user?.id || !character.id) return;
-
-    const checkInteractions = async () => {
-      try {
-        // Like check
-        const qLike = query(
-          collection(db, 'character_likes'),
-          where('userId', '==', user.id),
-          where('characterId', '==', character.id)
-        );
-        const snapLike = await getDocs(qLike);
-        setIsLiked(!snapLike.empty);
-
-        // Bookmark check
-        const qBook = query(
-          collection(db, 'bookmarks'),
-          where('userId', '==', user.id),
-          where('targetId', '==', character.id),
-          where('targetType', '==', 'CHARACTER')
-        );
-        const snapBook = await getDocs(qBook);
-        setIsBookmarked(!snapBook.empty);
-      } catch (err) {
-        console.error("Check interaction error:", err);
-      }
-    };
-
-    checkInteractions();
-  }, [user?.id, character.id]);
+    if (!user?.id || !character.id) {
+      setIsLiked(false);
+      setIsBookmarked(false);
+      return;
+    }
+    setIsLiked(isCharacterLiked(character.id));
+    setIsBookmarked(isCharacterBookmarked(character.id));
+  }, [user?.id, character.id, isCharacterLiked, isCharacterBookmarked]);
 
   const handleToggleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -83,6 +65,7 @@ export default function CharacterCard({ character, onUpdate }: CharacterCardProp
         }
         await updateDoc(charRef, { likesCount: increment(-1) });
         setIsLiked(false);
+        setLikedState(character.id, false);
         setLikesCount(prev => Math.max(0, prev - 1));
       } else {
         await addDoc(collection(db, 'character_likes'), {
@@ -92,6 +75,7 @@ export default function CharacterCard({ character, onUpdate }: CharacterCardProp
         });
         await updateDoc(charRef, { likesCount: increment(1) });
         setIsLiked(true);
+        setLikedState(character.id, true);
         setLikesCount(prev => prev + 1);
         toast.success("Đã thích Character!");
 
@@ -142,6 +126,7 @@ export default function CharacterCard({ character, onUpdate }: CharacterCardProp
         }
         await updateDoc(charRef, { savesCount: increment(-1) });
         setIsBookmarked(false);
+        setBookmarkState(character.id, 'CHARACTER', false);
         setSavesCount(prev => Math.max(0, prev - 1));
       } else {
         await addDoc(collection(db, 'bookmarks'), {
@@ -152,6 +137,7 @@ export default function CharacterCard({ character, onUpdate }: CharacterCardProp
         });
         await updateDoc(charRef, { savesCount: increment(1) });
         setIsBookmarked(true);
+        setBookmarkState(character.id, 'CHARACTER', true);
         setSavesCount(prev => prev + 1);
         toast.success("Đã lưu Character vào bộ sưu tập!");
 

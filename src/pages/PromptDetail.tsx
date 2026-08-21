@@ -6,6 +6,7 @@ import {
 import { doc, getDoc, updateDoc, increment, collection, addDoc, query, where, getDocs, deleteDoc, serverTimestamp, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuthStore } from '../store/useAuthStore';
+import { useUserInteractions } from '../context/UserInteractionsContext';
 import { PromptItem } from '../types';
 import { useSeo } from '../hooks/useSeo';
 import CommentSection from '../components/comments/CommentSection';
@@ -134,26 +135,15 @@ export default function PromptDetail() {
     }
   };
 
+  const { isPromptBookmarked, setBookmarkState } = useUserInteractions();
+
   useEffect(() => {
-    if (!user?.id || !id) return;
-
-    const checkBookmark = async () => {
-      try {
-        const q = query(
-          collection(db, 'bookmarks'),
-          where('userId', '==', user.id),
-          where('targetId', '==', id),
-          where('targetType', '==', 'PROMPT')
-        );
-        const snap = await getDocs(q);
-        setIsBookmarked(!snap.empty);
-      } catch (e) {
-        console.error("Check bookmark error:", e);
-      }
-    };
-
-    checkBookmark();
-  }, [user?.id, id]);
+    if (!user?.id || !id) {
+      setIsBookmarked(false);
+      return;
+    }
+    setIsBookmarked(isPromptBookmarked(id));
+  }, [user?.id, id, isPromptBookmarked]);
 
   useEffect(() => {
     fetchPrompt();
