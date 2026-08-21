@@ -3,7 +3,8 @@ import AdminLayout from './AdminLayout';
 import { 
   AlertTriangle, CheckCircle, XCircle, Clock, 
   ExternalLink, Trash2, Eye, Filter, MoreVertical,
-  MessageSquare, User, ShieldAlert, FileText, UserX
+  MessageSquare, User, ShieldAlert, FileText, UserX,
+  X, Mail, Calendar, BadgeCheck, Sparkles
 } from 'lucide-react';
 import { 
   collection, query, getDocs, doc, updateDoc, 
@@ -15,6 +16,7 @@ import toast from 'react-hot-toast';
 import { ReportItem } from '../../types';
 import { Link } from 'react-router-dom';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal';
+import { getValidAvatar, DEFAULT_AVATAR } from '../../lib/avatar';
 
 interface UserDetail {
   id: string;
@@ -23,6 +25,11 @@ interface UserDetail {
   avatar: string;
   email?: string;
   role?: string;
+  creatorStatus?: boolean;
+  bio?: string;
+  createdAt?: string;
+  status?: string;
+  suspendedUntil?: string;
 }
 
 interface TargetContentInfo {
@@ -36,11 +43,6 @@ interface TargetContentInfo {
   authorId?: string;
 }
 
-const getValidAvatar = (url?: string) => {
-  if (url && (url.startsWith('http') || url.startsWith('data:image'))) return url;
-  return 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80';
-};
-
 async function fetchUserData(userId: string): Promise<UserDetail | null> {
   if (!userId) return null;
   try {
@@ -49,13 +51,19 @@ async function fetchUserData(userId: string): Promise<UserDetail | null> {
     const userSnap = await getDoc(userRef);
     if (userSnap.exists()) {
       const d = userSnap.data();
+      const rawAvatar = d.avatar || d.photoURL || d.photoUrl || d.avatarUrl || '';
       return {
         id: userSnap.id,
         numericId: d.numericId || userSnap.id.substring(0, 9),
         displayName: d.displayName || d.name || 'Người dùng',
-        avatar: d.avatar || d.photoURL || '',
-        email: d.email,
-        role: d.role
+        avatar: getValidAvatar(rawAvatar),
+        email: d.email || '',
+        role: d.role || 'USER',
+        creatorStatus: d.creatorStatus || false,
+        bio: d.bio || '',
+        createdAt: d.createdAt || '',
+        status: d.status || 'ACTIVE',
+        suspendedUntil: d.suspendedUntil || ''
       };
     }
 
@@ -65,13 +73,41 @@ async function fetchUserData(userId: string): Promise<UserDetail | null> {
     if (!qSnap.empty) {
       const docItem = qSnap.docs[0];
       const d = docItem.data();
+      const rawAvatar = d.avatar || d.photoURL || d.photoUrl || d.avatarUrl || '';
       return {
         id: docItem.id,
         numericId: d.numericId || docItem.id.substring(0, 9),
         displayName: d.displayName || d.name || 'Người dùng',
-        avatar: d.avatar || d.photoURL || '',
-        email: d.email,
-        role: d.role
+        avatar: getValidAvatar(rawAvatar),
+        email: d.email || '',
+        role: d.role || 'USER',
+        creatorStatus: d.creatorStatus || false,
+        bio: d.bio || '',
+        createdAt: d.createdAt || '',
+        status: d.status || 'ACTIVE',
+        suspendedUntil: d.suspendedUntil || ''
+      };
+    }
+
+    // 3. Try querying by uid
+    const qUid = query(collection(db, 'users'), where('uid', '==', userId));
+    const uidSnap = await getDocs(qUid);
+    if (!uidSnap.empty) {
+      const docItem = uidSnap.docs[0];
+      const d = docItem.data();
+      const rawAvatar = d.avatar || d.photoURL || d.photoUrl || d.avatarUrl || '';
+      return {
+        id: docItem.id,
+        numericId: d.numericId || docItem.id.substring(0, 9),
+        displayName: d.displayName || d.name || 'Người dùng',
+        avatar: getValidAvatar(rawAvatar),
+        email: d.email || '',
+        role: d.role || 'USER',
+        creatorStatus: d.creatorStatus || false,
+        bio: d.bio || '',
+        createdAt: d.createdAt || '',
+        status: d.status || 'ACTIVE',
+        suspendedUntil: d.suspendedUntil || ''
       };
     }
   } catch (e) {
@@ -94,6 +130,9 @@ export default function ReportQueue() {
   const [reportedUser, setReportedUser] = useState<UserDetail | null>(null);
   const [targetContentInfo, setTargetContentInfo] = useState<TargetContentInfo | null>(null);
   const [loadingDetails, setLoadingDetails] = useState<boolean>(false);
+
+  // Viewing user profile modal inside Report Queue page
+  const [viewingProfileUser, setViewingProfileUser] = useState<UserDetail | null>(null);
 
   useEffect(() => {
     fetchReports();
@@ -558,11 +597,10 @@ export default function ReportQueue() {
                     1. Người Gửi Báo Cáo (Reporter)
                   </p>
                   {reporterUser ? (
-                    <Link 
-                      to={`/user/${reporterUser.numericId || reporterUser.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-3 p-3.5 bg-white/10 dark:bg-black/10 hover:bg-white/20 dark:hover:bg-black/20 rounded-2xl transition-all border border-white/10 dark:border-black/10 group cursor-pointer"
+                    <button 
+                      type="button"
+                      onClick={() => setViewingProfileUser(reporterUser)}
+                      className="w-full flex items-center gap-3 p-3.5 bg-white/10 dark:bg-black/10 hover:bg-white/20 dark:hover:bg-black/20 rounded-2xl transition-all border border-white/10 dark:border-black/10 group cursor-pointer text-left"
                     >
                       <img 
                         src={getValidAvatar(reporterUser.avatar)} 
@@ -574,13 +612,13 @@ export default function ReportQueue() {
                           <span className="font-bold text-sm truncate group-hover:underline">
                             {reporterUser.displayName}
                           </span>
-                          <ExternalLink className="w-3.5 h-3.5 opacity-50 group-hover:opacity-100 shrink-0" />
+                          <Eye className="w-3.5 h-3.5 opacity-50 group-hover:opacity-100 shrink-0" />
                         </div>
                         <p className="text-xs font-mono opacity-70">
                           ID: {reporterUser.numericId}
                         </p>
                       </div>
-                    </Link>
+                    </button>
                   ) : (
                     <div className="p-3.5 bg-white/10 dark:bg-black/10 rounded-2xl text-xs opacity-60">
                       ID: {selectedReport.reporterId} ({selectedReport.reporterName})
@@ -598,11 +636,10 @@ export default function ReportQueue() {
                       Đang tải thông tin người bị báo cáo...
                     </div>
                   ) : reportedUser ? (
-                    <Link 
-                      to={`/user/${reportedUser.numericId || reportedUser.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-3 p-3.5 bg-white/10 dark:bg-black/10 hover:bg-white/20 dark:hover:bg-black/20 rounded-2xl transition-all border border-white/10 dark:border-black/10 group cursor-pointer"
+                    <button 
+                      type="button"
+                      onClick={() => setViewingProfileUser(reportedUser)}
+                      className="w-full flex items-center gap-3 p-3.5 bg-white/10 dark:bg-black/10 hover:bg-white/20 dark:hover:bg-black/20 rounded-2xl transition-all border border-white/10 dark:border-black/10 group cursor-pointer text-left"
                     >
                       <img 
                         src={getValidAvatar(reportedUser.avatar)} 
@@ -614,13 +651,13 @@ export default function ReportQueue() {
                           <span className="font-bold text-sm truncate group-hover:underline">
                             {reportedUser.displayName}
                           </span>
-                          <ExternalLink className="w-3.5 h-3.5 opacity-50 group-hover:opacity-100 shrink-0" />
+                          <Eye className="w-3.5 h-3.5 opacity-50 group-hover:opacity-100 shrink-0" />
                         </div>
                         <p className="text-xs font-mono opacity-70">
                           ID: {reportedUser.numericId}
                         </p>
                       </div>
-                    </Link>
+                    </button>
                   ) : (
                     <div className="p-3.5 bg-white/10 dark:bg-black/10 rounded-2xl text-xs opacity-70 italic">
                       Không tìm thấy thông tin tài khoản bị báo cáo.
@@ -803,6 +840,113 @@ export default function ReportQueue() {
         confirmText="Xác nhận gỡ bỏ"
         cancelText="Hủy bỏ"
       />
+
+      {/* Modal hiển thị Profile chi tiết người dùng ngay trong Report Queue */}
+      {viewingProfileUser && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setViewingProfileUser(null)}
+        >
+          <div 
+            className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-6 shadow-2xl relative animate-in zoom-in-95 duration-200 text-neutral-900 dark:text-white"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button 
+              type="button"
+              onClick={() => setViewingProfileUser(null)}
+              className="absolute top-5 right-5 p-2 rounded-full text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Profile Header */}
+            <div className="flex flex-col items-center text-center space-y-3 pt-2">
+              <div className="relative">
+                <img 
+                  src={getValidAvatar(viewingProfileUser.avatar)} 
+                  alt={viewingProfileUser.displayName} 
+                  className="w-24 h-24 rounded-full object-cover border-4 border-neutral-100 dark:border-neutral-800 shadow-md"
+                />
+                {viewingProfileUser.creatorStatus && (
+                  <span className="absolute bottom-0 right-0 p-1.5 bg-amber-500 text-black rounded-full shadow-lg" title="Creator">
+                    <Sparkles className="w-4 h-4 fill-current" />
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <h3 className="text-xl font-black text-neutral-900 dark:text-white tracking-tight flex items-center justify-center gap-2">
+                  {viewingProfileUser.displayName}
+                  {viewingProfileUser.creatorStatus && (
+                    <BadgeCheck className="w-5 h-5 text-amber-500 shrink-0" />
+                  )}
+                </h3>
+                <p className="text-xs font-mono text-neutral-400 font-bold uppercase tracking-widest">
+                  ID: {viewingProfileUser.numericId}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                  viewingProfileUser.role === 'ADMIN' ? 'bg-red-500/10 text-red-500 border border-red-500/20' :
+                  viewingProfileUser.role === 'MODERATOR' ? 'bg-purple-500/10 text-purple-500 border border-purple-500/20' :
+                  viewingProfileUser.creatorStatus ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20' :
+                  'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400'
+                }`}>
+                  {viewingProfileUser.role || (viewingProfileUser.creatorStatus ? 'CREATOR' : 'USER')}
+                </span>
+                {viewingProfileUser.status === 'SUSPENDED' && (
+                  <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-red-500/10 text-red-500 border border-red-500/20">
+                    Đã Khóa
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Profile Details List */}
+            <div className="space-y-3 bg-neutral-50 dark:bg-neutral-800/50 p-4 rounded-2xl text-xs border border-neutral-100 dark:border-neutral-800">
+              <div className="flex items-center justify-between py-1 border-b border-neutral-200/50 dark:border-neutral-700/50">
+                <span className="text-neutral-500 font-bold flex items-center gap-2">
+                  <Mail className="w-3.5 h-3.5" /> Email:
+                </span>
+                <span className="font-medium text-neutral-800 dark:text-neutral-200 select-all">
+                  {viewingProfileUser.email || 'Không công khai'}
+                </span>
+              </div>
+
+              {viewingProfileUser.createdAt && (
+                <div className="flex items-center justify-between py-1 border-b border-neutral-200/50 dark:border-neutral-700/50">
+                  <span className="text-neutral-500 font-bold flex items-center gap-2">
+                    <Calendar className="w-3.5 h-3.5" /> Tham gia:
+                  </span>
+                  <span className="font-medium text-neutral-800 dark:text-neutral-200">
+                    {new Date(viewingProfileUser.createdAt).toLocaleDateString('vi-VN')}
+                  </span>
+                </div>
+              )}
+
+              <div className="space-y-1 pt-1">
+                <span className="text-neutral-500 font-bold block">Tiểu sử (Bio):</span>
+                <p className="italic text-neutral-700 dark:text-neutral-300 whitespace-pre-wrap leading-relaxed">
+                  {viewingProfileUser.bio || 'Chưa cập nhật tiểu sử.'}
+                </p>
+              </div>
+            </div>
+
+            {/* Action / Close */}
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setViewingProfileUser(null)}
+                className="w-full py-3 bg-neutral-900 dark:bg-white text-white dark:text-black font-black text-xs uppercase tracking-widest rounded-2xl hover:opacity-90 transition-all cursor-pointer shadow-lg"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }
