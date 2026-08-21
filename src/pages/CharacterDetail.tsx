@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
-  Heart, Bookmark, Eye, ExternalLink, Sparkles, User as UserIcon, Tag, MessageSquare, ArrowLeft, Flag, AlertCircle, Trash2, Share2 
+  Heart, Bookmark, Eye, ExternalLink, Sparkles, User as UserIcon, Tag, MessageSquare, ArrowLeft, Flag, AlertCircle, Trash2, Share2, ShieldAlert 
 } from 'lucide-react';
 import { doc, getDoc, updateDoc, increment, collection, addDoc, query, where, getDocs, deleteDoc, serverTimestamp, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -14,6 +14,7 @@ import DeleteConfirmModal from '../components/DeleteConfirmModal';
 import CharacterCard from '../components/CharacterCard';
 import DisplayId from '../components/DisplayId';
 import ShareModal from '../components/ShareModal';
+import RemovalDetailModal from '../components/modals/RemovalDetailModal';
 import { getValidAvatar } from '../lib/avatar';
 import toast from 'react-hot-toast';
 
@@ -35,6 +36,7 @@ export default function CharacterDetail() {
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isRemovalModalOpen, setIsRemovalModalOpen] = useState(false);
 
   const [relatedCharacters, setRelatedCharacters] = useState<CharacterItem[]>([]);
 
@@ -80,7 +82,16 @@ export default function CharacterDetail() {
       }
 
       const data = snap.data();
-      if (data.deletedAt || data.isHidden) {
+      const isStaffOrOwner = Boolean(
+        user && (
+          user.id === data.creatorId ||
+          user.role === 'ADMIN' ||
+          user.role === 'MODERATOR' ||
+          user.role === 'MOD'
+        )
+      );
+
+      if ((data.deletedAt || data.isHidden) && !isStaffOrOwner) {
         setError(true);
         setLoading(false);
         return;
@@ -91,29 +102,33 @@ export default function CharacterDetail() {
       setLikesCount(item.likesCount || 0);
       setSavesCount(item.savesCount || 0);
 
-      // Requirement 18 & 19: View count with throttle
-      const storageKey = `vviewed_char_${docId}`;
-      const lastViewed = localStorage.getItem(storageKey);
-      const now = Date.now();
-      const throttleTime = 5 * 60 * 1000; // 5 minutes
+      // View count with throttle (only if not hidden)
+      if (!data.deletedAt && !data.isHidden) {
+        const storageKey = `vviewed_char_${docId}`;
+        const lastViewed = localStorage.getItem(storageKey);
+        const now = Date.now();
+        const throttleTime = 5 * 60 * 1000; // 5 minutes
 
-      if (!lastViewed || (now - parseInt(lastViewed, 10)) > throttleTime) {
-        setViewsCount((item.viewsCount || 0) + 1);
-        localStorage.setItem(storageKey, now.toString());
-        try {
-          const docRefReal = doc(db, 'characters', docId);
-          await updateDoc(docRefReal, { viewsCount: increment(1) });
-        } catch (e) {
-          console.error("View count update error:", e);
+        if (!lastViewed || (now - parseInt(lastViewed, 10)) > throttleTime) {
+          setViewsCount((item.viewsCount || 0) + 1);
+          localStorage.setItem(storageKey, now.toString());
+          try {
+            const docRefReal = doc(db, 'characters', docId);
+            await updateDoc(docRefReal, { viewsCount: increment(1) });
+          } catch (e) {
+            console.error("View count update error:", e);
+          }
+        } else {
+          setViewsCount(item.viewsCount || 0);
         }
       } else {
         setViewsCount(item.viewsCount || 0);
       }
 
-      // Update document title for SEO & Social Link Preview
+      // Update document title
       document.title = `${item.name} - Character Roleplay | Thế giới nhập vai_AD`;
 
-      // Fetch related characters (by same creator or tags)
+      // Fetch related characters
       fetchRelated(item);
     } catch (err) {
       console.error("Fetch character detail error:", err);
@@ -264,9 +279,10 @@ export default function CharacterDetail() {
     }
   };
 
+  const isOwner = user?.id === character?.creatorId;
   const isOwnerOrStaff = Boolean(
     user && (
-      user.id === character?.creatorId || 
+      isOwner || 
       user.role === 'ADMIN' || 
       user.role === 'MODERATOR' || 
       user.role === 'MOD'
@@ -278,12 +294,67 @@ export default function CharacterDetail() {
     setIsDeleteConfirmOpen(true);
   };
 
-  const executeDeleteCharacter = async () => {
+  const executeDeleteCharacter = async (reason?: string, details?: string) => {
     if (!character) return;
     try {
+      const now = new Date().toISOString();
       const charRef = doc(db, 'characters', character.id);
-      await deleteDoc(charRef);
-      toast.success("Đã xóa hoàn toàn Character khỏi hệ thống!");
+
+      if (isOwner) {
+        // Owner self-delete
+        await updateDoc(charRef, {
+          deletedAt: now,
+          isHidden: true,
+          deletedBy: user?.id
+        });
+        toast.success("Đã xóa Character thành công!");
+      } else {
+        // Admin / Moderator removal
+        const finalReason = reason || "Vi phạm tiêu chuẩn cộng đồng";
+        const finalDetails = details || finalReason;
+        await updateDoc(charRef, {
+          isHidden: true,
+          deletedAt: now,
+          deletedBy: user?.id,
+          removalReason: finalReason,
+          removalDetails: finalDetails,
+          removalTime: now,
+          appealStatus: 'NONE'
+        });
+
+        // Send notification to character owner
+        if (character.creatorId) {
+          await addDoc(collection(db, 'notifications'), {
+            userId: character.creatorId,
+            recipientId: character.creatorId,
+            type: 'CONTENT_REMOVED',
+            title: `Character "${character.name}" đã bị gỡ bỏ`,
+            message: `Character của bạn đã bị gỡ bỏ bởi Quản trị viên. Lý do: ${finalReason}. Nhấp vào để xem chi tiết và gửi kháng nghị.`,
+            targetType: 'CHARACTER',
+            targetId: character.id,
+            targetName: character.name,
+            removalReason: finalReason,
+            removalDetails: finalDetails,
+            removalTime: now,
+            read: false,
+            createdAt: now
+          });
+        }
+
+        // Log audit
+        await addDoc(collection(db, 'audit_logs'), {
+          executorId: user?.id,
+          executorName: user?.displayName,
+          action: 'DELETE_CHARACTER',
+          targetId: character.id,
+          targetType: 'CHARACTER',
+          details: `Gỡ bỏ Character "${character.name}". Lý do: ${finalReason}`,
+          createdAt: now
+        });
+
+        toast.success("Đã gỡ bỏ Character và gửi thông báo tới tác giả!");
+      }
+
       navigate('/characters');
     } catch (err) {
       console.error("Delete character error:", err);
@@ -332,6 +403,32 @@ export default function CharacterDetail() {
         <ArrowLeft className="w-4 h-4" />
         <span>Quay lại</span>
       </button>
+
+      {/* Removed / Hidden Warning Banner for Owner / Staff */}
+      {(character.isHidden || character.deletedAt) && (
+        <div className="p-5 rounded-2xl bg-red-500/10 border border-red-500/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <ShieldAlert className="w-6 h-6 text-red-500 shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-sm font-bold text-red-600 dark:text-red-400">
+                Nội dung này đang bị ẩn / đã bị gỡ bỏ bởi Quản trị viên
+              </h3>
+              <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
+                Lý do: <span className="font-semibold">{character.removalReason || 'Vi phạm tiêu chuẩn cộng đồng'}</span>
+                {character.removalDetails && ` — ${character.removalDetails}`}
+              </p>
+            </div>
+          </div>
+          {isOwner && (
+            <button
+              onClick={() => setIsRemovalModalOpen(true)}
+              className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold transition-colors shrink-0 shadow-sm"
+            >
+              Xem chi tiết & Kháng nghị
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Main Character Hero Card */}
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
@@ -577,11 +674,31 @@ export default function CharacterDetail() {
         isOpen={isDeleteConfirmOpen}
         onClose={() => setIsDeleteConfirmOpen(false)}
         onConfirm={executeDeleteCharacter}
-        title="Xóa hoàn toàn Character?"
-        description="Bạn có chắc chắn muốn xóa Character này không? Nội dung sẽ bị xóa hoàn toàn khỏi hệ thống và không thể hoàn tác."
-        confirmText="Xác nhận xóa"
+        onConfirmWithReason={(r, d) => executeDeleteCharacter(r, d)}
+        requireReason={!isOwner}
+        title={!isOwner ? "Gỡ bỏ Character của thành viên?" : "Xóa Character?"}
+        description={
+          !isOwner 
+            ? "Vui lòng chọn và nhập lý do gỡ bỏ để thông báo chính thức tới tác giả và lưu vào Nhật ký kiểm duyệt." 
+            : "Bạn có chắc chắn muốn xóa Character này không? Hành động này sẽ gỡ bỏ Character khỏi danh sách công khai."
+        }
+        confirmText={!isOwner ? "Xác nhận gỡ bỏ" : "Xác nhận xóa"}
         cancelText="Hủy bỏ"
       />
+
+      {/* Removal & Appeal Modal for Owner */}
+      {character && (
+        <RemovalDetailModal
+          isOpen={isRemovalModalOpen}
+          onClose={() => setIsRemovalModalOpen(false)}
+          targetType="CHARACTER"
+          targetId={character.id}
+          targetName={character.name}
+          removalReason={character.removalReason}
+          removalDetails={character.removalDetails}
+          removalTime={character.removalTime || character.deletedAt}
+        />
+      )}
 
       {/* Share Modal */}
       {character && (

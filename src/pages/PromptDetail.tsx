@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
-  Copy, Check, Bookmark, BookmarkCheck, ArrowLeft, Flag, AlertCircle, Eye, MessageSquare, Sparkles, Trash2, Edit3, Link as LinkIcon, Image as ImageIcon, FileText, ExternalLink, Share2 
+  Copy, Check, Bookmark, BookmarkCheck, ArrowLeft, Flag, AlertCircle, Eye, MessageSquare, Sparkles, Trash2, Edit3, Link as LinkIcon, Image as ImageIcon, FileText, ExternalLink, Share2, ShieldAlert 
 } from 'lucide-react';
 import { doc, getDoc, updateDoc, increment, collection, addDoc, query, where, getDocs, deleteDoc, serverTimestamp, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -14,6 +14,7 @@ import CreatePromptModal from '../components/profile/CreatePromptModal';
 import DeleteConfirmModal from '../components/DeleteConfirmModal';
 import DisplayId from '../components/DisplayId';
 import ShareModal from '../components/ShareModal';
+import RemovalDetailModal from '../components/modals/RemovalDetailModal';
 import { getValidAvatar } from '../lib/avatar';
 import toast from 'react-hot-toast';
 
@@ -37,6 +38,7 @@ export default function PromptDetail() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isRemovalModalOpen, setIsRemovalModalOpen] = useState(false);
 
   useSeo({
     title: prompt?.name || prompt?.title,
@@ -73,13 +75,22 @@ export default function PromptDetail() {
         }
       }
 
-      if (!snap) {
+      if (!snap || !snap.exists()) {
         setError(true);
         return;
       }
 
       const data = snap.data();
-      if (data.deletedAt || data.isHidden) {
+      const isStaffOrAuthor = Boolean(
+        user && (
+          user.id === data.authorId ||
+          user.role === 'ADMIN' ||
+          user.role === 'MODERATOR' ||
+          user.role === 'MOD'
+        )
+      );
+
+      if ((data.deletedAt || data.isHidden) && !isStaffOrAuthor) {
         setError(true);
         return;
       }
@@ -89,21 +100,25 @@ export default function PromptDetail() {
       setCopyCount(item.copyCount || 0);
       setSavesCount(item.savesCount || 0);
 
-      // Requirement 18 & 19: View count with throttle
-      const storageKey = `vviewed_prompt_${docId}`;
-      const lastViewed = localStorage.getItem(storageKey);
-      const now = Date.now();
-      const throttleTime = 5 * 60 * 1000; // 5 minutes
+      // View count with throttle (only if not hidden)
+      if (!data.deletedAt && !data.isHidden) {
+        const storageKey = `vviewed_prompt_${docId}`;
+        const lastViewed = localStorage.getItem(storageKey);
+        const now = Date.now();
+        const throttleTime = 5 * 60 * 1000; // 5 minutes
 
-      const targetDocRef = doc(db, 'prompts', docId);
+        const targetDocRef = doc(db, 'prompts', docId);
 
-      if (!lastViewed || (now - parseInt(lastViewed, 10)) > throttleTime) {
-        setViewsCount((item.viewsCount || 0) + 1);
-        localStorage.setItem(storageKey, now.toString());
-        try {
-          await updateDoc(targetDocRef, { viewsCount: increment(1) });
-        } catch (e) {
-          console.error("View count update error:", e);
+        if (!lastViewed || (now - parseInt(lastViewed, 10)) > throttleTime) {
+          setViewsCount((item.viewsCount || 0) + 1);
+          localStorage.setItem(storageKey, now.toString());
+          try {
+            await updateDoc(targetDocRef, { viewsCount: increment(1) });
+          } catch (e) {
+            console.error("View count update error:", e);
+          }
+        } else {
+          setViewsCount(item.viewsCount || 0);
         }
       } else {
         setViewsCount(item.viewsCount || 0);
@@ -205,27 +220,73 @@ export default function PromptDetail() {
     }
   };
 
-  const isOwnerOrAdmin = Boolean(
-    user && (
-      user.id === prompt?.authorId || 
-      user.role === 'ADMIN' || 
-      user.role === 'MODERATOR' || 
-      user.role === 'MOD'
-    )
-  );
+  const isOwner = Boolean(user && user.id === prompt?.authorId);
+  const isStaff = Boolean(user && (user.role === 'ADMIN' || user.role === 'MODERATOR' || user.role === 'MOD'));
+  const isOwnerOrAdmin = Boolean(isOwner || isStaff);
+  const isRemoved = Boolean(prompt && (prompt.deletedAt || prompt.isHidden));
 
   const handleDeletePrompt = async () => {
     if (!prompt) return;
     setIsDeleteConfirmOpen(true);
   };
 
-  const executeDeletePrompt = async () => {
+  const executeDeletePrompt = async (reason?: string, details?: string) => {
     if (!prompt) return;
 
     setIsDeleting(true);
     try {
-      await deleteDoc(doc(db, 'prompts', prompt.id));
-      toast.success("Đã xóa hoàn toàn Prompt khỏi hệ thống!");
+      if (isStaff && !isOwner) {
+        // Staff/Admin removal: soft delete with reason, log audit, notify author
+        const removalReason = reason || "Vi phạm tiêu chuẩn cộng đồng";
+        const removalDetails = details || "";
+
+        await updateDoc(doc(db, 'prompts', prompt.id), {
+          isHidden: true,
+          deletedAt: new Date().toISOString(),
+          deletedBy: user?.id || 'admin',
+          removalReason,
+          removalDetails,
+          removalTime: new Date().toISOString(),
+          appealStatus: 'NONE'
+        });
+
+        // Create notification for author
+        if (prompt.authorId && prompt.authorId !== user?.id) {
+          await addDoc(collection(db, 'notifications'), {
+            userId: prompt.authorId,
+            type: 'CONTENT_REMOVED',
+            title: 'Prompt của bạn đã bị gỡ bỏ',
+            content: `Prompt "${prompt.name || prompt.title}" đã bị gỡ bỏ do: ${removalReason}.`,
+            targetType: 'PROMPT',
+            targetId: prompt.id,
+            targetName: prompt.name || prompt.title,
+            removalReason,
+            removalDetails,
+            isRead: false,
+            createdAt: serverTimestamp()
+          });
+        }
+
+        // Add audit log
+        await addDoc(collection(db, 'activity_logs'), {
+          userId: user?.id,
+          userName: user?.displayName || 'Admin/Mod',
+          action: 'REMOVE_PROMPT',
+          details: `Gỡ bỏ Prompt "${prompt.name || prompt.title}" (ID: ${prompt.id}) - Lý do: ${removalReason}`,
+          timestamp: serverTimestamp()
+        });
+
+        toast.success("Đã gỡ bỏ Prompt và gửi thông báo tới tác giả.");
+      } else {
+        // Owner deletion: soft delete or complete delete
+        await updateDoc(doc(db, 'prompts', prompt.id), {
+          isHidden: true,
+          deletedAt: new Date().toISOString(),
+          deletedBy: user?.id || 'owner'
+        });
+        toast.success("Đã xóa Prompt khỏi hệ thống!");
+      }
+
       navigate('/prompts');
     } catch (err) {
       console.error("Delete prompt error:", err);
@@ -268,6 +329,33 @@ export default function PromptDetail() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-8 animate-fade-in">
+      {/* Removal Warning Banner */}
+      {isRemoved && (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <ShieldAlert className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+            <div>
+              <h4 className="text-sm font-bold text-amber-600 dark:text-amber-400">
+                Prompt này đã bị gỡ bỏ khỏi chế độ công khai
+              </h4>
+              <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-0.5">
+                {prompt?.removalReason 
+                  ? `Lý do: ${prompt.removalReason}` 
+                  : "Nội dung này đang bị ẩn do yêu cầu từ kiểm duyệt viên hoặc tác giả."}
+              </p>
+            </div>
+          </div>
+          {isOwner && (
+            <button
+              onClick={() => setIsRemovalModalOpen(true)}
+              className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs transition-colors shrink-0 flex items-center gap-1.5"
+            >
+              <span>Chi tiết xử lý & Kháng nghị</span>
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Back Button */}
       <button
         onClick={() => navigate(-1)}
@@ -505,13 +593,32 @@ export default function PromptDetail() {
       <DeleteConfirmModal
         isOpen={isDeleteConfirmOpen}
         onClose={() => setIsDeleteConfirmOpen(false)}
-        title="Xóa hoàn toàn Prompt?"
-        description="Bạn có chắc chắn muốn xóa hoàn toàn Prompt này không? Hành động này không thể hoàn tác và Prompt sẽ biến mất ngay lập tức khỏi hệ thống."
-        onConfirm={async () => {
-          setIsDeleteConfirmOpen(false);
-          await executeDeletePrompt();
-        }}
+        onConfirm={executeDeletePrompt}
+        onConfirmWithReason={(r, d) => executeDeletePrompt(r, d)}
+        requireReason={!isOwner}
+        title={!isOwner ? "Gỡ bỏ Prompt của thành viên?" : "Xóa Prompt?"}
+        description={
+          !isOwner
+            ? "Vui lòng chọn và nhập lý do gỡ bỏ để thông báo chính thức tới tác giả và lưu vào Nhật ký kiểm duyệt."
+            : "Bạn có chắc chắn muốn xóa Prompt này không? Hành động này sẽ gỡ bỏ Prompt khỏi danh sách công khai."
+        }
+        confirmText={!isOwner ? "Xác nhận gỡ bỏ" : "Xác nhận xóa"}
+        cancelText="Hủy bỏ"
       />
+
+      {/* Removal & Appeal Modal for Author */}
+      {prompt && (
+        <RemovalDetailModal
+          isOpen={isRemovalModalOpen}
+          onClose={() => setIsRemovalModalOpen(false)}
+          targetType="PROMPT"
+          targetId={prompt.id}
+          targetName={prompt.name || prompt.title || 'Prompt'}
+          removalReason={prompt.removalReason}
+          removalDetails={prompt.removalDetails}
+          removalTime={prompt.removalTime || prompt.deletedAt}
+        />
+      )}
 
       {/* Share Modal */}
       {prompt && (

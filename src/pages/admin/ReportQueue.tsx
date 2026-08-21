@@ -160,7 +160,7 @@ export default function ReportQueue() {
     setIsDeleteConfirmOpen(true);
   };
 
-  const executeDeleteContent = async () => {
+  const executeDeleteContent = async (reason?: string, details?: string) => {
     if (!selectedReport || !currentUser) return;
 
     try {
@@ -180,8 +180,8 @@ export default function ReportQueue() {
       }
 
       const now = new Date().toISOString();
-      const removalReasonText = selectedReport.reason || note || "Vi phạm tiêu chuẩn cộng đồng";
-      const removalDetailsText = note || selectedReport.description || "Nội dung vi phạm quy định cộng đồng nền tảng.";
+      const removalReasonText = reason || selectedReport.reason || note || "Vi phạm tiêu chuẩn cộng đồng";
+      const removalDetailsText = details || note || selectedReport.description || "Nội dung vi phạm quy định cộng đồng nền tảng.";
 
       await updateDoc(targetRef, {
         isHidden: true,
@@ -200,7 +200,7 @@ export default function ReportQueue() {
           recipientId: ownerId,
           type: 'CONTENT_REMOVED',
           title: `Nội dung "${targetName}" đã bị gỡ/ẩn`,
-          message: `Nội dung của bạn đã bị ẩn do: ${removalReasonText}. Nhấp vào để xem chi tiết và gửi kháng nghị.`,
+          message: `Nội dung của bạn đã bị gỡ do: ${removalReasonText}. Nhấp vào để xem chi tiết và gửi kháng nghị.`,
           targetType: selectedReport.targetType,
           targetId: selectedReport.targetId,
           targetName,
@@ -223,15 +223,15 @@ export default function ReportQueue() {
         action: `HIDE_${selectedReport.targetType}`,
         targetId: selectedReport.targetId,
         targetType: selectedReport.targetType,
-        details: `Ẩn nội dung bị báo cáo: ${selectedReport.targetId}`,
+        details: `Gỡ bỏ nội dung bị báo cáo: ${selectedReport.targetId}. Lý do: ${removalReasonText}`,
         reason: removalReasonText,
         createdAt: now
       });
 
-      toast.success("Đã ẩn nội dung bị báo cáo khỏi hệ thống!");
+      toast.success("Đã gỡ bỏ nội dung bị báo cáo khỏi hệ thống!");
     } catch (err) {
       console.error("Delete content error:", err);
-      toast.error("Thao tác ẩn nội dung thất bại.");
+      toast.error("Thao tác gỡ bỏ nội dung thất bại.");
     }
   };
 
@@ -452,10 +452,12 @@ export default function ReportQueue() {
       <DeleteConfirmModal
         isOpen={isDeleteConfirmOpen}
         onClose={() => setIsDeleteConfirmOpen(false)}
-        onConfirm={executeDeleteContent}
-        title="Xóa hoàn toàn nội dung?"
-        description="Bạn có chắc chắn muốn xóa vĩnh viễn nội dung bị báo cáo này khỏi hệ thống không? Hành động này không thể hoàn tác."
-        confirmText="Xác nhận xóa"
+        onConfirmWithReason={(reason, details) => executeDeleteContent(reason, details)}
+        requireReason={true}
+        targetName={selectedReport?.targetName}
+        title="Gỡ bỏ nội dung bị báo cáo"
+        description="Nội dung sẽ được ẩn khỏi hệ thống và chuyển sang trạng thái xử lý. Tác giả sẽ nhận được thông báo kèm lý do vi phạm và có quyền gửi đơn kháng nghị."
+        confirmText="Xác nhận gỡ bỏ"
         cancelText="Hủy bỏ"
       />
     </AdminLayout>

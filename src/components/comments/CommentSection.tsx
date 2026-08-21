@@ -239,31 +239,51 @@ export default function CommentSection({
     setCommentToDelete(commentId);
   };
 
-  const executeDeleteComment = async (commentId: string) => {
+  const executeDeleteComment = async (commentId: string, reason?: string, details?: string) => {
     try {
       const comment = comments.find(c => c.id === commentId);
       const cRef = doc(db, 'comments', commentId);
+      const isModeratorRemoval = Boolean(isStaff && comment && comment.authorId !== user?.id);
+      const removalReason = reason || (isModeratorRemoval ? "Nội dung vi phạm quy chuẩn cộng đồng" : null);
+
       await updateDoc(cRef, { 
         deletedAt: new Date().toISOString(),
         deletedBy: user?.id,
-        deleteReason: isStaff && user?.id !== comment?.authorId ? "Nội dung vi phạm quy chuẩn cộng đồng" : null
+        removalReason: isModeratorRemoval ? removalReason : null,
+        removalDetails: isModeratorRemoval ? (details || '') : null,
+        removalTime: isModeratorRemoval ? new Date().toISOString() : null,
+        appealStatus: isModeratorRemoval ? 'NONE' : null,
+        deleteReason: removalReason
       });
 
       // Send notification to author if deleted by staff
-      if (isStaff && comment && comment.authorId !== user?.id) {
+      if (isModeratorRemoval && comment && comment.authorId !== user?.id) {
         await addDoc(collection(db, 'notifications'), {
           recipientId: comment.authorId,
           userId: comment.authorId,
           senderId: user?.id,
           senderName: "Hệ thống Quản trị",
           senderAvatar: DEFAULT_AVATAR,
-          type: 'SYSTEM',
-          title: 'Nội dung đã bị xóa',
-          message: `Một bình luận của bạn đã bị xóa bởi Quản trị viên. Lý do: Nội dung vi phạm quy chuẩn cộng đồng.`,
-          targetId: commentId,
+          type: 'CONTENT_REMOVED',
+          title: 'Bình luận của bạn đã bị gỡ bỏ',
+          content: `Bình luận "${comment.content.slice(0, 50)}..." đã bị gỡ bỏ do: ${removalReason}.`,
           targetType: 'COMMENT',
+          targetId: commentId,
+          targetName: `Bình luận: "${comment.content.slice(0, 30)}..."`,
+          removalReason,
+          removalDetails: details || '',
+          isRead: false,
           read: false,
-          createdAt: new Date().toISOString()
+          createdAt: serverTimestamp()
+        });
+
+        // Add audit log
+        await addDoc(collection(db, 'activity_logs'), {
+          userId: user?.id,
+          userName: user?.displayName || 'Admin/Mod',
+          action: 'REMOVE_COMMENT',
+          details: `Gỡ bỏ bình luận của "${comment.authorName}" (ID: ${commentId}) - Lý do: ${removalReason}`,
+          timestamp: serverTimestamp()
         });
       }
 
@@ -278,7 +298,7 @@ export default function CommentSection({
         // Ignored
       }
 
-      toast.success("Đã xóa bình luận.");
+      toast.success("Đã gỡ bỏ bình luận.");
       fetchComments();
     } catch (err) {
       console.error("Lỗi khi xóa bình luận:", err);
@@ -708,18 +728,36 @@ export default function CommentSection({
       )}
 
       {/* Delete Comment Confirmation Modal */}
-      <DeleteConfirmModal
-        isOpen={commentToDelete !== null}
-        onClose={() => setCommentToDelete(null)}
-        title="Xóa bình luận?"
-        description="Bạn có chắc chắn muốn xóa bình luận này? Hành động này không thể hoàn tác."
-        onConfirm={async () => {
-          if (!commentToDelete) return;
-          const targetId = commentToDelete;
-          setCommentToDelete(null);
-          await executeDeleteComment(targetId);
-        }}
-      />
+      {(() => {
+        const commentObj = comments.find(c => c.id === commentToDelete);
+        const isModAction = Boolean(isStaff && commentObj && commentObj.authorId !== user?.id);
+
+        return (
+          <DeleteConfirmModal
+            isOpen={commentToDelete !== null}
+            onClose={() => setCommentToDelete(null)}
+            title={isModAction ? "Gỡ bỏ bình luận (Kiểm duyệt)" : "Xóa bình luận?"}
+            description={
+              isModAction
+                ? `Bạn đang thực hiện gỡ bỏ bình luận của thành viên "${commentObj?.authorName}". Vui lòng cung cấp lý do và chi tiết để hệ thống thông báo minh bạch tới thành viên.`
+                : "Bạn có chắc chắn muốn xóa bình luận này? Hành động này không thể hoàn tác."
+            }
+            requireReason={isModAction}
+            onConfirm={async () => {
+              if (!commentToDelete) return;
+              const targetId = commentToDelete;
+              setCommentToDelete(null);
+              await executeDeleteComment(targetId);
+            }}
+            onConfirmWithReason={async (reason, details) => {
+              if (!commentToDelete) return;
+              const targetId = commentToDelete;
+              setCommentToDelete(null);
+              await executeDeleteComment(targetId, reason, details);
+            }}
+          />
+        );
+      })()}
     </div>
   );
 }

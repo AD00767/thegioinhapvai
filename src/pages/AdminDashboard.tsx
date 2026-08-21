@@ -23,7 +23,7 @@ export default function AdminDashboard() {
   
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [itemToDelete, setItemToDelete] = useState<{ id: string; collectionName: string } | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<{ id: string; collectionName: string; name?: string; ownerId?: string } | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -136,21 +136,71 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDelete = (id: string, collectionName: string) => {
-    setItemToDelete({ id, collectionName });
+  const handleDelete = (id: string, collectionName: string, name?: string, ownerId?: string) => {
+    setItemToDelete({ id, collectionName, name, ownerId });
   };
 
-  const executeDelete = async () => {
+  const executeDeleteWithReason = async (reason: string, details: string) => {
     if (!itemToDelete) return;
     try {
-      await deleteDoc(doc(db, itemToDelete.collectionName, itemToDelete.id));
-      await logAction('DELETE_CONTENT', itemToDelete.id, `Xóa vĩnh viễn nội dung trong ${itemToDelete.collectionName}`);
-      toast.success("Đã xóa hoàn toàn nội dung khỏi hệ thống.");
+      const now = new Date().toISOString();
+      const targetRef = doc(db, itemToDelete.collectionName, itemToDelete.id);
+      
+      let ownerId = itemToDelete.ownerId;
+      let targetName = itemToDelete.name || 'Nội dung';
+
+      if (!ownerId || !targetName) {
+        const snap = await getDoc(targetRef);
+        if (snap.exists()) {
+          const d = snap.data();
+          ownerId = ownerId || d.creatorId || d.userId || d.senderId || d.authorId;
+          targetName = targetName || d.name || d.title || d.message || 'Nội dung';
+        }
+      }
+
+      await updateDoc(targetRef, {
+        isHidden: true,
+        deletedAt: now,
+        deletedBy: currentUser?.id || 'admin',
+        removalReason: reason,
+        removalDetails: details || reason,
+        removalTime: now,
+        appealStatus: 'NONE'
+      });
+
+      if (ownerId && ownerId !== currentUser?.id) {
+        const typeMapping: Record<string, string> = {
+          characters: 'CHARACTER',
+          prompts: 'PROMPT',
+          feedbacks: 'FEEDBACK',
+          comments: 'COMMENT'
+        };
+        const targetType = typeMapping[itemToDelete.collectionName] || 'CONTENT';
+
+        await addDoc(collection(db, 'notifications'), {
+          userId: ownerId,
+          recipientId: ownerId,
+          type: 'CONTENT_REMOVED',
+          title: `Nội dung "${targetName}" đã bị gỡ bỏ`,
+          message: `Nội dung "${targetName}" đã bị gỡ bởi Quản trị viên. Lý do: ${reason}. Nhấp vào để xem chi tiết và gửi kháng nghị.`,
+          targetType,
+          targetId: itemToDelete.id,
+          targetName,
+          removalReason: reason,
+          removalDetails: details || reason,
+          removalTime: now,
+          read: false,
+          createdAt: now
+        });
+      }
+
+      await logAction('DELETE_CONTENT', itemToDelete.id, `Gỡ bỏ nội dung "${targetName}" trong ${itemToDelete.collectionName}. Lý do: ${reason}`);
+      toast.success("Đã gỡ bỏ nội dung và gửi thông báo kèm quyền kháng nghị tới tác giả.");
       setItemToDelete(null);
       fetchData();
     } catch (err) {
       console.error("Delete content error:", err);
-      toast.error("Thao tác xóa thất bại.");
+      toast.error("Thao tác gỡ bỏ nội dung thất bại.");
     }
   };
 
@@ -270,9 +320,9 @@ export default function AdminDashboard() {
                               {c.isHidden ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                             </button>
                             <button 
-                              onClick={() => handleDelete(c.id, 'characters')}
-                              className="p-2 hover:bg-red-500/10 rounded-lg transition-colors text-red-500"
-                              title="Xóa"
+                              onClick={() => handleDelete(c.id, 'characters', c.name, c.creatorId)}
+                              className="p-2 hover:bg-red-500/10 rounded-lg transition-colors text-red-500 cursor-pointer"
+                              title="Gỡ bỏ / Xóa"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -308,9 +358,9 @@ export default function AdminDashboard() {
                               {p.isHidden ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                             </button>
                             <button 
-                              onClick={() => handleDelete(p.id, 'prompts')}
-                              className="p-2 hover:bg-red-500/10 rounded-lg transition-colors text-red-500"
-                              title="Xóa"
+                              onClick={() => handleDelete(p.id, 'prompts', p.name, p.authorId || p.userId)}
+                              className="p-2 hover:bg-red-500/10 rounded-lg transition-colors text-red-500 cursor-pointer"
+                              title="Gỡ bỏ / Xóa"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -346,9 +396,9 @@ export default function AdminDashboard() {
                               {f.isHidden ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                             </button>
                             <button 
-                              onClick={() => handleDelete(f.id, 'feedbacks')}
-                              className="p-2 hover:bg-red-500/10 rounded-lg transition-colors text-red-500"
-                              title="Xóa"
+                              onClick={() => handleDelete(f.id, 'feedbacks', f.message?.slice(0, 40), f.senderId || f.userId)}
+                              className="p-2 hover:bg-red-500/10 rounded-lg transition-colors text-red-500 cursor-pointer"
+                              title="Gỡ bỏ / Xóa"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -367,10 +417,12 @@ export default function AdminDashboard() {
       <DeleteConfirmModal
         isOpen={itemToDelete !== null}
         onClose={() => setItemToDelete(null)}
-        onConfirm={executeDelete}
-        title="Xóa hoàn toàn nội dung?"
-        description="Bạn có chắc chắn muốn xóa vĩnh viễn nội dung này khỏi hệ thống không? Hành động này không thể hoàn tác."
-        confirmText="Xác nhận xóa"
+        onConfirmWithReason={executeDeleteWithReason}
+        requireReason={true}
+        targetName={itemToDelete?.name}
+        title="Gỡ bỏ nội dung vi phạm"
+        description="Nội dung sẽ được ẩn khỏi cộng đồng và chuyển sang trạng thái xử lý. Tác giả sẽ nhận được thông báo kèm lý do và có quyền gửi kháng nghị."
+        confirmText="Xác nhận gỡ bỏ"
         cancelText="Hủy bỏ"
       />
     </AdminLayout>
