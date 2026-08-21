@@ -3,11 +3,11 @@ import AdminLayout from './AdminLayout';
 import { 
   AlertTriangle, CheckCircle, XCircle, Clock, 
   ExternalLink, Trash2, Eye, Filter, MoreVertical,
-  MessageSquare, User, ShieldAlert, FileText
+  MessageSquare, User, ShieldAlert, FileText, UserX
 } from 'lucide-react';
 import { 
   collection, query, getDocs, doc, updateDoc, 
-  orderBy, where, serverTimestamp, deleteDoc, getDoc, addDoc 
+  orderBy, where, serverTimestamp, getDoc, addDoc 
 } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -16,130 +16,232 @@ import { ReportItem } from '../../types';
 import { Link } from 'react-router-dom';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal';
 
+interface UserDetail {
+  id: string;
+  numericId: string;
+  displayName: string;
+  avatar: string;
+  email?: string;
+  role?: string;
+}
+
+interface TargetContentInfo {
+  id: string;
+  numericId?: string;
+  name?: string;
+  slogan?: string;
+  content?: string;
+  parentTargetId?: string;
+  parentTargetType?: string;
+  authorId?: string;
+}
+
+const getValidAvatar = (url?: string) => {
+  if (url && (url.startsWith('http') || url.startsWith('data:image'))) return url;
+  return 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80';
+};
+
+async function fetchUserData(userId: string): Promise<UserDetail | null> {
+  if (!userId) return null;
+  try {
+    // 1. Try fetching directly by doc ID
+    const userRef = doc(db, 'users', userId);
+    const userSnap = await getDoc(userRef);
+    if (userSnap.exists()) {
+      const d = userSnap.data();
+      return {
+        id: userSnap.id,
+        numericId: d.numericId || userSnap.id.substring(0, 9),
+        displayName: d.displayName || d.name || 'Người dùng',
+        avatar: d.avatar || d.photoURL || '',
+        email: d.email,
+        role: d.role
+      };
+    }
+
+    // 2. Try querying by numericId
+    const q = query(collection(db, 'users'), where('numericId', '==', userId));
+    const qSnap = await getDocs(q);
+    if (!qSnap.empty) {
+      const docItem = qSnap.docs[0];
+      const d = docItem.data();
+      return {
+        id: docItem.id,
+        numericId: d.numericId || docItem.id.substring(0, 9),
+        displayName: d.displayName || d.name || 'Người dùng',
+        avatar: d.avatar || d.photoURL || '',
+        email: d.email,
+        role: d.role
+      };
+    }
+  } catch (e) {
+    console.error("fetchUserData error:", e);
+  }
+  return null;
+}
+
 export default function ReportQueue() {
   const { user: currentUser } = useAuthStore();
   const [reports, setReports] = useState<ReportItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'PENDING' | 'RESOLVED' | 'REJECTED' | 'DISMISSED'>('PENDING');
+  const [filter, setFilter] = useState<'PENDING' | 'RESOLVED' | 'REJECTED'>('PENDING');
   const [selectedReport, setSelectedReport] = useState<ReportItem | null>(null);
   const [note, setNote] = useState('');
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
-  // Target content details state (for author info and parent links)
-  const [targetContentData, setTargetContentData] = useState<{
-    id?: string;
-    authorId?: string;
-    authorName?: string;
-    content?: string;
-    parentTargetId?: string;
-    parentTargetType?: string;
-    notFound?: boolean;
-  } | null>(null);
-  const [loadingTargetContent, setLoadingTargetContent] = useState<boolean>(false);
+  // Target content & User details state
+  const [reporterUser, setReporterUser] = useState<UserDetail | null>(null);
+  const [reportedUser, setReportedUser] = useState<UserDetail | null>(null);
+  const [targetContentInfo, setTargetContentInfo] = useState<TargetContentInfo | null>(null);
+  const [loadingDetails, setLoadingDetails] = useState<boolean>(false);
 
   useEffect(() => {
     fetchReports();
   }, [filter]);
 
-  // Fetch target content details whenever selectedReport changes
+  // Fetch target content details and real user documents whenever selectedReport changes
   useEffect(() => {
     if (!selectedReport) {
-      setTargetContentData(null);
+      setReporterUser(null);
+      setReportedUser(null);
+      setTargetContentInfo(null);
       return;
     }
 
-    const fetchTargetContent = async () => {
-      setLoadingTargetContent(true);
+    const loadReportDetails = async () => {
+      setLoadingDetails(true);
       try {
-        if (selectedReport.targetType === 'COMMENT') {
-          const commentRef = doc(db, 'comments', selectedReport.targetId);
-          const commentSnap = await getDoc(commentRef);
-          if (commentSnap.exists()) {
-            const cData = commentSnap.data();
-            setTargetContentData({
-              id: commentSnap.id,
-              authorId: cData.authorId || cData.userId,
-              authorName: cData.authorName || 'Người dùng',
-              content: cData.content,
-              parentTargetId: cData.targetId,
-              parentTargetType: cData.targetType
-            });
-          } else {
-            setTargetContentData({ notFound: true });
-          }
+        // 1. Fetch Reporter User
+        let reporter: UserDetail | null = null;
+        if (selectedReport.reporterId) {
+          reporter = await fetchUserData(selectedReport.reporterId);
+        }
+        if (!reporter) {
+          reporter = {
+            id: selectedReport.reporterId || '',
+            numericId: selectedReport.reporterId ? selectedReport.reporterId.substring(0, 9) : '000000000',
+            displayName: selectedReport.reporterName || 'Người gửi báo cáo',
+            avatar: ''
+          };
+        }
+        setReporterUser(reporter);
+
+        // 2. Fetch Target Content & determine reportedUserId (Owner)
+        let contentInfo: TargetContentInfo | null = null;
+        let reportedUserId: string | null = null;
+
+        if (selectedReport.targetType === 'CREATOR') {
+          reportedUserId = selectedReport.targetId;
+          contentInfo = {
+            id: selectedReport.targetId,
+            name: selectedReport.targetName || 'Creator'
+          };
         } else if (selectedReport.targetType === 'CHARACTER') {
-          const charRef = doc(db, 'characters', selectedReport.targetId);
-          const charSnap = await getDoc(charRef);
+          const charSnap = await getDoc(doc(db, 'characters', selectedReport.targetId));
           if (charSnap.exists()) {
             const d = charSnap.data();
-            setTargetContentData({
+            reportedUserId = d.creatorId || d.userId;
+            contentInfo = {
               id: charSnap.id,
-              authorId: d.creatorId || d.userId,
-              authorName: d.creatorName || d.name,
-              content: d.slogan || d.name
-            });
+              numericId: d.numericId,
+              name: d.name,
+              slogan: d.slogan,
+              authorId: reportedUserId || undefined
+            };
+          } else {
+            contentInfo = { id: selectedReport.targetId, name: selectedReport.targetName || 'Character' };
           }
         } else if (selectedReport.targetType === 'PROMPT') {
-          const promptRef = doc(db, 'prompts', selectedReport.targetId);
-          const promptSnap = await getDoc(promptRef);
+          const promptSnap = await getDoc(doc(db, 'prompts', selectedReport.targetId));
           if (promptSnap.exists()) {
             const d = promptSnap.data();
-            setTargetContentData({
+            reportedUserId = d.authorId || d.userId || d.creatorId;
+            contentInfo = {
               id: promptSnap.id,
-              authorId: d.authorId || d.userId || d.creatorId,
-              authorName: d.authorName || d.name,
-              content: d.name
-            });
+              numericId: d.numericId,
+              name: d.name,
+              content: d.content || d.purpose,
+              authorId: reportedUserId || undefined
+            };
+          } else {
+            contentInfo = { id: selectedReport.targetId, name: selectedReport.targetName || 'Prompt' };
           }
         } else if (selectedReport.targetType === 'FEEDBACK') {
-          const fbRef = doc(db, 'feedbacks', selectedReport.targetId);
-          const fbSnap = await getDoc(fbRef);
+          const fbSnap = await getDoc(doc(db, 'feedbacks', selectedReport.targetId));
           if (fbSnap.exists()) {
             const d = fbSnap.data();
-            setTargetContentData({
+            reportedUserId = d.senderId || d.authorId || d.userId;
+            contentInfo = {
               id: fbSnap.id,
-              authorId: d.senderId || d.authorId || d.userId,
-              authorName: d.senderName || 'Người dùng',
-              content: d.content || d.title
-            });
+              name: d.title || 'Feedback',
+              content: d.content,
+              authorId: reportedUserId || undefined
+            };
+          } else {
+            contentInfo = { id: selectedReport.targetId, name: selectedReport.targetName || 'Feedback' };
           }
-        } else if (selectedReport.targetType === 'CREATOR') {
-          setTargetContentData({
-            id: selectedReport.targetId,
-            authorId: selectedReport.targetId,
-            authorName: selectedReport.targetName || 'Creator',
-            content: selectedReport.targetName
-          });
+        } else if (selectedReport.targetType === 'COMMENT') {
+          const commentSnap = await getDoc(doc(db, 'comments', selectedReport.targetId));
+          if (commentSnap.exists()) {
+            const d = commentSnap.data();
+            reportedUserId = d.authorId || d.userId;
+            contentInfo = {
+              id: commentSnap.id,
+              content: d.content,
+              parentTargetId: d.targetId,
+              parentTargetType: d.targetType,
+              authorId: reportedUserId || undefined
+            };
+          } else {
+            contentInfo = { id: selectedReport.targetId, content: selectedReport.targetName || 'Bình luận' };
+          }
         }
-      } catch (e) {
-        console.error("Error fetching target content:", e);
+
+        setTargetContentInfo(contentInfo);
+
+        // 3. Fetch Reported User
+        let reported: UserDetail | null = null;
+        if (reportedUserId) {
+          reported = await fetchUserData(reportedUserId);
+        }
+        if (!reported && reportedUserId) {
+          reported = {
+            id: reportedUserId,
+            numericId: reportedUserId.substring(0, 9),
+            displayName: contentInfo?.name || 'Tác giả nội dung',
+            avatar: ''
+          };
+        }
+        setReportedUser(reported);
+
+      } catch (err) {
+        console.error("Error loading report details:", err);
       } finally {
-        setLoadingTargetContent(false);
+        setLoadingDetails(false);
       }
     };
 
-    fetchTargetContent();
+    loadReportDetails();
   }, [selectedReport?.id, selectedReport?.targetId, selectedReport?.targetType]);
 
   const fetchReports = async () => {
     setLoading(true);
     try {
-      let q;
+      const snap = await getDocs(collection(db, 'reports'));
+      let list = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }) as ReportItem);
+      
+      // Client side sort
+      list.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+
       if (filter === 'PENDING') {
-        q = query(
-          collection(db, 'reports'), 
-          where('status', 'in', ['PENDING', 'REVIEWING']),
-          orderBy('createdAt', 'desc')
-        );
-      } else {
-        q = query(
-          collection(db, 'reports'), 
-          where('status', '==', filter),
-          orderBy('createdAt', 'desc')
-        );
+        list = list.filter(r => (r.status as string) === 'PENDING' || (r.status as string) === 'REVIEWING' || (r.status as string) === 'PROCESSING' || (r.status as string) === 'IN_PROGRESS');
+      } else if (filter === 'RESOLVED') {
+        list = list.filter(r => r.status === 'RESOLVED');
+      } else if (filter === 'REJECTED') {
+        list = list.filter(r => r.status === 'REJECTED' || r.status === 'DISMISSED');
       }
-      const snap = await getDocs(q);
-      setReports(snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }) as ReportItem));
+
+      setReports(list);
     } catch (err) {
       console.error("Error fetching reports:", err);
       toast.error("Không thể tải danh sách báo cáo.");
@@ -163,7 +265,7 @@ export default function ReportQueue() {
       }
 
       await updateDoc(reportRef, {
-        status: 'REVIEWING',
+        status: 'IN_PROGRESS',
         claimedBy: currentUser.id,
         claimedByName: currentUser.displayName,
         claimedAt: new Date().toISOString()
@@ -174,7 +276,7 @@ export default function ReportQueue() {
       if (selectedReport && selectedReport.id === reportId) {
         setSelectedReport(prev => prev ? { 
           ...prev, 
-          status: 'REVIEWING', 
+          status: 'IN_PROGRESS', 
           claimedBy: currentUser.id, 
           claimedByName: currentUser.displayName,
           claimedAt: new Date().toISOString()
@@ -213,15 +315,17 @@ export default function ReportQueue() {
     }
   };
 
-  const handleResolve = async (status: 'RESOLVED' | 'REJECTED' | 'DISMISSED') => {
-    if (!selectedReport) return;
-    
+  const handleDismiss = async () => {
+    if (!selectedReport || !currentUser) return;
+
+    const dismissNote = note.trim() || 'Nội dung không vi phạm tiêu chuẩn cộng đồng.';
+
     try {
       const reportRef = doc(db, 'reports', selectedReport.id);
       await updateDoc(reportRef, {
-        status,
+        status: 'REJECTED',
         moderatorId: currentUser.id,
-        moderatorNote: note,
+        moderatorNote: dismissNote,
         resolvedAt: serverTimestamp()
       });
 
@@ -230,70 +334,64 @@ export default function ReportQueue() {
         executorId: currentUser.id,
         executorName: currentUser.displayName,
         executorRole: currentUser.role,
-        action: 'RESOLVE_REPORT',
+        action: 'DISMISS_REPORT',
         targetId: selectedReport.id,
         targetType: 'REPORT',
-        details: `Xử lý báo cáo ${selectedReport.id} thành ${status}`,
-        reason: note,
+        details: `Bỏ qua báo cáo vi phạm ${selectedReport.id}. Ghi chú: ${dismissNote}`,
+        reason: dismissNote,
         createdAt: new Date().toISOString()
       });
 
-      // Send notification to content owner if resolved
-      if (status === 'RESOLVED' && targetContentData?.authorId) {
-        try {
-          await addDoc(collection(db, 'notifications'), {
-            userId: targetContentData.authorId,
-            recipientId: targetContentData.authorId,
-            type: 'REPORT_RESOLVED',
-            title: 'Xử lý báo cáo nội dung',
-            message: `Báo cáo liên quan đến nội dung ${selectedReport.targetType} của bạn đã được Ban Quản Trị xem xét và xử lý.${note ? ` Ghi chú: ${note}` : ''}`,
-            targetType: selectedReport.targetType,
-            targetId: selectedReport.targetId,
-            read: false,
-            createdAt: new Date().toISOString()
-          });
-        } catch (e) {
-          console.error("Failed to send notification to content owner:", e);
-        }
-      }
-
-      toast.success(`Đã xử lý báo cáo: ${status}`);
+      toast.success("Đã bỏ qua báo cáo!");
       setSelectedReport(null);
       setNote('');
       fetchReports();
     } catch (err) {
+      console.error("Dismiss report error:", err);
       toast.error("Thao tác thất bại.");
     }
   };
 
-  const handleDeleteContent = () => {
-    if (!selectedReport) return;
+  const handleDeleteContentClick = () => {
+    if (!note.trim()) {
+      toast.error("Vui lòng nhập lý do xử lý trước khi xóa!");
+      return;
+    }
     setIsDeleteConfirmOpen(true);
   };
 
-  const executeDeleteContent = async (reason?: string, details?: string) => {
+  const executeDeleteContent = async (reasonFromModal?: string, detailsFromModal?: string) => {
     if (!selectedReport || !currentUser) return;
 
+    const removalReasonText = reasonFromModal || note.trim();
+    const removalDetailsText = detailsFromModal || note.trim() || selectedReport.description || "Nội dung vi phạm quy định cộng đồng.";
+
+    if (!removalReasonText) {
+      toast.error("Vui lòng nhập lý do xóa.");
+      return;
+    }
+
     try {
-      const collectionName = selectedReport.targetType === 'CHARACTER' ? 'characters' : 
-                            selectedReport.targetType === 'PROMPT' ? 'prompts' : 
-                            selectedReport.targetType === 'FEEDBACK' ? 'feedbacks' : 'comments';
-      
+      const collectionName = 
+        selectedReport.targetType === 'CHARACTER' ? 'characters' : 
+        selectedReport.targetType === 'PROMPT' ? 'prompts' : 
+        selectedReport.targetType === 'FEEDBACK' ? 'feedbacks' : 
+        selectedReport.targetType === 'COMMENT' ? 'comments' : 'users';
+
       const targetRef = doc(db, collectionName, selectedReport.targetId);
       const targetSnap = await getDoc(targetRef);
-      let ownerId = null;
-      let targetName = selectedReport.targetName || 'Nội dung';
-      
+      let ownerId = reportedUser?.id || null;
+      let targetName = selectedReport.targetName || targetContentInfo?.name || 'Nội dung';
+
       if (targetSnap.exists()) {
         const d = targetSnap.data();
-        ownerId = d.creatorId || d.userId || d.senderId || d.authorId;
+        ownerId = ownerId || d.creatorId || d.userId || d.senderId || d.authorId;
         targetName = d.name || d.title || d.message || targetName;
       }
 
       const now = new Date().toISOString();
-      const removalReasonText = reason || selectedReport.reason || note || "Vi phạm tiêu chuẩn cộng đồng";
-      const removalDetailsText = details || note || selectedReport.description || "Nội dung vi phạm quy định cộng đồng nền tảng.";
 
+      // 1. Soft Delete / Hide content
       await updateDoc(targetRef, {
         isHidden: true,
         deletedAt: now,
@@ -304,29 +402,7 @@ export default function ReportQueue() {
         appealStatus: 'NONE'
       });
 
-      // Send notification to owner
-      if (ownerId) {
-        await addDoc(collection(db, 'notifications'), {
-          userId: ownerId,
-          recipientId: ownerId,
-          type: 'CONTENT_REMOVED',
-          title: `Nội dung "${targetName}" đã bị gỡ/ẩn`,
-          message: `Nội dung của bạn đã bị gỡ do: ${removalReasonText}. Nhấp vào để xem chi tiết và gửi kháng nghị.`,
-          targetType: selectedReport.targetType,
-          targetId: selectedReport.targetId,
-          targetName,
-          removalReason: removalReasonText,
-          removalDetails: removalDetailsText,
-          removalTime: now,
-          read: false,
-          createdAt: now
-        });
-      }
-      
-      // Also resolve the report as RESOLVED
-      await handleResolve('RESOLVED');
-      
-      // Audit Log for soft deletion
+      // 2. Audit Log
       await addDoc(collection(db, 'audit_logs'), {
         executorId: currentUser.id,
         executorName: currentUser.displayName,
@@ -339,7 +415,37 @@ export default function ReportQueue() {
         createdAt: now
       });
 
-      toast.success("Đã gỡ bỏ nội dung bị báo cáo khỏi hệ thống!");
+      // 3. Update Report Status
+      await updateDoc(doc(db, 'reports', selectedReport.id), {
+        status: 'RESOLVED',
+        moderatorId: currentUser.id,
+        moderatorNote: removalReasonText,
+        resolvedAt: serverTimestamp()
+      });
+
+      // 4. Send Notification ONLY to Reported User (Owner)
+      if (ownerId) {
+        await addDoc(collection(db, 'notifications'), {
+          userId: ownerId,
+          recipientId: ownerId,
+          type: 'CONTENT_REMOVED',
+          title: `Nội dung "${targetName}" đã bị gỡ/ẩn`,
+          message: `Nội dung của bạn đã bị gỡ do: ${removalReasonText}. Nhấp vào để xem chi tiết và gửi đơn kháng nghị.`,
+          targetType: selectedReport.targetType,
+          targetId: selectedReport.targetId,
+          targetName,
+          removalReason: removalReasonText,
+          removalDetails: removalDetailsText,
+          removalTime: now,
+          read: false,
+          createdAt: now
+        });
+      }
+
+      toast.success("Đã gỡ bỏ nội dung bị báo cáo và gửi thông báo cho tác giả!");
+      setSelectedReport(null);
+      setNote('');
+      fetchReports();
     } catch (err) {
       console.error("Delete content error:", err);
       toast.error("Thao tác gỡ bỏ nội dung thất bại.");
@@ -359,7 +465,7 @@ export default function ReportQueue() {
               <button
                 key={s}
                 onClick={() => setFilter(s)}
-                className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${
+                className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer ${
                   filter === s 
                   ? 'bg-neutral-900 text-white dark:bg-white dark:text-black shadow-lg' 
                   : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
@@ -440,181 +546,241 @@ export default function ReportQueue() {
           {/* Details & Actions */}
           <div className="sticky top-8 space-y-6">
             {selectedReport ? (
-              <div className="bg-neutral-900 dark:bg-white text-white dark:text-black p-8 rounded-[2.5rem] shadow-2xl space-y-8 animate-in slide-in-from-right-4 duration-300">
-                <div className="space-y-1">
-                  <h3 className="text-2xl font-black tracking-tighter uppercase">Chi Tiết Vi Phạm</h3>
-                  <p className="text-[10px] opacity-50 font-black uppercase tracking-[0.2em]">Đang xem báo cáo {selectedReport.id.substring(0, 12)}</p>
+              <div className="bg-neutral-900 dark:bg-white text-white dark:text-black p-6 sm:p-8 rounded-[2.5rem] shadow-2xl space-y-6 animate-in slide-in-from-right-4 duration-300 overflow-hidden max-w-full">
+                <div className="space-y-1 border-b border-white/10 dark:border-black/10 pb-4">
+                  <h3 className="text-xl sm:text-2xl font-black tracking-tighter uppercase">Chi Tiết Báo Cáo</h3>
+                  <p className="text-[10px] opacity-50 font-black uppercase tracking-[0.2em]">Mã báo cáo: {selectedReport.id}</p>
                 </div>
 
-                <div className="space-y-6">
-                  <div className="space-y-2">
-                    <p className="text-[10px] opacity-50 font-black uppercase tracking-widest">Thông Tin Người Liên Quan</p>
-                    <div className="p-4 bg-white/10 dark:bg-black/10 rounded-2xl text-xs space-y-2">
-                      <div>
-                        <span className="opacity-60 block font-bold">Người gửi báo cáo (Reporter ID):</span>
-                        <span className="font-mono font-bold select-all text-amber-400 dark:text-amber-600">{selectedReport.reporterId}</span>
-                        <span className="opacity-70 ml-2">({selectedReport.reporterName})</span>
+                {/* 1. Người gửi báo cáo (Reporter) */}
+                <div className="space-y-2">
+                  <p className="text-[10px] opacity-50 font-black uppercase tracking-widest text-amber-400 dark:text-amber-600">
+                    1. Người Gửi Báo Cáo (Reporter)
+                  </p>
+                  {reporterUser ? (
+                    <Link 
+                      to={`/user/${reporterUser.numericId || reporterUser.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 p-3.5 bg-white/10 dark:bg-black/10 hover:bg-white/20 dark:hover:bg-black/20 rounded-2xl transition-all border border-white/10 dark:border-black/10 group cursor-pointer"
+                    >
+                      <img 
+                        src={getValidAvatar(reporterUser.avatar)} 
+                        alt={reporterUser.displayName} 
+                        className="w-10 h-10 rounded-full object-cover border border-white/20 dark:border-black/20 shrink-0" 
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-sm truncate group-hover:underline">
+                            {reporterUser.displayName}
+                          </span>
+                          <ExternalLink className="w-3.5 h-3.5 opacity-50 group-hover:opacity-100 shrink-0" />
+                        </div>
+                        <p className="text-xs font-mono opacity-70">
+                          ID: {reporterUser.numericId}
+                        </p>
                       </div>
-                      <div className="pt-2 border-t border-white/10 dark:border-black/10">
-                        <span className="opacity-60 block font-bold">Người tạo nội dung bị báo cáo (ID người gửi):</span>
-                        {loadingTargetContent ? (
-                          <span className="opacity-50 italic">Đang tải thông tin...</span>
-                        ) : targetContentData?.authorId ? (
-                          <div>
-                            <span className="font-mono font-bold select-all text-emerald-400 dark:text-emerald-600">{targetContentData.authorId}</span>
-                            {targetContentData.authorName && (
-                              <span className="opacity-70 ml-2">({targetContentData.authorName})</span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="font-mono font-bold select-all opacity-80">{selectedReport.targetId}</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <p className="text-[10px] opacity-50 font-black uppercase tracking-widest">Loại Vi Phạm & Mô Tả</p>
-                    <div className="p-4 bg-white/10 dark:bg-black/10 rounded-2xl text-xs space-y-2">
-                      <p className="font-black text-sm text-red-400 dark:text-red-600 uppercase">{selectedReport.reason}</p>
-                      <p className="italic leading-relaxed opacity-90">{selectedReport.description || "Không có mô tả chi tiết."}</p>
-                    </div>
-                  </div>
-
-                  {selectedReport.targetType === 'COMMENT' && targetContentData?.content && (
-                    <div className="space-y-2">
-                      <p className="text-[10px] opacity-50 font-black uppercase tracking-widest">Nội Dung Bình Luận Bị Báo Cáo</p>
-                      <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-xs italic font-medium leading-relaxed">
-                        "{targetContentData.content}"
-                      </div>
+                    </Link>
+                  ) : (
+                    <div className="p-3.5 bg-white/10 dark:bg-black/10 rounded-2xl text-xs opacity-60">
+                      ID: {selectedReport.reporterId} ({selectedReport.reporterName})
                     </div>
                   )}
+                </div>
 
-                  <div className="space-y-2">
-                    <p className="text-[10px] opacity-50 font-black uppercase tracking-widest">Link Nội Dung Kháng Nghị / Xem Chi Tiết</p>
-                    {(() => {
-                      let targetUrl = '#';
-                      let targetLabel = `Mở trang ${selectedReport.targetType}`;
+                {/* 2. Người bị báo cáo (Reported User / Content Owner) */}
+                <div className="space-y-2">
+                  <p className="text-[10px] opacity-50 font-black uppercase tracking-widest text-emerald-400 dark:text-emerald-600">
+                    2. Người Bị Báo Cáo (Tác Giả Nội Dung)
+                  </p>
+                  {loadingDetails ? (
+                    <div className="p-3.5 bg-white/10 dark:bg-black/10 rounded-2xl text-xs opacity-50 animate-pulse">
+                      Đang tải thông tin người bị báo cáo...
+                    </div>
+                  ) : reportedUser ? (
+                    <Link 
+                      to={`/user/${reportedUser.numericId || reportedUser.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 p-3.5 bg-white/10 dark:bg-black/10 hover:bg-white/20 dark:hover:bg-black/20 rounded-2xl transition-all border border-white/10 dark:border-black/10 group cursor-pointer"
+                    >
+                      <img 
+                        src={getValidAvatar(reportedUser.avatar)} 
+                        alt={reportedUser.displayName} 
+                        className="w-10 h-10 rounded-full object-cover border border-white/20 dark:border-black/20 shrink-0" 
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-sm truncate group-hover:underline">
+                            {reportedUser.displayName}
+                          </span>
+                          <ExternalLink className="w-3.5 h-3.5 opacity-50 group-hover:opacity-100 shrink-0" />
+                        </div>
+                        <p className="text-xs font-mono opacity-70">
+                          ID: {reportedUser.numericId}
+                        </p>
+                      </div>
+                    </Link>
+                  ) : (
+                    <div className="p-3.5 bg-white/10 dark:bg-black/10 rounded-2xl text-xs opacity-70 italic">
+                      Không tìm thấy thông tin tài khoản bị báo cáo.
+                    </div>
+                  )}
+                </div>
 
-                      if (selectedReport.targetType === 'COMMENT') {
-                        if (targetContentData?.parentTargetType === 'CHARACTER') {
-                          targetUrl = `/character/${targetContentData.parentTargetId}`;
-                          targetLabel = 'Mở Character chứa Bình Luận này';
-                        } else if (targetContentData?.parentTargetType === 'PROMPT') {
-                          targetUrl = `/prompt/${targetContentData.parentTargetId}`;
-                          targetLabel = 'Mở Prompt chứa Bình Luận này';
-                        } else if (targetContentData?.parentTargetType === 'FEEDBACK') {
-                          targetUrl = `/feedbacks`;
-                          targetLabel = 'Mở Danh sách Feedback chứa Bình Luận này';
-                        } else {
-                          targetUrl = `/explore`;
-                          targetLabel = 'Mở trang Khám Phá chứa Nội Dung này';
-                        }
-                      } else if (selectedReport.targetType === 'CHARACTER') {
-                        targetUrl = `/character/${selectedReport.targetId}`;
-                        targetLabel = 'Mở trang Character';
-                      } else if (selectedReport.targetType === 'PROMPT') {
-                        targetUrl = `/prompt/${selectedReport.targetId}`;
-                        targetLabel = 'Mở trang Prompt';
-                      } else if (selectedReport.targetType === 'FEEDBACK') {
-                        targetUrl = `/feedbacks`;
-                        targetLabel = 'Mở trang Feedback';
-                      } else if (selectedReport.targetType === 'CREATOR') {
-                        targetUrl = `/creator/${selectedReport.targetId}`;
-                        targetLabel = 'Mở trang Hồ sơ Creator';
-                      }
-
-                      return (
-                        <Link 
-                          to={targetUrl} 
-                          className="flex items-center justify-between p-4 bg-white/10 dark:bg-black/10 rounded-2xl hover:bg-white/20 dark:hover:bg-black/20 transition-all group"
-                        >
-                          <span className="text-xs font-bold truncate pr-4">{targetLabel}</span>
-                          <ExternalLink className="w-4 h-4 group-hover:scale-110 transition-transform shrink-0" />
-                        </Link>
-                      );
-                    })()}
+                {/* 3. Chi tiết báo cáo */}
+                <div className="space-y-2">
+                  <p className="text-[10px] opacity-50 font-black uppercase tracking-widest text-red-400 dark:text-red-600">
+                    3. Lý Do & Mô Tả Vi Phạm
+                  </p>
+                  <div className="p-4 bg-white/10 dark:bg-black/10 rounded-2xl text-xs space-y-2 break-words max-w-full overflow-hidden">
+                    <p className="font-black text-sm text-red-400 dark:text-red-500 uppercase">{selectedReport.reason}</p>
+                    <p className="italic leading-relaxed opacity-90 whitespace-pre-wrap">{selectedReport.description || "Không có mô tả chi tiết."}</p>
                   </div>
+                </div>
 
-                  {filter === 'PENDING' && (
-                    <div className="space-y-4 pt-4">
-                      {!selectedReport.claimedBy ? (
-                        <div className="space-y-3">
-                          <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-xs text-amber-600 dark:text-amber-400 font-bold">
-                            Báo cáo này chưa được nhận xử lý. Bạn cần nhận xử lý để thực hiện hành động.
-                          </div>
+                {/* Nội dung bình luận nếu là COMMENT */}
+                {selectedReport.targetType === 'COMMENT' && targetContentInfo?.content && (
+                  <div className="space-y-2">
+                    <p className="text-[10px] opacity-50 font-black uppercase tracking-widest">
+                      Nội Dung Bình Luận Bị Báo Cáo
+                    </p>
+                    <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-xs italic font-medium leading-relaxed break-words whitespace-pre-wrap max-w-full overflow-hidden">
+                      "{targetContentInfo.content}"
+                    </div>
+                  </div>
+                )}
+
+                {/* Link nội dung */}
+                <div className="space-y-2">
+                  <p className="text-[10px] opacity-50 font-black uppercase tracking-widest">
+                    Link Nội Dung Kháng Nghị / Xử Lý
+                  </p>
+                  {(() => {
+                    let targetUrl = '#';
+                    let targetLabel = `Mở trang ${selectedReport.targetType}`;
+
+                    if (selectedReport.targetType === 'COMMENT') {
+                      if (targetContentInfo?.parentTargetType === 'CHARACTER') {
+                        targetUrl = `/character/${targetContentInfo.parentTargetId}`;
+                        targetLabel = 'Mở Character chứa Bình Luận này';
+                      } else if (targetContentInfo?.parentTargetType === 'PROMPT') {
+                        targetUrl = `/prompt/${targetContentInfo.parentTargetId}`;
+                        targetLabel = 'Mở Prompt chứa Bình Luận này';
+                      } else if (targetContentInfo?.parentTargetType === 'FEEDBACK') {
+                        targetUrl = `/feedbacks`;
+                        targetLabel = 'Mở trang Feedback chứa Bình Luận này';
+                      } else {
+                        targetUrl = `/explore`;
+                        targetLabel = 'Mở trang Khám Phá';
+                      }
+                    } else if (selectedReport.targetType === 'CHARACTER') {
+                      targetUrl = `/character/${targetContentInfo?.numericId || selectedReport.targetId}`;
+                      targetLabel = 'Mở trang Character';
+                    } else if (selectedReport.targetType === 'PROMPT') {
+                      targetUrl = `/prompt/${targetContentInfo?.numericId || selectedReport.targetId}`;
+                      targetLabel = 'Mở trang Prompt';
+                    } else if (selectedReport.targetType === 'FEEDBACK') {
+                      targetUrl = `/feedbacks`;
+                      targetLabel = 'Mở trang Feedback';
+                    } else if (selectedReport.targetType === 'CREATOR') {
+                      targetUrl = `/creator/${reportedUser?.numericId || selectedReport.targetId}`;
+                      targetLabel = 'Mở trang Hồ sơ Creator';
+                    }
+
+                    return (
+                      <Link 
+                        to={targetUrl} 
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between p-3.5 bg-white/10 dark:bg-black/10 rounded-2xl hover:bg-white/20 dark:hover:bg-black/20 transition-all group"
+                      >
+                        <span className="text-xs font-bold truncate pr-3">{targetLabel}</span>
+                        <ExternalLink className="w-4 h-4 group-hover:scale-110 transition-transform shrink-0" />
+                      </Link>
+                    );
+                  })()}
+                </div>
+
+                {/* Controls */}
+                {filter === 'PENDING' && (
+                  <div className="space-y-4 pt-4 border-t border-white/10 dark:border-black/10">
+                    {!selectedReport.claimedBy ? (
+                      <div className="space-y-3">
+                        <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-xs text-amber-600 dark:text-amber-400 font-bold">
+                          Báo cáo này chưa có ai xử lý. Hãy nhấn "Nhận Xử Lý" để mở các tùy chọn hành động.
+                        </div>
+                        <button
+                          onClick={() => handleClaim(selectedReport.id)}
+                          className="w-full px-4 py-3.5 bg-white dark:bg-black text-black dark:text-white hover:opacity-90 font-black text-xs uppercase tracking-widest rounded-2xl transition-all flex items-center justify-center gap-2 shadow-xl cursor-pointer"
+                        >
+                          <CheckCircle className="w-4 h-4 text-emerald-500" />
+                          Nhận Xử Lý Báo Cáo
+                        </button>
+                      </div>
+                    ) : selectedReport.claimedBy !== currentUser?.id && currentUser?.role !== 'ADMIN' ? (
+                      <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-xs text-red-600 dark:text-red-400 font-bold space-y-1">
+                        <p>⚠️ Báo cáo này đang được xử lý bởi Moderator khác:</p>
+                        <p className="font-extrabold text-sm">{selectedReport.claimedByName || selectedReport.claimedBy}</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between p-3 bg-purple-500/15 border border-purple-500/20 rounded-2xl text-xs text-purple-600 dark:text-purple-400 font-bold">
+                          <span>Bạn đang nhận xử lý báo cáo này</span>
                           <button
-                            onClick={() => handleClaim(selectedReport.id)}
-                            className="w-full px-4 py-4 bg-white dark:bg-black text-black dark:text-white hover:opacity-90 font-black text-xs uppercase tracking-widest rounded-2xl transition-all flex items-center justify-center gap-2 shadow-xl"
+                            onClick={() => handleUnclaim(selectedReport.id)}
+                            className="text-[10px] underline hover:opacity-80 uppercase tracking-widest font-black cursor-pointer"
                           >
-                            <CheckCircle className="w-4 h-4 text-emerald-500" />
-                            Nhận Xử Lý Báo Cáo
+                            Hủy nhận
                           </button>
                         </div>
-                      ) : selectedReport.claimedBy !== currentUser?.id && currentUser?.role !== 'ADMIN' ? (
-                        <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-xs text-red-600 dark:text-red-400 font-bold space-y-2">
-                          <p>⚠️ Báo cáo này đang được xử lý bởi một Moderator khác:</p>
-                          <p className="font-extrabold text-sm">{selectedReport.claimedByName || selectedReport.claimedBy}</p>
-                          <p className="text-[10px] opacity-70">Vui lòng chờ hoặc xử lý báo cáo khác trong hàng đợi.</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between p-4 bg-purple-500/15 border border-purple-500/20 rounded-2xl text-xs text-purple-600 dark:text-purple-400 font-bold">
-                            <span>Bạn đang nhận xử lý báo cáo này</span>
-                            <button
-                              onClick={() => handleUnclaim(selectedReport.id)}
-                              className="text-[10px] underline hover:opacity-80 uppercase tracking-widest font-black"
-                            >
-                              Hủy nhận
-                            </button>
-                          </div>
 
-                          <p className="text-[10px] opacity-50 font-black uppercase tracking-widest">Ghi chú xử lý (Bắt buộc)</p>
+                        <div className="space-y-1.5">
+                          <p className="text-[10px] opacity-70 font-black uppercase tracking-widest">
+                            Lý do xử lý báo cáo <span className="text-red-400">* (bắt buộc khi xóa)</span>
+                          </p>
                           <textarea 
                             value={note}
                             onChange={(e) => setNote(e.target.value)}
-                            placeholder="Lý do xử lý báo cáo này..."
-                            className="w-full p-4 bg-white/10 dark:bg-black/10 border border-white/20 dark:border-black/20 rounded-2xl text-xs focus:outline-none focus:ring-2 focus:ring-white/50 resize-none h-24"
+                            placeholder="Nhập lý do xử lý hoặc lý do vi phạm tại đây..."
+                            className="w-full p-3.5 bg-white/10 dark:bg-black/10 border border-white/20 dark:border-black/20 rounded-2xl text-xs focus:outline-none focus:ring-2 focus:ring-white/50 resize-none h-24"
                           />
-                          
-                          <div className="grid grid-cols-2 gap-3">
-                            <button 
-                              onClick={() => handleResolve('REJECTED')}
-                              className="px-4 py-4 bg-red-500/20 hover:bg-red-500/40 border border-red-500/50 text-white dark:text-black font-black text-[10px] uppercase tracking-widest rounded-2xl transition-all"
-                            >
-                              Từ Chối
-                            </button>
-                            <button 
-                              onClick={() => handleResolve('DISMISSED')}
-                              className="px-4 py-4 bg-white/10 hover:bg-white/20 border border-white/20 text-white dark:text-black font-black text-[10px] uppercase tracking-widest rounded-2xl transition-all"
-                            >
-                              Bỏ Qua
-                            </button>
-                          </div>
-                          
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-3">
                           <button 
-                            onClick={handleDeleteContent}
-                            className="w-full px-4 py-5 bg-white dark:bg-black text-black dark:text-white hover:opacity-90 font-black text-xs uppercase tracking-widest rounded-2xl transition-all flex items-center justify-center gap-2 shadow-xl"
+                            onClick={handleDismiss}
+                            className="px-4 py-3.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white dark:text-black font-black text-xs uppercase tracking-widest rounded-2xl transition-all cursor-pointer"
+                          >
+                            Bỏ Qua
+                          </button>
+                          <button 
+                            onClick={handleDeleteContentClick}
+                            className={`px-4 py-3.5 font-black text-xs uppercase tracking-widest rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg ${
+                              !note.trim() 
+                                ? 'bg-neutral-600/50 text-neutral-400 cursor-not-allowed opacity-60' 
+                                : 'bg-red-600 hover:bg-red-500 text-white'
+                            }`}
                           >
                             <Trash2 className="w-4 h-4" />
-                            Xác Nhận Vi Phạm & Xóa
+                            Xóa Nội Dung
                           </button>
                         </div>
-                      )}
-                    </div>
-                  )}
-
-                  {filter !== 'PENDING' && (
-                    <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl space-y-2">
-                      <div className="flex items-center gap-2 text-emerald-400">
-                        <CheckCircle className="w-4 h-4" />
-                        <span className="text-[10px] font-black uppercase tracking-widest">Đã Xử Lý</span>
                       </div>
-                      <p className="text-xs opacity-80">{selectedReport.moderatorNote || "Không có ghi chú."}</p>
-                      <p className="text-[9px] opacity-40 italic">Bởi Mod: {selectedReport.moderatorId}</p>
+                    )}
+                  </div>
+                )}
+
+                {filter !== 'PENDING' && (
+                  <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl space-y-2">
+                    <div className="flex items-center gap-2 text-emerald-400">
+                      <CheckCircle className="w-4 h-4" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Đã Xử Lý</span>
                     </div>
-                  )}
-                </div>
+                    <p className="text-xs opacity-80">{selectedReport.moderatorNote || "Không có ghi chú."}</p>
+                    <p className="text-[9px] opacity-40 italic">Bởi: {selectedReport.moderatorId}</p>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="bg-white dark:bg-neutral-900 p-12 rounded-[2.5rem] border-2 border-dashed border-neutral-200 dark:border-neutral-800 flex flex-col items-center justify-center text-center space-y-4">
@@ -631,7 +797,7 @@ export default function ReportQueue() {
         onClose={() => setIsDeleteConfirmOpen(false)}
         onConfirmWithReason={(reason, details) => executeDeleteContent(reason, details)}
         requireReason={true}
-        targetName={selectedReport?.targetName}
+        targetName={selectedReport?.targetName || targetContentInfo?.name}
         title="Gỡ bỏ nội dung bị báo cáo"
         description="Nội dung sẽ được ẩn khỏi hệ thống và chuyển sang trạng thái xử lý. Tác giả sẽ nhận được thông báo kèm lý do vi phạm và có quyền gửi đơn kháng nghị."
         confirmText="Xác nhận gỡ bỏ"
@@ -640,3 +806,4 @@ export default function ReportQueue() {
     </AdminLayout>
   );
 }
+
