@@ -371,7 +371,7 @@ export default function CreatorDetail() {
                 <button
                   onClick={handleToggleFollow}
                   disabled={followLoading}
-                  className={`px-3.5 sm:px-4 py-1.5 rounded-full font-bold text-xs flex items-center gap-1.5 transition-all duration-150 active:scale-95 shrink-0 ${
+                  className={`px-5 sm:px-6 py-2 sm:py-2.5 rounded-full font-bold text-xs sm:text-sm flex items-center gap-2 transition-all duration-150 active:scale-95 shrink-0 ${
                     isFollowing
                       ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 border border-neutral-200 dark:border-neutral-700'
                       : 'bg-black dark:bg-white text-white dark:text-black hover:opacity-90 shadow-sm'
@@ -379,12 +379,12 @@ export default function CreatorDetail() {
                 >
                   {isFollowing ? (
                     <>
-                      <UserCheck className="w-3.5 h-3.5 text-emerald-500" />
+                      <UserCheck className="w-4 h-4 text-emerald-500" />
                       <span>Đang theo dõi</span>
                     </>
                   ) : (
                     <>
-                      <UserPlus className="w-3.5 h-3.5" />
+                      <UserPlus className="w-4 h-4" />
                       <span>Theo dõi</span>
                     </>
                   )}
