@@ -518,32 +518,73 @@ export default function PromptDetail() {
         )}
 
         {/* Bottom Interactive Bar */}
-        <div className="pt-4 border-t border-neutral-100 dark:border-neutral-800 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-4 text-xs font-medium text-neutral-500">
-            <span className="flex items-center gap-1.5"><Eye className="w-4 h-4 text-neutral-400" /> <strong className="text-neutral-900 dark:text-neutral-100">{viewsCount}</strong> lượt xem</span>
-            <span className="flex items-center gap-1.5"><Copy className="w-4 h-4 text-blue-500" /> <strong className="text-neutral-900 dark:text-neutral-100">{copyCount}</strong> lượt sao chép</span>
-            <span className="flex items-center gap-1.5"><Bookmark className="w-4 h-4 text-amber-500" /> <strong className="text-neutral-900 dark:text-neutral-100">{savesCount}</strong> lượt lưu</span>
+        <div className="pt-4 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4 text-xs font-semibold text-neutral-600 dark:text-neutral-300">
+            <span className="flex items-center gap-1.5" title="Số lượt xem" aria-label="Số lượt xem">
+              <Eye className="w-4 h-4 text-neutral-400" /> 
+              <span>{viewsCount}</span>
+            </span>
+            <span className="flex items-center gap-1.5" title="Số lượt sao chép" aria-label="Số lượt sao chép">
+              <Copy className="w-4 h-4 text-blue-500" /> 
+              <span>{copyCount}</span>
+            </span>
+            <span className="flex items-center gap-1.5" title="Số lượt lưu" aria-label="Số lượt lưu">
+              <Bookmark className="w-4 h-4 text-amber-500" /> 
+              <span>{savesCount}</span>
+            </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Nút Chia sẻ */}
             <button
-              onClick={handleToggleSave}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 ${
-                isBookmarked
-                  ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900 text-amber-600 dark:text-amber-400'
-                  : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700 hover:bg-neutral-200'
-              }`}
+              onClick={() => setIsShareOpen(true)}
+              className="p-2 md:p-2.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-all flex items-center justify-center"
+              title="Chia sẻ Prompt"
+              aria-label="Chia sẻ Prompt"
             >
-              {isBookmarked ? <BookmarkCheck className="w-4 h-4 text-amber-500 fill-amber-500" /> : <Bookmark className="w-4 h-4" />}
-              <span>{isBookmarked ? 'Đã lưu' : 'Lưu Prompt'}</span>
+              <Share2 className="w-4 h-4 text-amber-500" />
             </button>
 
+            {/* Nút lưu */}
+            <button
+              onClick={handleToggleSave}
+              className={`p-2 md:p-2.5 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center ${
+                isBookmarked
+                  ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                  : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-700'
+              }`}
+              title={isBookmarked ? "Bỏ lưu Prompt" : "Lưu Prompt vào bộ sưu tập"}
+              aria-label={isBookmarked ? "Bỏ lưu Prompt" : "Lưu Prompt vào bộ sưu tập"}
+            >
+              {isBookmarked ? (
+                <BookmarkCheck className="w-4 h-4 text-amber-500 fill-amber-500" />
+              ) : (
+                <Bookmark className="w-4 h-4 text-neutral-500" />
+              )}
+            </button>
+
+            {/* Báo cáo vi phạm */}
+            <button
+              onClick={() => setIsReportOpen(true)}
+              className="p-2 md:p-2.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-500 hover:text-red-500 border border-neutral-200 dark:border-neutral-700 transition-all"
+              title="Báo cáo vi phạm"
+              aria-label="Báo cáo vi phạm"
+            >
+              <Flag className="w-4 h-4" />
+            </button>
+
+            {/* Sao chép nhanh */}
             <button
               onClick={handleQuickCopy}
-              className="px-5 py-2.5 bg-black dark:bg-white text-white dark:text-black hover:opacity-90 transition-all rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm"
+              className="p-2 md:p-2.5 bg-black dark:bg-white text-white dark:text-black hover:opacity-90 transition-all rounded-xl text-xs font-bold shadow-sm"
+              title="Sao chép Prompt"
+              aria-label="Sao chép Prompt"
             >
-              {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-              <span>{copied ? "Đã sao chép!" : "Sao chép Prompt"}</span>
+              {copied ? (
+                <Check className="w-4 h-4 text-emerald-400 dark:text-emerald-600" />
+              ) : (
+                <Copy className="w-4 h-4" />
+              )}
             </button>
           </div>
         </div>

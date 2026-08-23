@@ -957,7 +957,7 @@ export default function Profile() {
                     <ProfileCharacterCard
                       key={char.id}
                       character={char}
-                      onUpdate={fetchProfileData}
+                      onUpdate={loadUserData}
                     />
                   ))}
                 </div>
@@ -981,7 +981,7 @@ export default function Profile() {
                       <ProfileCharacterCard
                         key={char.id}
                         character={char}
-                        onUpdate={fetchProfileData}
+                        onUpdate={loadUserData}
                       />
                     ))}
                   </div>

@@ -28,6 +28,7 @@ export interface CommentItem {
   createdAt?: any;
   updatedAt?: any;
   deletedAt?: string | null;
+  deletedBy?: string | null;
 }
 
 const REACTION_ICONS: Record<string, { label: string; emoji: string }> = {
@@ -45,6 +46,307 @@ interface CommentSectionProps {
   targetTitle?: string;
   targetOwnerId?: string;
   className?: string;
+}
+
+interface CommentNodeProps {
+  comment: CommentItem;
+  allComments: CommentItem[];
+  depth: number;
+  user: any;
+  isStaff: boolean;
+  targetOwnerId?: string;
+  replyingToId: string | null;
+  setReplyingToId: (id: string | null) => void;
+  newCommentText: string;
+  setNewCommentText: (text: string) => void;
+  handleAddComment: (parentId?: string | null, parentAuthorName?: string) => void;
+  editingCommentId: string | null;
+  setEditingCommentId: (id: string | null) => void;
+  editingCommentText: string;
+  setEditingCommentText: (text: string) => void;
+  handleSaveCommentEdit: (id: string) => void;
+  activeReactionPickerId: string | null;
+  setActiveReactionPickerId: (id: string | null) => void;
+  handleCommentReaction: (comment: CommentItem, reactionKey: string) => void;
+  handleDeleteComment: (id: string) => void;
+  setSelectedCommentForReport: (comment: CommentItem) => void;
+  setIsReportOpen: (open: boolean) => void;
+  navigate: any;
+}
+
+function CommentNode({
+  comment,
+  allComments,
+  depth,
+  user,
+  isStaff,
+  targetOwnerId,
+  replyingToId,
+  setReplyingToId,
+  newCommentText,
+  setNewCommentText,
+  handleAddComment,
+  editingCommentId,
+  setEditingCommentId,
+  editingCommentText,
+  setEditingCommentText,
+  handleSaveCommentEdit,
+  activeReactionPickerId,
+  setActiveReactionPickerId,
+  handleCommentReaction,
+  handleDeleteComment,
+  setSelectedCommentForReport,
+  setIsReportOpen,
+  navigate
+}: CommentNodeProps) {
+  const isDeleted = !!comment.deletedAt;
+  const childReplies = allComments.filter(c => c.parentId === comment.id);
+
+  // If this comment is deleted and has no replies, do not render it
+  if (isDeleted && childReplies.length === 0) {
+    return null;
+  }
+
+  const isModeratorRemoval = isDeleted && comment.deletedBy && comment.deletedBy !== comment.authorId;
+  const isCommentAuthor = user?.id === comment.authorId;
+  const reactionsObj = comment.reactions || {};
+  const reactionsList = Object.values(reactionsObj) as string[];
+  const myReaction = user ? reactionsObj[user.id] : null;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-start gap-2.5 text-xs">
+        <img
+          onClick={() => {
+            if (!isDeleted) navigate(`/creator/${comment.authorId}`);
+          }}
+          src={isDeleted ? DEFAULT_AVATAR : getValidAvatar(comment.authorAvatar)}
+          alt={isDeleted ? "Ẩn danh" : comment.authorName}
+          className={`w-7 h-7 rounded-full border border-neutral-200 dark:border-neutral-700 shrink-0 object-cover mt-0.5 ${!isDeleted ? 'cursor-pointer hover:scale-105 transition-transform' : ''}`}
+        />
+        <div className="flex-1 space-y-1">
+          <div className="bg-neutral-100 dark:bg-neutral-800/90 p-3 rounded-2xl inline-block max-w-full relative group">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span 
+                onClick={() => {
+                  if (!isDeleted) navigate(`/creator/${comment.authorId}`);
+                }}
+                className={`font-extrabold text-neutral-900 dark:text-neutral-100 text-xs ${!isDeleted ? 'cursor-pointer hover:text-amber-600 dark:hover:text-amber-400 hover:underline' : 'opacity-60'}`}
+              >
+                {isDeleted ? (isModeratorRemoval ? '[Đã ẩn]' : 'Ẩn danh') : comment.authorName}
+              </span>
+              {!isDeleted && <UserBadge subject={{ commentCount: 1 }} size="xs" />}
+              {!isDeleted && targetOwnerId === comment.authorId && (
+                <span className="px-1.5 py-0.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded text-[9px] font-extrabold">
+                  Tác giả
+                </span>
+              )}
+            </div>
+
+            {isDeleted ? (
+              <p className="text-neutral-400 dark:text-neutral-500 mt-1 italic leading-relaxed text-xs">
+                {isModeratorRemoval ? '[Bình luận bị ẩn do vi phạm]' : '[Bình luận đã bị xóa]'}
+              </p>
+            ) : editingCommentId === comment.id ? (
+              <div className="mt-2 space-y-2 min-w-[240px]">
+                <input
+                  type="text"
+                  value={editingCommentText}
+                  onChange={e => setEditingCommentText(e.target.value)}
+                  className="w-full p-2 text-xs rounded-xl bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 focus:outline-none"
+                />
+                <div className="flex gap-2 justify-end">
+                  <button
+                    onClick={() => setEditingCommentId(null)}
+                    className="px-2.5 py-1 text-[11px] font-semibold text-neutral-500 hover:text-black dark:hover:text-white"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    onClick={() => handleSaveCommentEdit(comment.id)}
+                    className="px-3 py-1 text-[11px] font-bold bg-black dark:bg-white text-white dark:text-black rounded-lg"
+                  >
+                    Lưu
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-neutral-700 dark:text-neutral-300 mt-1 leading-relaxed whitespace-pre-wrap">
+                {comment.content}
+              </p>
+            )}
+
+            {!isDeleted && reactionsList.length > 0 && (
+              <div className="absolute -bottom-2 right-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-full px-1.5 py-0.5 shadow-sm flex items-center gap-1 text-[10px]">
+                {Array.from(new Set(reactionsList)).map(rKey => (
+                  <span key={rKey}>{REACTION_ICONS[rKey]?.emoji || '👍'}</span>
+                ))}
+                <span className="font-bold text-neutral-700 dark:text-neutral-300 ml-0.5">
+                  {reactionsList.length}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {isDeleted ? (
+            <div className="flex items-center gap-3 text-[10px] text-neutral-400 px-1 font-semibold pt-0.5">
+              <span className="text-[10px] text-neutral-400 font-normal">
+                {comment.createdAt?.toDate ? comment.createdAt.toDate().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''}
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 text-[10px] text-neutral-400 px-1 font-semibold pt-0.5">
+              <div className="relative">
+                <button
+                  onClick={() => {
+                    if (myReaction) {
+                      handleCommentReaction(comment, myReaction);
+                    } else {
+                      setActiveReactionPickerId(activeReactionPickerId === comment.id ? null : comment.id);
+                    }
+                  }}
+                  className={`hover:text-amber-500 transition-colors flex items-center gap-1 ${
+                    myReaction ? 'text-amber-500 font-bold' : ''
+                  }`}
+                >
+                  <span>{myReaction ? REACTION_ICONS[myReaction]?.emoji : 'Thích'}</span>
+                </button>
+
+                {activeReactionPickerId === comment.id && (
+                  <div className="absolute left-0 bottom-full mb-1 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-2xl p-1.5 shadow-xl flex items-center gap-1 z-30">
+                    {Object.entries(REACTION_ICONS).map(([rKey, rItem]) => (
+                      <button
+                        key={rKey}
+                        onClick={() => handleCommentReaction(comment, rKey)}
+                        className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-xl text-base transition-transform hover:scale-125"
+                        title={rItem.label}
+                      >
+                        {rItem.emoji}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {user ? (
+                <button
+                  onClick={() => {
+                    setReplyingToId(replyingToId === comment.id ? null : comment.id);
+                    setNewCommentText('');
+                  }}
+                  className="hover:text-black dark:hover:text-white transition-colors"
+                >
+                  Trả lời
+                </button>
+              ) : (
+                <button
+                  onClick={() => toast.error("Vui lòng đăng nhập bằng Google để trả lời!")}
+                  className="hover:text-black dark:hover:text-white transition-colors opacity-70"
+                >
+                  Trả lời
+                </button>
+              )}
+
+              {isCommentAuthor && (
+                <button
+                  onClick={() => {
+                    setEditingCommentId(comment.id);
+                    setEditingCommentText(comment.content);
+                  }}
+                  className="hover:text-black dark:hover:text-white transition-colors"
+                >
+                  Sửa
+                </button>
+              )}
+
+              {(isCommentAuthor || isStaff) && (
+                <button
+                  onClick={() => handleDeleteComment(comment.id)}
+                  className="hover:text-red-500 transition-colors"
+                >
+                  Xóa
+                </button>
+              )}
+
+              {!isCommentAuthor && (
+                <button
+                  onClick={() => {
+                    setSelectedCommentForReport(comment);
+                    setIsReportOpen(true);
+                  }}
+                  className="hover:text-red-500 transition-colors"
+                >
+                  Báo cáo
+                </button>
+              )}
+
+              <span className="text-[10px] text-neutral-400 font-normal">
+                {comment.createdAt?.toDate ? comment.createdAt.toDate().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {replyingToId === comment.id && (
+        <div className="ml-6 sm:ml-8 pl-3 border-l-2 border-neutral-200 dark:border-neutral-700 flex items-center gap-2 pt-1 animate-fade-in">
+          <CornerDownRight className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+          <input
+            type="text"
+            placeholder={`Trả lời @${comment.authorName}...`}
+            value={newCommentText}
+            onChange={e => setNewCommentText(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleAddComment(comment.id, comment.authorName);
+              }
+            }}
+            className="flex-1 px-3.5 py-1.5 text-xs rounded-xl bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 focus:outline-none"
+          />
+          <button
+            onClick={() => handleAddComment(comment.id, comment.authorName)}
+            className="px-3 py-1.5 rounded-xl bg-black dark:bg-white text-white dark:text-black text-xs font-bold shrink-0"
+          >
+            Gửi
+          </button>
+        </div>
+      )}
+
+      {childReplies.length > 0 && (
+        <div className="space-y-3 pt-1 ml-4 sm:ml-6 pl-2.5 border-l border-neutral-200 dark:border-neutral-800/80">
+          {childReplies.map(reply => (
+            <CommentNode
+              key={reply.id}
+              comment={reply}
+              allComments={allComments}
+              depth={depth + 1}
+              user={user}
+              isStaff={isStaff}
+              targetOwnerId={targetOwnerId}
+              replyingToId={replyingToId}
+              setReplyingToId={setReplyingToId}
+              newCommentText={newCommentText}
+              setNewCommentText={setNewCommentText}
+              handleAddComment={handleAddComment}
+              editingCommentId={editingCommentId}
+              setEditingCommentId={setEditingCommentId}
+              editingCommentText={editingCommentText}
+              setEditingCommentText={setEditingCommentText}
+              handleSaveCommentEdit={handleSaveCommentEdit}
+              activeReactionPickerId={activeReactionPickerId}
+              setActiveReactionPickerId={setActiveReactionPickerId}
+              handleCommentReaction={handleCommentReaction}
+              handleDeleteComment={handleDeleteComment}
+              setSelectedCommentForReport={setSelectedCommentForReport}
+              setIsReportOpen={setIsReportOpen}
+              navigate={navigate}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function CommentSection({
@@ -97,9 +399,7 @@ export default function CommentSection({
       const list: CommentItem[] = [];
       snap.docs.forEach(dSnap => {
         const data = dSnap.data();
-        if (!data.deletedAt) {
-          list.push({ id: dSnap.id, ...data } as CommentItem);
-        }
+        list.push({ id: dSnap.id, ...data } as CommentItem);
       });
       setComments(list);
     } catch (err) {
@@ -416,301 +716,34 @@ export default function CommentSection({
         </div>
       ) : (
         <div className="space-y-3 pt-2">
-          {topLevelComments.map(comment => {
-            const isCommentAuthor = user?.id === comment.authorId;
-            const replies = getRepliesFor(comment.id);
-            const reactionsObj = comment.reactions || {};
-            const reactionsList = Object.values(reactionsObj) as string[];
-            const myReaction = user ? reactionsObj[user.id] : null;
-
-            return (
-              <div key={comment.id} className="space-y-2">
-                {/* Single Top Level Comment Card */}
-                <div className="flex items-start gap-2.5 text-xs">
-                  <img
-                    onClick={() => navigate(`/creator/${comment.authorId}`)}
-                    src={getValidAvatar(comment.authorAvatar)}
-                    alt={comment.authorName}
-                    className="w-7 h-7 rounded-full border border-neutral-200 dark:border-neutral-700 shrink-0 object-cover mt-0.5 cursor-pointer hover:scale-105 transition-transform"
-                  />
-                  <div className="flex-1 space-y-1">
-                    <div className="bg-neutral-100 dark:bg-neutral-800/90 p-3 rounded-2xl inline-block max-w-full relative group">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <span 
-                          onClick={() => navigate(`/creator/${comment.authorId}`)}
-                          className="font-extrabold text-neutral-900 dark:text-neutral-100 text-xs cursor-pointer hover:text-amber-600 dark:hover:text-amber-400 hover:underline"
-                        >
-                          {comment.authorName}
-                        </span>
-                        <UserBadge subject={{ commentCount: 1 }} size="xs" />
-                        {targetOwnerId === comment.authorId && (
-                          <span className="px-1.5 py-0.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded text-[9px] font-extrabold">
-                            Tác giả
-                          </span>
-                        )}
-                      </div>
-
-                      {editingCommentId === comment.id ? (
-                        <div className="mt-2 space-y-2 min-w-[240px]">
-                          <input
-                            type="text"
-                            value={editingCommentText}
-                            onChange={e => setEditingCommentText(e.target.value)}
-                            className="w-full p-2 text-xs rounded-xl bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 focus:outline-none"
-                          />
-                          <div className="flex gap-2 justify-end">
-                            <button
-                              onClick={() => setEditingCommentId(null)}
-                              className="px-2.5 py-1 text-[11px] font-semibold text-neutral-500 hover:text-black dark:hover:text-white"
-                            >
-                              Hủy
-                            </button>
-                            <button
-                              onClick={() => handleSaveCommentEdit(comment.id)}
-                              className="px-3 py-1 text-[11px] font-bold bg-black dark:bg-white text-white dark:text-black rounded-lg"
-                            >
-                              Lưu
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <p className="text-neutral-700 dark:text-neutral-300 mt-1 leading-relaxed whitespace-pre-wrap">
-                          {comment.content}
-                        </p>
-                      )}
-
-                      {/* Display active reactions badge on comment */}
-                      {reactionsList.length > 0 && (
-                        <div className="absolute -bottom-2 right-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-full px-1.5 py-0.5 shadow-sm flex items-center gap-1 text-[10px]">
-                          {Array.from(new Set(reactionsList)).map(rKey => (
-                            <span key={rKey}>{REACTION_ICONS[rKey]?.emoji || '👍'}</span>
-                          ))}
-                          <span className="font-bold text-neutral-700 dark:text-neutral-300 ml-0.5">
-                            {reactionsList.length}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Comment Controls Bar */}
-                    <div className="flex items-center gap-3 text-[10px] text-neutral-400 px-1 font-semibold pt-0.5">
-                      {/* Reaction Trigger Button */}
-                      <div className="relative">
-                        <button
-                          onClick={() => setActiveReactionPickerId(activeReactionPickerId === comment.id ? null : comment.id)}
-                          className={`hover:text-amber-500 transition-colors flex items-center gap-1 ${
-                            myReaction ? 'text-amber-500 font-bold' : ''
-                          }`}
-                        >
-                          <span>{myReaction ? REACTION_ICONS[myReaction]?.emoji : ' Thích'}</span>
-                        </button>
-
-                        {/* Reaction Picker Popup */}
-                        {activeReactionPickerId === comment.id && (
-                          <div className="absolute left-0 bottom-full mb-1 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-2xl p-1.5 shadow-xl flex items-center gap-1 z-30">
-                            {Object.entries(REACTION_ICONS).map(([rKey, rItem]) => (
-                              <button
-                                key={rKey}
-                                onClick={() => handleCommentReaction(comment, rKey)}
-                                className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-xl text-base transition-transform hover:scale-125"
-                                title={rItem.label}
-                              >
-                                {rItem.emoji}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Reply Button */}
-                      {user ? (
-                        <button
-                          onClick={() => {
-                            setReplyingToId(replyingToId === comment.id ? null : comment.id);
-                            setNewCommentText('');
-                          }}
-                          className="hover:text-black dark:hover:text-white transition-colors"
-                        >
-                          Trả lời
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => toast.error("Vui lòng đăng nhập bằng Google để trả lời!")}
-                          className="hover:text-black dark:hover:text-white transition-colors opacity-70"
-                        >
-                          Trả lời
-                        </button>
-                      )}
-
-                      {/* Edit Button */}
-                      {isCommentAuthor && (
-                        <button
-                          onClick={() => {
-                            setEditingCommentId(comment.id);
-                            setEditingCommentText(comment.content);
-                          }}
-                          className="hover:text-black dark:hover:text-white transition-colors"
-                        >
-                          Sửa
-                        </button>
-                      )}
-
-                      {/* Delete Button */}
-                      {(isCommentAuthor || isStaff) && (
-                        <button
-                          onClick={() => handleDeleteComment(comment.id)}
-                          className="hover:text-red-500 transition-colors"
-                        >
-                          Xóa
-                        </button>
-                      )}
-
-                      {/* Báo cáo Button */}
-                      {!isCommentAuthor && (
-                        <button
-                          onClick={() => {
-                            setSelectedCommentForReport(comment);
-                            setIsReportOpen(true);
-                          }}
-                          className="hover:text-red-500 transition-colors"
-                        >
-                          Báo cáo
-                        </button>
-                      )}
-
-                      {/* Timestamp */}
-                      <span className="text-[10px] text-neutral-400 font-normal">
-                        {comment.createdAt?.toDate ? comment.createdAt.toDate().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Inline Reply Input */}
-                {replyingToId === comment.id && (
-                  <div className="ml-8 pl-3 border-l-2 border-neutral-200 dark:border-neutral-700 flex items-center gap-2 pt-1 animate-fade-in">
-                    <CornerDownRight className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
-                    <input
-                      type="text"
-                      placeholder={`Trả lời @${comment.authorName}...`}
-                      value={newCommentText}
-                      onChange={e => setNewCommentText(e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleAddComment(comment.id, comment.authorName);
-                        }
-                      }}
-                      className="flex-1 px-3.5 py-1.5 text-xs rounded-xl bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 focus:outline-none"
-                    />
-                    <button
-                      onClick={() => handleAddComment(comment.id, comment.authorName)}
-                      className="px-3 py-1.5 rounded-xl bg-black dark:bg-white text-white dark:text-black text-xs font-bold shrink-0"
-                    >
-                      Gửi
-                    </button>
-                  </div>
-                )}
-
-                {/* Nested Replies */}
-                {replies.length > 0 && (
-                  <div className="ml-8 pl-3 border-l-2 border-neutral-200 dark:border-neutral-800 space-y-2 pt-1">
-                    {replies.map(reply => {
-                      const isReplyAuthor = user?.id === reply.authorId;
-                      const replyReactionsObj = reply.reactions || {};
-                      const replyReactionsList = Object.values(replyReactionsObj) as string[];
-                      const myReplyReaction = user ? replyReactionsObj[user.id] : null;
-
-                      return (
-                        <div key={reply.id} className="flex items-start gap-2 text-xs">
-                          <img
-                            onClick={() => navigate(`/creator/${reply.authorId}`)}
-                            src={getValidAvatar(reply.authorAvatar)}
-                            alt={reply.authorName}
-                            className="w-5 h-5 rounded-full border border-neutral-200 dark:border-neutral-700 shrink-0 object-cover mt-0.5 cursor-pointer hover:scale-105 transition-transform"
-                          />
-                          <div className="space-y-1 flex-1">
-                            <div className="bg-neutral-100 dark:bg-neutral-800/80 p-2.5 rounded-2xl inline-block max-w-full relative">
-                              <div className="flex flex-wrap items-center gap-1 font-extrabold text-[11px] text-neutral-900 dark:text-neutral-100">
-                                <span 
-                                  onClick={() => navigate(`/creator/${reply.authorId}`)}
-                                  className="cursor-pointer hover:text-amber-600 dark:hover:text-amber-400 hover:underline"
-                                >
-                                  {reply.authorName}
-                                </span>
-                                <UserBadge subject={{ commentCount: 1 }} size="xs" />
-                              </div>
-                              <p className="text-[11px] text-neutral-700 dark:text-neutral-300 mt-0.5 leading-relaxed whitespace-pre-wrap">
-                                {reply.content}
-                              </p>
-                              {replyReactionsList.length > 0 && (
-                                <div className="absolute -bottom-2 right-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-full px-1 py-0.2 shadow-sm flex items-center gap-0.5 text-[9px]">
-                                  {Array.from(new Set(replyReactionsList)).map(rKey => (
-                                    <span key={rKey}>{REACTION_ICONS[rKey]?.emoji || '👍'}</span>
-                                  ))}
-                                  <span className="font-bold text-neutral-700 dark:text-neutral-300">
-                                    {replyReactionsList.length}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="flex items-center gap-3 text-[10px] text-neutral-400 px-1 font-semibold">
-                              {/* Reply Reaction */}
-                              <div className="relative">
-                                <button
-                                  onClick={() => setActiveReactionPickerId(activeReactionPickerId === reply.id ? null : reply.id)}
-                                  className={`hover:text-amber-500 transition-colors ${myReplyReaction ? 'text-amber-500 font-bold' : ''}`}
-                                >
-                                  <span>{myReplyReaction ? REACTION_ICONS[myReplyReaction]?.emoji : 'Thích'}</span>
-                                </button>
-                                {activeReactionPickerId === reply.id && (
-                                  <div className="absolute left-0 bottom-full mb-1 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-2xl p-1 shadow-xl flex items-center gap-1 z-30">
-                                    {Object.entries(REACTION_ICONS).map(([rKey, rItem]) => (
-                                      <button
-                                        key={rKey}
-                                        onClick={() => handleCommentReaction(reply, rKey)}
-                                        className="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg text-sm"
-                                        title={rItem.label}
-                                      >
-                                        {rItem.emoji}
-                                      </button>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-
-                              {(isReplyAuthor || isStaff) && (
-                                <button
-                                  onClick={() => handleDeleteComment(reply.id)}
-                                  className="hover:text-red-500 transition-colors"
-                                >
-                                  Xóa
-                                </button>
-                              )}
-
-                              {/* Báo cáo Button */}
-                              {!isReplyAuthor && (
-                                <button
-                                  onClick={() => {
-                                    setSelectedCommentForReport(reply);
-                                    setIsReportOpen(true);
-                                  }}
-                                  className="hover:text-red-500 transition-colors"
-                                >
-                                  Báo cáo
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+          {topLevelComments.map(comment => (
+            <CommentNode
+              key={comment.id}
+              comment={comment}
+              allComments={comments}
+              depth={0}
+              user={user}
+              isStaff={isStaff}
+              targetOwnerId={targetOwnerId}
+              replyingToId={replyingToId}
+              setReplyingToId={setReplyingToId}
+              newCommentText={newCommentText}
+              setNewCommentText={setNewCommentText}
+              handleAddComment={handleAddComment}
+              editingCommentId={editingCommentId}
+              setEditingCommentId={setEditingCommentId}
+              editingCommentText={editingCommentText}
+              setEditingCommentText={setEditingCommentText}
+              handleSaveCommentEdit={handleSaveCommentEdit}
+              activeReactionPickerId={activeReactionPickerId}
+              setActiveReactionPickerId={setActiveReactionPickerId}
+              handleCommentReaction={handleCommentReaction}
+              handleDeleteComment={handleDeleteComment}
+              setSelectedCommentForReport={setSelectedCommentForReport}
+              setIsReportOpen={setIsReportOpen}
+              navigate={navigate}
+            />
+          ))}
         </div>
       )}
 

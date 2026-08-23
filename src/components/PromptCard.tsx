@@ -267,67 +267,63 @@ export default function PromptCard({ prompt, onEdit, onDelete, onPin, isOwner }:
       </div>
 
       {/* Footer Interactive Actions: Quick Copy, Copy Counter, Save Button, Save Counter */}
-      <div className="pt-3 border-t border-neutral-100 dark:border-neutral-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        {/* Left: Counters */}
-        <div className="flex items-center gap-3 xs:gap-4 text-xs font-medium text-neutral-500 dark:text-neutral-400 flex-wrap">
+      <div className="pt-3 border-t border-neutral-100 dark:border-neutral-800/80 flex items-center justify-between gap-3">
+        {/* Left: Counters (Icon + Number) */}
+        <div className="flex items-center gap-3 xs:gap-4 text-xs font-semibold text-neutral-600 dark:text-neutral-300">
           {/* Bộ đếm số lần sao chép */}
-          <span className="flex items-center gap-1.5" title="Số lần sao chép">
+          <span className="flex items-center gap-1.5" title="Số lượt sao chép" aria-label="Số lượt sao chép">
             <Copy className="w-3.5 h-3.5 text-blue-500" />
-            <span><strong className="text-neutral-900 dark:text-neutral-100">{copyCount}</strong> lượt sao chép</span>
+            <span>{copyCount}</span>
           </span>
 
           {/* Bộ đếm số lượt lưu */}
-          <span className="flex items-center gap-1.5" title="Số lượt lưu">
+          <span className="flex items-center gap-1.5" title="Số lượt lưu" aria-label="Số lượt lưu">
             <Bookmark className="w-3.5 h-3.5 text-amber-500" />
-            <span><strong className="text-neutral-900 dark:text-neutral-100">{savesCount}</strong> lượt lưu</span>
+            <span>{savesCount}</span>
           </span>
         </div>
 
-        {/* Right: Action Buttons */}
-        <div className="flex flex-wrap items-center gap-1.5 xs:gap-2">
+        {/* Right: Icon-only Action Buttons */}
+        <div className="flex items-center gap-1.5 xs:gap-2">
           {/* Nút Bình luận */}
           <button
             onClick={(e) => { e.stopPropagation(); setShowComments(!showComments); }}
-            className={`flex items-center gap-1 px-2.5 py-1.5 xs:px-3 xs:py-2 rounded-xl text-[11px] xs:text-xs font-semibold border transition-all ${
+            className={`p-2 rounded-xl text-xs font-semibold border transition-all ${
               showComments
                 ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
                 : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-700'
             }`}
             title="Xem & Viết bình luận"
+            aria-label="Xem & Viết bình luận"
           >
-            <MessageSquare className="w-3.5 h-3.5 text-neutral-500" />
-            <span className="hidden min-[360px]:inline">Bình luận</span>
+            <MessageSquare className="w-3.5 h-3.5" />
           </button>
 
           {/* Nút lưu */}
           <button
             onClick={(e) => { e.stopPropagation(); handleToggleSave(); }}
             disabled={bookmarking}
-            className={`flex items-center gap-1 px-2.5 py-1.5 xs:px-3 xs:py-2 rounded-xl text-[11px] xs:text-xs font-semibold border transition-all ${
+            className={`p-2 rounded-xl text-xs font-semibold border transition-all ${
               isBookmarked
                 ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
                 : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-700'
             }`}
             title={isBookmarked ? "Bỏ lưu Prompt" : "Lưu Prompt vào bộ sưu tập"}
+            aria-label={isBookmarked ? "Bỏ lưu Prompt" : "Lưu Prompt vào bộ sưu tập"}
           >
             {isBookmarked ? (
-              <>
-                <BookmarkCheck className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                <span className="hidden min-[360px]:inline">Đã lưu</span>
-              </>
+              <BookmarkCheck className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
             ) : (
-              <>
-                <Bookmark className="w-3.5 h-3.5 text-neutral-500" />
-                <span className="hidden min-[360px]:inline">Lưu</span>
-              </>
+              <Bookmark className="w-3.5 h-3.5 text-neutral-500" />
             )}
           </button>
 
           {/* Báo cáo vi phạm */}
           <button
             onClick={(e) => { e.stopPropagation(); setIsReportOpen(true); }}
-            className="flex items-center justify-center p-1.5 xs:p-2.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-500 hover:text-red-500 border border-neutral-200 dark:border-neutral-700 transition-all"
+            className="p-2 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-500 hover:text-red-500 border border-neutral-200 dark:border-neutral-700 transition-all"
             title="Báo cáo vi phạm"
+            aria-label="Báo cáo vi phạm"
           >
             <Flag className="w-3.5 h-3.5" />
           </button>
@@ -335,18 +331,14 @@ export default function PromptCard({ prompt, onEdit, onDelete, onPin, isOwner }:
           {/* Sao chép nhanh */}
           <button
             onClick={(e) => { e.stopPropagation(); handleQuickCopy(); }}
-            className="flex-1 min-[360px]:flex-none flex items-center justify-center gap-1 px-3 py-1.5 xs:px-3.5 xs:py-2 bg-black dark:bg-white text-white dark:text-black hover:opacity-90 transition-all rounded-xl text-[11px] xs:text-xs font-bold shadow-sm"
+            className="p-2 bg-black dark:bg-white text-white dark:text-black hover:opacity-90 transition-all rounded-xl text-xs font-bold shadow-sm"
+            title="Sao chép Prompt"
+            aria-label="Sao chép Prompt"
           >
             {copied ? (
-              <>
-                <Check className="w-3.5 h-3.5 text-emerald-400 dark:text-emerald-600" />
-                <span>Đã chép</span>
-              </>
+              <Check className="w-3.5 h-3.5 text-emerald-400 dark:text-emerald-600" />
             ) : (
-              <>
-                <Copy className="w-3.5 h-3.5" />
-                <span>Sao chép</span>
-              </>
+              <Copy className="w-3.5 h-3.5" />
             )}
           </button>
         </div>
