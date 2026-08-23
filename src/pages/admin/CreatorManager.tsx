@@ -172,8 +172,8 @@ export default function CreatorManager() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-4">
+        <div className="w-full space-y-4">
+          <div className="w-full space-y-4">
             {loading ? (
               Array(3).fill(0).map((_, i) => (
                 <div key={i} className="h-32 bg-neutral-100 dark:bg-neutral-800 animate-pulse rounded-3xl"></div>
@@ -190,7 +190,7 @@ export default function CreatorManager() {
                   onClick={() => setSelectedRequest(r)}
                   className={`
                     p-6 bg-white dark:bg-neutral-900 rounded-3xl border transition-all cursor-pointer group hover:shadow-xl
-                    ${selectedRequest?.id === r.id ? 'border-neutral-900 dark:border-white ring-2 ring-neutral-900/5' : 'border-neutral-200 dark:border-neutral-800'}
+                    ${selectedRequest?.id === r.id ? 'border-neutral-900 dark:border-white ring-2 ring-neutral-900/10 dark:ring-white/10' : 'border-neutral-200 dark:border-neutral-800'}
                   `}
                 >
                   <div className="flex justify-between items-start mb-4">
@@ -214,118 +214,140 @@ export default function CreatorManager() {
                       {r.createdAt?.toDate ? r.createdAt.toDate().toLocaleDateString('vi-VN') : '---'}
                     </span>
                   </div>
-                  <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest text-neutral-400">
-                    <span className="flex items-center gap-1"><Sparkles className="w-3 h-3" /> {r.experience || "Newbie"}</span>
-                    <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" /> {r.portfolioCount || 0} Sản phẩm</span>
+                  <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-neutral-400">
+                    <div className="flex items-center gap-4">
+                      <span className="flex items-center gap-1"><Sparkles className="w-3 h-3 text-amber-500" /> {r.experience || "Newbie"}</span>
+                      <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3 text-blue-500" /> {r.portfolioCount || 0} Sản phẩm</span>
+                    </div>
+                    <span className="group-hover:text-neutral-900 dark:group-hover:text-white transition-colors flex items-center gap-1 text-amber-600 dark:text-amber-400 font-extrabold">
+                      Xem Đơn Xét Duyệt <XCircle className="w-3.5 h-3.5 rotate-45" />
+                    </span>
                   </div>
                 </div>
               ))
             )}
           </div>
+        </div>
 
-          <div className="sticky top-8">
-            {selectedRequest ? (
-              <div className="bg-neutral-900 dark:bg-white text-white dark:text-black p-8 rounded-[2.5rem] shadow-2xl space-y-8 animate-in slide-in-from-right-8 duration-500">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <h2 className="text-xl font-black tracking-tight uppercase">Chi Tiết Đơn Đăng Ký</h2>
-                    <div className="flex flex-col gap-1">
-                      <p className="text-[10px] opacity-50 font-black uppercase tracking-widest">Doc ID: {selectedRequest.userId}</p>
-                      {selectedUser && (
-                        <p className="text-[10px] text-amber-400 font-black uppercase tracking-widest">
-                          ID Hệ thống: {selectedUser.creatorStatus ? 'creator' : 'user'}/{selectedUser.numericId}
-                        </p>
-                      )}
+        {/* Modal Chi Tiết Đơn Đăng Ký - Spacious Centered Modal */}
+        {selectedRequest && (
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+            onClick={() => setSelectedRequest(null)}
+          >
+            <div 
+              className="bg-neutral-900 dark:bg-white text-white dark:text-black rounded-[2.5rem] w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 sm:p-8 space-y-6 shadow-2xl relative border border-neutral-800 dark:border-neutral-200 animate-in zoom-in-95 duration-200"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-white/10 dark:border-black/10 pb-4">
+                <div className="space-y-1">
+                  <h2 className="text-xl sm:text-2xl font-black tracking-tight uppercase">Chi Tiết Đơn Đăng Ký Creator</h2>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <p className="text-[10px] opacity-50 font-black uppercase tracking-widest font-mono">Doc ID: {selectedRequest.userId}</p>
+                    {selectedUser && (
+                      <p className="text-[10px] text-amber-400 font-black uppercase tracking-widest font-mono">
+                        ID Hệ thống: {selectedUser.creatorStatus ? 'creator' : 'user'}/{selectedUser.numericId}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setSelectedRequest(null)} 
+                  className="p-2 hover:bg-white/10 dark:hover:bg-black/10 rounded-full transition-colors cursor-pointer"
+                >
+                  <XCircle className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {selectedUser && (
+                  <div className="p-6 bg-white/5 dark:bg-black/5 rounded-[2rem] space-y-3">
+                    <div className="flex items-center gap-4">
+                      <img src={getValidAvatar(selectedUser.avatar)} className="w-14 h-14 rounded-2xl object-cover border border-white/20 dark:border-black/20" alt="" />
+                      <div>
+                        <p className="text-base font-black">{selectedUser.displayName}</p>
+                        <p className="text-xs opacity-60 font-mono">ID: {selectedUser.numericId}</p>
+                      </div>
+                    </div>
+                    <p className="text-xs opacity-80 leading-relaxed pt-2 border-t border-white/10 dark:border-black/10">
+                      <span className="font-bold">Tiểu sử:</span> {selectedUser.bio || "Chưa có tiểu sử."}
+                    </p>
+                  </div>
+                )}
+
+                {(selectedRequest.userRole === 'MODERATOR' || selectedRequest.userRole === 'MOD') && (
+                  <div className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-300 rounded-2xl flex items-center gap-3">
+                    <ShieldAlert className="w-5 h-5 shrink-0 text-amber-400" />
+                    <div className="text-xs">
+                      <p className="font-bold">Đơn đăng ký từ Moderator</p>
+                      <p className="opacity-80 text-[11px]">Yêu cầu trở thành Creator của Moderator chỉ do Admin có quyền phê duyệt.</p>
                     </div>
                   </div>
-                  <button onClick={() => setSelectedRequest(null)} className="p-2 hover:bg-white/10 dark:hover:bg-black/10 rounded-full transition-colors">
-                    <XCircle className="w-6 h-6" />
+                )}
+
+                <div className="p-6 bg-white/5 dark:bg-black/5 rounded-[2rem] space-y-3">
+                  <p className="text-[10px] opacity-50 font-black uppercase tracking-widest">Lý do muốn làm Creator & Giới thiệu kinh nghiệm</p>
+                  <p className="text-sm leading-relaxed italic whitespace-pre-wrap">"{selectedRequest.reason || "Không có mô tả."}"</p>
+                </div>
+
+                {filter === 'PENDING' && (
+                  <div className="space-y-4 pt-2">
+                    {((selectedRequest.userRole === 'MODERATOR' || selectedRequest.userRole === 'MOD') && currentUser?.role !== 'ADMIN') ? (
+                      <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-300 rounded-2xl text-xs text-center font-bold">
+                        Chỉ Admin mới có quyền xét duyệt yêu cầu làm Creator của Moderator.
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-[10px] opacity-50 font-black uppercase tracking-widest">Ghi chú phản hồi (Tùy chọn)</p>
+                        <textarea 
+                          value={note}
+                          onChange={(e) => setNote(e.target.value)}
+                          placeholder="Nhập ghi chú hoặc lý do phê duyệt / từ chối..."
+                          className="w-full p-4 bg-white/5 dark:bg-black/5 border border-white/10 dark:border-black/10 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-white/50 resize-none h-24"
+                        />
+                        <div className="grid grid-cols-2 gap-4">
+                          <button 
+                            onClick={() => handleProcessRequest('REJECTED')}
+                            className="py-4 bg-red-500/20 text-red-500 hover:bg-red-500/30 border border-red-500/30 font-black text-xs uppercase tracking-widest rounded-2xl transition-all cursor-pointer"
+                          >
+                            Từ Chối
+                          </button>
+                          <button 
+                            onClick={() => handleProcessRequest('APPROVED')}
+                            className="py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl transition-all cursor-pointer"
+                          >
+                            Phê Duyệt
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {filter !== 'PENDING' && (
+                  <div className={`p-6 rounded-[2rem] border space-y-2 ${filter === 'APPROVED' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>
+                    <div className="flex items-center gap-2">
+                      {filter === 'APPROVED' ? <CheckCircle className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
+                      <span className="text-xs font-black uppercase tracking-widest">{filter === 'APPROVED' ? 'Đã Phê Duyệt' : 'Đã Từ Chối'}</span>
+                    </div>
+                    <p className="text-xs opacity-80 italic">"{selectedRequest.moderatorNote || "Không có ghi chú."}"</p>
+                    <p className="text-[10px] opacity-40 font-medium">Bởi Mod: {selectedRequest.moderatorId}</p>
+                  </div>
+                )}
+
+                <div className="pt-2 text-right">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedRequest(null)}
+                    className="px-6 py-2.5 bg-white/10 hover:bg-white/20 rounded-2xl text-xs font-black uppercase tracking-wider transition-colors cursor-pointer"
+                  >
+                    Đóng
                   </button>
                 </div>
-
-                <div className="space-y-6">
-                  {selectedUser && (
-                    <div className="p-6 bg-white/5 dark:bg-black/5 rounded-[2rem] space-y-4">
-                      <p className="text-[10px] opacity-50 font-black uppercase tracking-widest">Thông tin Creator</p>
-                      <div className="space-y-2">
-                        <p className="text-sm font-bold">{selectedUser.displayName}</p>
-                        <p className="text-xs opacity-80 leading-relaxed">
-                          <span className="font-bold">Tiểu sử:</span> {selectedUser.bio || "Chưa có tiểu sử."}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {(selectedRequest.userRole === 'MODERATOR' || selectedRequest.userRole === 'MOD') && (
-                    <div className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-300 rounded-2xl flex items-center gap-3">
-                      <ShieldAlert className="w-5 h-5 shrink-0 text-amber-400" />
-                      <div className="text-xs">
-                        <p className="font-bold">Đơn đăng ký từ Moderator</p>
-                        <p className="opacity-80 text-[11px]">Yêu cầu trở thành Creator của Moderator chỉ do Admin có quyền phê duyệt.</p>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="p-6 bg-white/5 dark:bg-black/5 rounded-[2rem] space-y-4">
-                    <p className="text-[10px] opacity-50 font-black uppercase tracking-widest">Lý do muốn làm Creator</p>
-                    <p className="text-sm leading-relaxed italic">"{selectedRequest.reason || "Không có mô tả."}"</p>
-                  </div>
-
-                  {filter === 'PENDING' && (
-                    <div className="space-y-4">
-                      {((selectedRequest.userRole === 'MODERATOR' || selectedRequest.userRole === 'MOD') && currentUser?.role !== 'ADMIN') ? (
-                        <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-300 rounded-2xl text-xs text-center font-bold">
-                          Chỉ Admin mới có quyền xét duyệt yêu cầu làm Creator của Moderator.
-                        </div>
-                      ) : (
-                        <>
-                          <p className="text-[10px] opacity-50 font-black uppercase tracking-widest">Ghi chú (Tùy chọn)</p>
-                          <textarea 
-                            value={note}
-                            onChange={(e) => setNote(e.target.value)}
-                            placeholder="Nhập ghi chú cho người dùng..."
-                            className="w-full p-4 bg-white/5 dark:bg-black/5 border border-white/10 dark:border-black/10 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-white/50 resize-none h-24"
-                          />
-                          <div className="grid grid-cols-2 gap-4">
-                            <button 
-                              onClick={() => handleProcessRequest('REJECTED')}
-                              className="py-4 bg-red-500/20 text-red-500 border border-red-500/30 font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-red-500/30 transition-all"
-                            >
-                              Từ Chối
-                            </button>
-                            <button 
-                              onClick={() => handleProcessRequest('APPROVED')}
-                              className="py-4 bg-white dark:bg-black text-black dark:text-white font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-xl hover:opacity-90 transition-all"
-                            >
-                              Phê Duyệt
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
-
-                  {filter !== 'PENDING' && (
-                    <div className={`p-6 rounded-[2rem] border space-y-2 ${filter === 'APPROVED' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>
-                      <div className="flex items-center gap-2">
-                        {filter === 'APPROVED' ? <CheckCircle className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
-                        <span className="text-xs font-black uppercase tracking-widest">{filter === 'APPROVED' ? 'Đã Phê Duyệt' : 'Đã Từ Chối'}</span>
-                      </div>
-                      <p className="text-xs opacity-80 italic">"{selectedRequest.moderatorNote || "Không có ghi chú."}"</p>
-                      <p className="text-[10px] opacity-40 font-medium">Bởi Mod: {selectedRequest.moderatorId}</p>
-                    </div>
-                  )}
-                </div>
               </div>
-            ) : (
-              <div className="h-full min-h-[400px] bg-white dark:bg-neutral-900 rounded-[3rem] border-4 border-dashed border-neutral-100 dark:border-neutral-800 flex flex-col items-center justify-center text-center p-10">
-                <UserCheck className="w-12 h-12 text-neutral-200 dark:text-neutral-700 mb-4" />
-                <h3 className="text-lg font-black tracking-tight text-neutral-300 dark:text-neutral-700 uppercase">Hệ Thống Phê Duyệt</h3>
-                <p className="text-xs font-bold text-neutral-400 uppercase tracking-[0.2em] mt-2">Chọn một yêu cầu để xem chi tiết và xét duyệt.</p>
-              </div>
-            )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </AdminLayout>
   );

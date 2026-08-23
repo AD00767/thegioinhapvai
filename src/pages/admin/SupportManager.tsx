@@ -124,8 +124,8 @@ export default function SupportManager() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-4">
+        <div className="w-full space-y-4">
+          <div className="w-full space-y-4">
             {loading ? (
               Array(3).fill(0).map((_, i) => (
                 <div key={i} className="h-32 bg-neutral-100 dark:bg-neutral-800 animate-pulse rounded-3xl"></div>
@@ -142,13 +142,13 @@ export default function SupportManager() {
                   onClick={() => setSelectedTicket(t)}
                   className={`
                     p-6 bg-white dark:bg-neutral-900 rounded-3xl border transition-all cursor-pointer group hover:shadow-xl
-                    ${selectedTicket?.id === t.id ? 'border-neutral-900 dark:border-white ring-2 ring-neutral-900/5' : 'border-neutral-200 dark:border-neutral-800'}
+                    ${selectedTicket?.id === t.id ? 'border-neutral-900 dark:border-white ring-2 ring-neutral-900/10 dark:ring-white/10' : 'border-neutral-200 dark:border-neutral-800'}
                   `}
                 >
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-neutral-500">
-                        <Mail className="w-5 h-5" />
+                        <Mail className="w-5 h-5 text-amber-500" />
                       </div>
                       <div>
                         <h3 className="font-black text-sm uppercase tracking-tight">{t.subject}</h3>
@@ -162,93 +162,113 @@ export default function SupportManager() {
                     </span>
                   </div>
                   <p className="text-xs text-neutral-600 dark:text-neutral-400 line-clamp-2 italic mb-4 leading-relaxed">"{t.message}"</p>
-                  <div className="flex items-center justify-between pt-4 border-t border-neutral-50 dark:border-neutral-800">
+                  <div className="flex items-center justify-between pt-4 border-t border-neutral-100 dark:border-neutral-800">
                     <div className="flex items-center gap-4">
                       <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-tighter ${t.status === 'PENDING' ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
                         {t.status}
                       </span>
                     </div>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); handleDelete(t.id); }}
-                      className="opacity-0 group-hover:opacity-100 p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] font-extrabold text-amber-600 dark:text-amber-400 uppercase tracking-widest flex items-center gap-1 group-hover:underline">
+                        Xem Yêu Cầu Hỗ Trợ <Mail className="w-3.5 h-3.5" />
+                      </span>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleDelete(t.id); }}
+                        className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                        title="Xóa yêu cầu"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))
             )}
           </div>
+        </div>
 
-          {/* Ticket Detail */}
-          <div className="sticky top-8">
-            {selectedTicket ? (
-              <div className="bg-neutral-900 dark:bg-white text-white dark:text-black p-8 rounded-[2.5rem] shadow-2xl space-y-8 animate-in slide-in-from-right-8 duration-500">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <h2 className="text-xl font-black tracking-tight uppercase">Yêu Cầu Hỗ Trợ</h2>
-                    <p className="text-[10px] opacity-50 font-black uppercase tracking-widest">#{selectedTicket.id.substring(0, 8)}</p>
+        {/* Modal Chi Tiết Yêu Cầu Hỗ Trợ - Spacious Centered Modal */}
+        {selectedTicket && (
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+            onClick={() => setSelectedTicket(null)}
+          >
+            <div 
+              className="bg-neutral-900 dark:bg-white text-white dark:text-black rounded-[2.5rem] w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 sm:p-8 space-y-6 shadow-2xl relative border border-neutral-800 dark:border-neutral-200 animate-in zoom-in-95 duration-200"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-white/10 dark:border-black/10 pb-4">
+                <div className="space-y-1">
+                  <h2 className="text-xl sm:text-2xl font-black tracking-tight uppercase">Yêu Cầu Hỗ Trợ</h2>
+                  <p className="text-[10px] opacity-50 font-black uppercase tracking-widest font-mono">Mã Ticket: #{selectedTicket.id.substring(0, 12)}</p>
+                </div>
+                <button 
+                  onClick={() => setSelectedTicket(null)} 
+                  className="p-2 hover:bg-white/10 dark:hover:bg-black/10 rounded-full transition-colors cursor-pointer"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="p-4 bg-white/5 dark:bg-black/5 rounded-2xl">
+                    <p className="text-[9px] opacity-50 font-black uppercase tracking-widest mb-1">Người gửi</p>
+                    <p className="text-sm font-bold truncate">{selectedTicket.name}</p>
                   </div>
-                  <button onClick={() => setSelectedTicket(null)} className="p-2 hover:bg-white/10 dark:hover:bg-black/10 rounded-full transition-colors">
-                    <X className="w-6 h-6" />
+                  <div className="p-4 bg-white/5 dark:bg-black/5 rounded-2xl">
+                    <p className="text-[9px] opacity-50 font-black uppercase tracking-widest mb-1">Email liên hệ</p>
+                    <p className="text-sm font-bold truncate font-mono">{selectedTicket.email ? selectedTicket.email.replace(/(.{2})(.*)(@.*)/, '$1••••••$3') : 'Không có'}</p>
+                  </div>
+                </div>
+
+                <div className="p-6 bg-white/5 dark:bg-black/5 rounded-[2rem] border border-white/10 dark:border-black/10 space-y-3">
+                  <p className="text-[10px] opacity-50 font-black uppercase tracking-widest">Tiêu đề & Nội dung tin nhắn</p>
+                  <p className="text-base font-black text-amber-400 dark:text-amber-600 uppercase">{selectedTicket.subject}</p>
+                  <p className="text-sm leading-relaxed italic whitespace-pre-wrap">{selectedTicket.message}</p>
+                </div>
+
+                {filter === 'PENDING' ? (
+                  <div className="space-y-4 pt-2">
+                    <p className="text-[10px] opacity-50 font-black uppercase tracking-widest">Ghi chú phản hồi / Xử lý</p>
+                    <textarea 
+                      value={reply}
+                      onChange={(e) => setReply(e.target.value)}
+                      placeholder="Nhập nội dung phản hồi hoặc ghi chú xử lý yêu cầu..."
+                      className="w-full p-4 bg-white/5 dark:bg-black/5 border border-white/10 dark:border-black/10 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-white/50 resize-none h-32"
+                    />
+                    <button 
+                      onClick={handleResolve}
+                      className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-widest rounded-2xl transition-all shadow-xl flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <CheckCircle className="w-4 h-4" />
+                      Đánh Dấu Đã Xử Lý & Đóng Ticket
+                    </button>
+                  </div>
+                ) : (
+                  <div className="p-6 bg-emerald-500/10 border border-emerald-500/30 rounded-[2rem] space-y-3">
+                    <div className="flex items-center gap-2 text-emerald-400">
+                      <CheckCircle className="w-5 h-5" />
+                      <span className="text-xs font-black uppercase tracking-widest">Đã Giải Quyết</span>
+                    </div>
+                    <p className="text-sm opacity-80 italic">"{selectedTicket.moderatorReply}"</p>
+                    <p className="text-[10px] opacity-40 font-medium">Bởi Mod: {selectedTicket.moderatorId}</p>
+                  </div>
+                )}
+
+                <div className="pt-2 text-right">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTicket(null)}
+                    className="px-6 py-2.5 bg-white/10 hover:bg-white/20 rounded-2xl text-xs font-black uppercase tracking-wider transition-colors cursor-pointer"
+                  >
+                    Đóng
                   </button>
                 </div>
-
-                <div className="space-y-6">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="p-4 bg-white/5 dark:bg-black/5 rounded-2xl">
-                      <p className="text-[9px] opacity-50 font-black uppercase tracking-widest mb-1">Người gửi</p>
-                      <p className="text-xs font-bold truncate">{selectedTicket.name}</p>
-                    </div>
-                    <div className="p-4 bg-white/5 dark:bg-black/5 rounded-2xl">
-                      <p className="text-[9px] opacity-50 font-black uppercase tracking-widest mb-1">Email</p>
-                      <p className="text-xs font-bold truncate font-mono">{selectedTicket.email ? selectedTicket.email.replace(/(.{2})(.*)(@.*)/, '$1••••••$3') : 'Không có'}</p>
-                    </div>
-                  </div>
-
-                  <div className="p-6 bg-white/5 dark:bg-black/5 rounded-[2rem] border border-white/10 dark:border-black/10 space-y-4">
-                    <p className="text-[9px] opacity-50 font-black uppercase tracking-widest">Nội dung tin nhắn</p>
-                    <p className="text-sm leading-relaxed italic">"{selectedTicket.message}"</p>
-                  </div>
-
-                  {filter === 'PENDING' ? (
-                    <div className="space-y-4">
-                      <p className="text-[10px] opacity-50 font-black uppercase tracking-widest">Phản hồi của bạn</p>
-                      <textarea 
-                        value={reply}
-                        onChange={(e) => setReply(e.target.value)}
-                        placeholder="Nhập nội dung phản hồi người dùng..."
-                        className="w-full p-4 bg-white/5 dark:bg-black/5 border border-white/10 dark:border-black/10 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-white/50 resize-none h-32"
-                      />
-                      <button 
-                        onClick={handleResolve}
-                        className="w-full py-4 bg-white dark:bg-black text-black dark:text-white font-black text-xs uppercase tracking-widest rounded-2xl transition-all shadow-xl flex items-center justify-center gap-2"
-                      >
-                        <CheckCircle className="w-4 h-4" />
-                        Đã Xử Lý & Đóng
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="p-6 bg-emerald-500/10 border border-emerald-500/30 rounded-[2rem] space-y-4">
-                      <div className="flex items-center gap-2 text-emerald-400">
-                        <CheckCircle className="w-5 h-5" />
-                        <span className="text-xs font-black uppercase tracking-widest">Đã Giải Quyết</span>
-                      </div>
-                      <p className="text-sm opacity-80 italic">"{selectedTicket.moderatorReply}"</p>
-                      <p className="text-[10px] opacity-40 font-medium">Bởi Mod: {selectedTicket.moderatorId}</p>
-                    </div>
-                  )}
-                </div>
               </div>
-            ) : (
-              <div className="h-full min-h-[400px] bg-white dark:bg-neutral-900 rounded-[3rem] border-4 border-dashed border-neutral-100 dark:border-neutral-800 flex flex-col items-center justify-center text-center p-10">
-                <MessageSquare className="w-12 h-12 text-neutral-200 dark:text-neutral-700 mb-4" />
-                <h3 className="text-lg font-black tracking-tight text-neutral-300 dark:text-neutral-700 uppercase">Hộp Thư Hỗ Trợ</h3>
-                <p className="text-xs font-bold text-neutral-400 uppercase tracking-[0.2em] mt-2">Chọn một tin nhắn để xem chi tiết và phản hồi.</p>
-              </div>
-            )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <DeleteConfirmModal
