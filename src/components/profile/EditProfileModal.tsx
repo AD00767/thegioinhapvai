@@ -240,7 +240,8 @@ export default function EditProfileModal({ isOpen, onClose, onSaveSuccess }: Edi
     creatorStatus: user.creatorStatus,
     role: user.role,
     characterCount: user.characterCount || 0,
-    createdAt: user.createdAt
+    createdAt: user.createdAt,
+    badges: user.badges || []
   });
 
   // Preset status options

@@ -14,6 +14,7 @@ import FollowersModal from '../components/profile/FollowersModal';
 import AdminApprovalSection from '../components/profile/AdminApprovalSection';
 import PromptCard from '../components/PromptCard';
 import UserBadge from '../components/UserBadge';
+import ProfileCharacterCard from '../components/profile/ProfileCharacterCard';
 import DeleteConfirmModal from '../components/DeleteConfirmModal';
 import AppealModal from '../components/AppealModal';
 import DisplayId from '../components/DisplayId';
@@ -521,9 +522,11 @@ export default function Profile() {
                       creatorStatus: user.creatorStatus, 
                       role: user.role, 
                       characterCount: myCharacters.length, 
-                      createdAt: user.createdAt 
+                      createdAt: user.createdAt,
+                      badges: user.badges || []
                     }} 
                     size="md"
+                    maxVisible={10}
                   />
                   {user.role === 'ADMIN' && (
                     <span className="px-2 py-0.5 bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20 text-[10px] font-extrabold rounded-md flex items-center gap-1">
@@ -536,10 +539,11 @@ export default function Profile() {
                     <DisplayId type={user.creatorStatus ? 'creator' : 'user'} numericId={user.numericId} />
                   </div>
                 )}
-                {user.statusMessage && (
+                {(user.statusMessage || (user as any).activityStatus) && (
                   <div className="mt-1 flex justify-center md:justify-start">
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-xs font-semibold">
-                      <span>{user.statusMessage}</span>
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      <span>{user.statusMessage || (user as any).activityStatus}</span>
                     </span>
                   </div>
                 )}
@@ -827,35 +831,18 @@ export default function Profile() {
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {pinnedCharacters.map(char => (
-                      <div key={char.id} className="relative group bg-white dark:bg-neutral-900 border-2 border-amber-500/40 rounded-2xl p-4 shadow-sm">
-                        <div className="flex gap-3">
-                          <img src={char.avatar} alt={char.name} className="w-16 h-16 rounded-xl object-cover shrink-0" />
-                          <div className="min-w-0 flex-1">
-                            <div className="font-bold text-sm truncate">{char.name}</div>
-                            <div className="text-xs text-neutral-500 truncate mt-0.5">{char.slogan}</div>
-                            <div className="flex items-center gap-3 text-[11px] text-neutral-400 mt-2">
-                              <span>❤️ {char.likesCount || 0}</span>
-                              <span>🔖 {char.savesCount || 0}</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-800 text-xs">
-                          <button onClick={() => handleTogglePinCharacter(char)} className="text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1">
-                            <Pin className="w-3.5 h-3.5 fill-current" /> Bỏ ghim
-                          </button>
-                          <div className="flex items-center gap-2">
-                            <button onClick={() => { setCharacterToEdit(char); setIsCreateCharacterOpen(true); }} className="p-1 hover:text-black dark:hover:text-white">
-                              <Edit3 className="w-3.5 h-3.5" />
-                            </button>
-                            <button onClick={() => handleDeleteCharacter(char.id)} className="p-1 text-red-500 hover:text-red-700">
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                            <a href={char.link} target="_blank" rel="noreferrer" className="p-1 hover:text-black dark:hover:text-white">
-                              <ExternalLink className="w-3.5 h-3.5" />
-                            </a>
-                          </div>
-                        </div>
-                      </div>
+                      <ProfileCharacterCard
+                        key={char.id}
+                        character={{
+                          ...char,
+                          creatorName: char.creatorName || user.displayName,
+                          pinned: true
+                        }}
+                        isOwner={true}
+                        onEdit={(c) => { setCharacterToEdit(c); setIsCreateCharacterOpen(true); }}
+                        onDelete={handleDeleteCharacter}
+                        onPin={handleTogglePinCharacter}
+                      />
                     ))}
                   </div>
                 </div>
@@ -881,36 +868,17 @@ export default function Profile() {
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {myCharacters.map(char => (
-                      <div key={char.id} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 shadow-sm hover:border-neutral-300 dark:hover:border-neutral-700 transition-colors">
-                        <div className="flex gap-3">
-                          <img src={char.avatar} alt={char.name} className="w-16 h-16 rounded-xl object-cover shrink-0" />
-                          <div className="min-w-0 flex-1">
-                            <div className="font-bold text-sm truncate">{char.name}</div>
-                            <div className="text-xs text-neutral-500 truncate mt-0.5">{char.slogan}</div>
-                            <div className="flex items-center gap-3 text-[11px] text-neutral-400 mt-2">
-                              <span>❤️ {char.likesCount || 0}</span>
-                              <span>🔖 {char.savesCount || 0}</span>
-                              <span>👁️ {char.viewsCount || 0}</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-800 text-xs">
-                          <button onClick={() => handleTogglePinCharacter(char)} className="text-neutral-500 hover:text-black dark:hover:text-white flex items-center gap-1">
-                            <Pin className="w-3.5 h-3.5" /> {char.pinned ? "Đã ghim" : "Ghim"}
-                          </button>
-                          <div className="flex items-center gap-2">
-                            <button onClick={() => { setCharacterToEdit(char); setIsCreateCharacterOpen(true); }} className="p-1 hover:text-black dark:hover:text-white">
-                              <Edit3 className="w-3.5 h-3.5" />
-                            </button>
-                            <button onClick={() => handleDeleteCharacter(char.id)} className="p-1 text-red-500 hover:text-red-700">
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                            <a href={char.link} target="_blank" rel="noreferrer" className="p-1 hover:text-black dark:hover:text-white">
-                              <ExternalLink className="w-3.5 h-3.5" />
-                            </a>
-                          </div>
-                        </div>
-                      </div>
+                      <ProfileCharacterCard
+                        key={char.id}
+                        character={{
+                          ...char,
+                          creatorName: char.creatorName || user.displayName
+                        }}
+                        isOwner={true}
+                        onEdit={(c) => { setCharacterToEdit(c); setIsCreateCharacterOpen(true); }}
+                        onDelete={handleDeleteCharacter}
+                        onPin={handleTogglePinCharacter}
+                      />
                     ))}
                   </div>
                 )}

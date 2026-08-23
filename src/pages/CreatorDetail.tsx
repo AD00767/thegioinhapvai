@@ -288,9 +288,11 @@ export default function CreatorDetail() {
                       promptCount: prompts.length,
                       totalLikes: creator.totalLikes || 0,
                       totalSaves: creator.totalSaves || 0,
-                      viewsCount: creator.viewsCount || 0
+                      viewsCount: creator.viewsCount || 0,
+                      badges: creator.badges || []
                     }} 
                     size="md"
+                    maxVisible={10}
                   />
                   {creator.creatorStatus && (
                     <Sparkles className="w-5 h-5 text-amber-500 fill-amber-500 shrink-0" />
