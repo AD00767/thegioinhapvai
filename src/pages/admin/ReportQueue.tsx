@@ -728,8 +728,6 @@ export default function ReportQueue() {
                     return (
                       <Link 
                         to={targetUrl} 
-                        target="_blank"
-                        rel="noopener noreferrer"
                         className="flex items-center justify-between p-3.5 bg-white/10 dark:bg-black/10 rounded-2xl hover:bg-white/20 dark:hover:bg-black/20 transition-all group"
                       >
                         <span className="text-xs font-bold truncate pr-3">{targetLabel}</span>
