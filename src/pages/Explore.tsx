@@ -524,7 +524,7 @@ export default function Explore() {
                       <span>Character ({filteredCharacters.length})</span>
                     </h3>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredCharacters.map((char) => (
                       <CharacterCard key={char.id} character={char} onUpdate={loadData} />
                     ))}
@@ -632,8 +632,8 @@ export default function Explore() {
                     Chưa có Character nổi bật nào.
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {(browseTab === 'all' ? featuredCharacters.slice(0, 8) : featuredCharacters).map((char) => (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {(browseTab === 'all' ? featuredCharacters.slice(0, 6) : featuredCharacters).map((char) => (
                       <CharacterCard key={char.id} character={char} onUpdate={loadData} />
                     ))}
                   </div>
@@ -668,8 +668,8 @@ export default function Explore() {
                     Chưa có Character mới nào.
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {(browseTab === 'all' ? newCharacters.slice(0, 8) : newCharacters).map((char) => (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {(browseTab === 'all' ? newCharacters.slice(0, 6) : newCharacters).map((char) => (
                       <CharacterCard key={char.id} character={char} onUpdate={loadData} />
                     ))}
                   </div>

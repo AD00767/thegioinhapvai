@@ -952,29 +952,13 @@ export default function Profile() {
                   <p className="text-sm text-neutral-500">Bạn chưa thích Character nào.</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                   {likedCharacters.map(char => (
-                    <div key={char.id} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 shadow-sm">
-                      <div className="flex gap-3">
-                        <img src={char.avatar} alt={char.name} className="w-16 h-16 rounded-xl object-cover shrink-0" />
-                        <div className="min-w-0 flex-1">
-                          <Link to={`/character/${char.numericId || char.id}`} className="font-bold text-sm truncate hover:underline block">{char.name}</Link>
-                          <div className="text-xs text-neutral-500 truncate mt-0.5">{char.slogan}</div>
-                          <div className="text-[11px] text-neutral-400 mt-2">Bởi: {char.creatorName}</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-800">
-                        <button
-                          onClick={() => handleUnlikeCharacterFromProfile(char.id)}
-                          className="flex items-center gap-1 text-xs text-red-500 hover:text-red-600 font-semibold"
-                        >
-                          <Heart className="w-3.5 h-3.5 fill-current" /> Bỏ thích
-                        </button>
-                        <a href={char.link} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs font-semibold hover:underline">
-                          Mở AI Studio <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
-                      </div>
-                    </div>
+                    <ProfileCharacterCard
+                      key={char.id}
+                      character={char}
+                      onUpdate={fetchProfileData}
+                    />
                   ))}
                 </div>
               )}
@@ -992,29 +976,13 @@ export default function Profile() {
                 {bookmarkedItems.characters.length === 0 ? (
                   <p className="text-xs text-neutral-400 italic">Chưa có Character nào được lưu.</p>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                     {bookmarkedItems.characters.map(char => (
-                      <div key={char.id} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 shadow-sm">
-                        <div className="flex gap-3">
-                          <img src={char.avatar} alt={char.name} className="w-16 h-16 rounded-xl object-cover shrink-0" />
-                          <div className="min-w-0 flex-1">
-                            <Link to={`/character/${char.numericId || char.id}`} className="font-bold text-sm truncate hover:underline block">{char.name}</Link>
-                            <div className="text-xs text-neutral-500 truncate mt-0.5">{char.slogan}</div>
-                            <div className="text-[11px] text-neutral-400 mt-2">Bởi: {char.creatorName}</div>
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-800">
-                          <button
-                            onClick={() => handleRemoveBookmarkFromProfile(char.id, 'CHARACTER')}
-                            className="flex items-center gap-1 text-xs text-amber-500 hover:text-amber-600 font-semibold"
-                          >
-                            <Bookmark className="w-3.5 h-3.5 fill-current" /> Bỏ lưu
-                          </button>
-                          <a href={char.link} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs font-semibold hover:underline">
-                            Mở AI Studio <ExternalLink className="w-3.5 h-3.5" />
-                          </a>
-                        </div>
-                      </div>
+                      <ProfileCharacterCard
+                        key={char.id}
+                        character={char}
+                        onUpdate={fetchProfileData}
+                      />
                     ))}
                   </div>
                 )}

@@ -323,8 +323,8 @@ export default function Characters() {
 
       {/* Character Grid */}
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3, 4, 5, 6].map(i => (
             <div key={i} className="h-64 bg-neutral-100 dark:bg-neutral-800 rounded-2xl animate-pulse"></div>
           ))}
         </div>
@@ -337,7 +337,7 @@ export default function Characters() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredCharacters.map(char => (
             <CharacterCard 
               key={char.id} 

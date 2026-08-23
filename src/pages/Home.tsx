@@ -358,16 +358,16 @@ export default function Home() {
           </div>
 
           {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[1, 2, 3, 4].map(i => <div key={i} className="h-64 bg-neutral-100 dark:bg-neutral-800 rounded-2xl animate-pulse" />)}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="h-64 bg-neutral-100 dark:bg-neutral-800 rounded-2xl animate-pulse" />)}
             </div>
           ) : filteredCharacters.length === 0 ? (
             <div className="py-12 text-center text-neutral-500 border border-neutral-200 dark:border-neutral-800 rounded-2xl border-dashed text-sm">
               Không tìm thấy Character nào phù hợp với bộ lọc.
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {filteredCharacters.slice(0, 8).map(char => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredCharacters.slice(0, 6).map(char => (
                 <CharacterCard key={char.id} character={char} onUpdate={loadHomeData} />
               ))}
             </div>
