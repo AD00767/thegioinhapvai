@@ -38,6 +38,7 @@ import SupportManager from './pages/admin/SupportManager';
 import AdminModeratorManager from './pages/admin/AdminModeratorManager';
 import CreatorManager from './pages/admin/CreatorManager';
 import AppealManagement from './pages/admin/AppealManagement';
+import AdminSystemNotifications from './pages/admin/AdminSystemNotifications';
 import CreatorDetail from './pages/CreatorDetail';
 import CharacterDetail from './pages/CharacterDetail';
 import PromptDetail from './pages/PromptDetail';
@@ -275,6 +276,7 @@ export default function App() {
           <Route path="/admin/audit" element={<ProtectedRoute><AuditLogs /></ProtectedRoute>} />
           <Route path="/admin/badges" element={<ProtectedRoute><BadgeManager /></ProtectedRoute>} />
           <Route path="/admin/support" element={<ProtectedRoute><SupportManager /></ProtectedRoute>} />
+          <Route path="/admin/system-notifications" element={<ProtectedRoute><AdminSystemNotifications /></ProtectedRoute>} />
           <Route path="/admin/managers" element={<ProtectedRoute><AdminModeratorManager /></ProtectedRoute>} />
           <Route path="/admin/creators" element={<ProtectedRoute><CreatorManager /></ProtectedRoute>} />
           <Route path="/admin/content" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />

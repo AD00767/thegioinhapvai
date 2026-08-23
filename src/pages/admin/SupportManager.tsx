@@ -60,6 +60,27 @@ export default function SupportManager() {
         resolvedAt: serverTimestamp()
       });
 
+      // Send notification to member ONLY IF needsResponse is true/YES and senderId exists
+      const requiresResponse = selectedTicket.needsResponse === true || selectedTicket.needsResponse === 'YES';
+      if (requiresResponse && selectedTicket.senderId) {
+        await addDoc(collection(db, 'notifications'), {
+          recipientId: selectedTicket.senderId,
+          senderId: currentUser.id,
+          senderName: currentUser.displayName || 'Ban Quản Trị',
+          senderAvatar: currentUser.avatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=Admin',
+          type: 'SUPPORT_REPLY',
+          title: 'Phản hồi yêu cầu hỗ trợ',
+          message: reply,
+          targetId: selectedTicket.id,
+          targetType: 'SUPPORT_TICKET',
+          read: false,
+          createdAt: serverTimestamp(),
+          ticketSubject: selectedTicket.subject || selectedTicket.fullSubject || selectedTicket.category || 'Hỗ trợ & Liên hệ',
+          ticketContent: selectedTicket.content || selectedTicket.message || '',
+          moderatorReply: reply
+        });
+      }
+
       // Audit Log
       await addDoc(collection(db, 'audit_logs'), {
         executorId: currentUser.id,

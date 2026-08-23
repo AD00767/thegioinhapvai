@@ -28,6 +28,11 @@ export interface CharacterItem {
   sharesCount?: number;
   pinned?: boolean;
   isPinned?: boolean;
+  isHidden?: boolean;
+  isDeleted?: boolean;
+  removalReason?: string;
+  removalDetails?: string;
+  removalTime?: string;
   createdAt?: any;
   updatedAt?: any;
   deletedAt?: string | null;
@@ -53,6 +58,11 @@ export interface PromptItem {
   sharesCount?: number;
   pinned?: boolean;
   isPinned?: boolean;
+  isHidden?: boolean;
+  isDeleted?: boolean;
+  removalReason?: string;
+  removalDetails?: string;
+  removalTime?: string;
   createdAt?: any;
   updatedAt?: any;
   deletedAt?: string | null;
@@ -67,9 +77,10 @@ export interface CreatorItem {
   bio?: string;
   statusMessage?: string;
   creatorStatus: boolean;
-  role?: 'USER' | 'CREATOR' | 'MODERATOR' | 'ADMIN';
+  role?: 'USER' | 'CREATOR' | 'MODERATOR' | 'MOD' | 'ADMIN';
   permissions?: string[];
   isLocked?: boolean;
+  isDeleted?: boolean;
   lockReason?: string;
   lockExpiresAt?: string;
   restrictedActivities?: string[];
@@ -90,6 +101,7 @@ export interface CreatorItem {
   followingCount?: number;
   totalLikes?: number;
   totalSaves?: number;
+  viewsCount?: number;
   sharesCount?: number;
   status?: 'ACTIVE' | 'SUSPENDED' | 'DELETED' | 'DISABLED';
   deletedAt?: string | null;
@@ -113,6 +125,10 @@ export interface ReportItem {
   severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   reporterId: string;
   reporterName: string;
+  claimedBy?: string | null;
+  claimedByName?: string | null;
+  moderatorId?: string | null;
+  moderatorNote?: string | null;
   adminResponse?: string;
   processedBy?: string;
   createdAt: any;

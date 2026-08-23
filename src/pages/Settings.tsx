@@ -289,7 +289,9 @@ export default function Settings() {
                         >
                           {showEmail ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
-                        <ShieldCheck className="w-5 h-5 text-emerald-500" title="Đã xác thực bảo mật" />
+                        <span title="Đã xác thực bảo mật">
+                          <ShieldCheck className="w-5 h-5 text-emerald-500" />
+                        </span>
                       </div>
                     </div>
                     <p className="text-[11px] text-neutral-400 flex items-center gap-1">

@@ -3,7 +3,7 @@ import { Navigate, Link, useLocation } from 'react-router-dom';
 import { 
   ShieldCheck, Users, Sparkles, UserCheck, AlertTriangle, 
   Clock, FileText, BarChart3, Settings, BadgeCheck, MessageSquare,
-  Menu, X, FileCheck
+  Menu, X, FileCheck, Bell
 } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 
@@ -31,6 +31,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     { path: '/admin/content', label: 'Nội Dung', icon: <Sparkles className="w-5 h-5" /> },
     { path: '/admin/badges', label: 'Badge', icon: <BadgeCheck className="w-5 h-5" /> },
     { path: '/admin/support', label: 'Hỗ Trợ', icon: <MessageSquare className="w-5 h-5" /> },
+    { path: '/admin/system-notifications', label: 'Thông Báo Hệ Thống', icon: <Bell className="w-5 h-5" /> },
     { path: '/admin/audit', label: 'Audit Log', icon: <Clock className="w-5 h-5" /> },
     { path: '/admin/managers', label: 'Quản Trị Viên', icon: <ShieldCheck className="w-5 h-5" /> },
   ] : [

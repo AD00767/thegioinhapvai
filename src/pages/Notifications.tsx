@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Bell, UserPlus, MessageSquare, Heart, Bookmark, CheckCheck, Trash2, Filter, Sparkles, RefreshCw, MessageCircle,
-  Shield, Check, X
+  Shield, Check, X, HelpCircle, ShieldCheck, Megaphone
 } from 'lucide-react';
 import { 
   collection, query, where, getDocs, doc, updateDoc, deleteDoc, orderBy, writeBatch, addDoc
@@ -14,6 +14,8 @@ import { getDoc } from 'firebase/firestore';
 import { getValidAvatar } from '../lib/avatar';
 import DeletedContentModal from '../components/DeletedContentModal';
 import RemovalDetailModal from '../components/modals/RemovalDetailModal';
+import SupportReplyModal from '../components/modals/SupportReplyModal';
+import SystemNotificationModal from '../components/modals/SystemNotificationModal';
 
 export interface NotificationItem {
   id: string;
@@ -22,18 +24,23 @@ export interface NotificationItem {
   senderId?: string;
   senderName?: string;
   senderAvatar?: string;
-  type: 'FOLLOW' | 'FEEDBACK' | 'COMMENT' | 'CHARACTER_LIKE' | 'CHARACTER_SAVE' | 'PROMPT_SAVE' | 'SYSTEM' | string;
+  type: 'FOLLOW' | 'FEEDBACK' | 'COMMENT' | 'CHARACTER_LIKE' | 'CHARACTER_SAVE' | 'PROMPT_SAVE' | 'SYSTEM' | 'SYSTEM_BROADCAST' | string;
   title: string;
   message?: string;
   body?: string;
+  content?: string;
+  markdownContent?: string;
+  isSystem?: boolean;
+  isSystemBroadcast?: boolean;
   link?: string;
   targetId?: string;
   targetType?: string;
   read: boolean;
   createdAt: any;
+  [key: string]: any;
 }
 
-export type NotificationCategory = 'ALL' | 'FOLLOW' | 'FEEDBACK' | 'COMMENT' | 'SAVE_LIKE';
+export type NotificationCategory = 'ALL' | 'SYSTEM' | 'FOLLOW' | 'FEEDBACK' | 'COMMENT' | 'SAVE_LIKE';
 
 export default function Notifications() {
   const { user } = useAuthStore();
@@ -60,11 +67,27 @@ export default function Notifications() {
     targetId: ''
   });
 
+  const [supportModalData, setSupportModalData] = useState<{
+    isOpen: boolean;
+    notification: NotificationItem | null;
+  }>({
+    isOpen: false,
+    notification: null
+  });
+
+  const [systemModalData, setSystemModalData] = useState<{
+    isOpen: boolean;
+    notification: NotificationItem | null;
+  }>({
+    isOpen: false,
+    notification: null
+  });
+
   const fetchNotifications = async () => {
     if (!user) return;
     setLoading(true);
     try {
-      // Query notifications where recipientId == user.id OR userId == user.id
+      // Query notifications where recipientId == user.id OR userId == user.id OR recipientId == 'ALL'
       const qRecipient = query(
         collection(db, 'notifications'),
         where('recipientId', '==', user.id)
@@ -73,27 +96,38 @@ export default function Notifications() {
         collection(db, 'notifications'),
         where('userId', '==', user.id)
       );
+      const qBroadcast = query(
+        collection(db, 'notifications'),
+        where('recipientId', '==', 'ALL')
+      );
 
-      const [snapRecipient, snapUser] = await Promise.all([
+      const [snapRecipient, snapUser, snapBroadcast] = await Promise.all([
         getDocs(qRecipient),
-        getDocs(qUser)
+        getDocs(qUser),
+        getDocs(qBroadcast)
       ]);
 
       const map = new Map<string, NotificationItem>();
 
       const parseDoc = (d: any) => {
         const data = d.data();
+        const isBroadcast = data.recipientId === 'ALL' || data.isSystemBroadcast === true;
+        const isRead = isBroadcast 
+          ? (Array.isArray(data.readBy) && data.readBy.includes(user.id))
+          : (data.read !== undefined ? data.read : (data.isRead !== undefined ? data.isRead : false));
+
         return {
           id: d.id,
           ...data,
           // Normalize message/body/content
-          message: data.message || data.body || data.content || '',
-          read: data.read !== undefined ? data.read : (data.isRead !== undefined ? data.isRead : false)
+          message: data.message || data.body || data.content || data.markdownContent || '',
+          read: isRead
         } as NotificationItem;
       };
 
       snapRecipient.docs.forEach(d => map.set(d.id, parseDoc(d)));
       snapUser.docs.forEach(d => map.set(d.id, parseDoc(d)));
+      snapBroadcast.docs.forEach(d => map.set(d.id, parseDoc(d)));
 
       const list = Array.from(map.values()).sort((a, b) => {
         const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt || 0).getTime();
@@ -116,9 +150,22 @@ export default function Notifications() {
 
   // Mark single notification as read
   const handleMarkAsRead = async (notifId: string) => {
+    if (!user) return;
     try {
+      const notif = notifications.find(n => n.id === notifId);
       const notifRef = doc(db, 'notifications', notifId);
-      await updateDoc(notifRef, { read: true });
+
+      if (notif && (notif.recipientId === 'ALL' || notif.isSystemBroadcast)) {
+        const currentReadBy = Array.isArray(notif.readBy) ? notif.readBy : [];
+        if (!currentReadBy.includes(user.id)) {
+          await updateDoc(notifRef, {
+            readBy: [...currentReadBy, user.id]
+          });
+        }
+      } else {
+        await updateDoc(notifRef, { read: true });
+      }
+
       setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, read: true } : n));
     } catch (err) {
       console.error("Mark as read error:", err);
@@ -127,13 +174,22 @@ export default function Notifications() {
 
   // Mark all as read
   const handleMarkAllAsRead = async () => {
+    if (!user) return;
     const unread = notifications.filter(n => !n.read);
     if (unread.length === 0) return;
 
     try {
       const batch = writeBatch(db);
       unread.forEach(n => {
-        batch.update(doc(db, 'notifications', n.id), { read: true });
+        const notifRef = doc(db, 'notifications', n.id);
+        if (n.recipientId === 'ALL' || n.isSystemBroadcast) {
+          const currentReadBy = Array.isArray(n.readBy) ? n.readBy : [];
+          if (!currentReadBy.includes(user.id)) {
+            batch.update(notifRef, { readBy: [...currentReadBy, user.id] });
+          }
+        } else {
+          batch.update(notifRef, { read: true });
+        }
       });
       await batch.commit();
 
@@ -279,6 +335,22 @@ export default function Notifications() {
       handleMarkAsRead(notif.id);
     }
 
+    if (notif.isSystem || notif.type === 'SYSTEM' || notif.type === 'SYSTEM_BROADCAST' || notif.markdownContent) {
+      setSystemModalData({
+        isOpen: true,
+        notification: notif
+      });
+      return;
+    }
+
+    if (notif.type === 'SUPPORT_REPLY' || notif.targetType === 'SUPPORT_TICKET') {
+      setSupportModalData({
+        isOpen: true,
+        notification: notif
+      });
+      return;
+    }
+
     if (!notif.link) return;
 
     // Check if target content exists for Feedback or Comment
@@ -324,10 +396,15 @@ export default function Notifications() {
   const filteredNotifications = notifications.filter(n => {
     // Category check
     let matchesCategory = true;
-    if (categoryFilter === 'FOLLOW') matchesCategory = n.type === 'FOLLOW';
-    else if (categoryFilter === 'FEEDBACK') matchesCategory = n.type === 'FEEDBACK';
-    else if (categoryFilter === 'COMMENT') matchesCategory = n.type === 'COMMENT';
-    else if (categoryFilter === 'SAVE_LIKE') {
+    if (categoryFilter === 'SYSTEM') {
+      matchesCategory = n.isSystem === true || n.type === 'SYSTEM' || n.type === 'SYSTEM_BROADCAST' || n.isSystemBroadcast === true || ['MODERATOR_INVITE', 'SUPPORT_REPLY', 'CONTENT_REMOVED', 'ACCOUNT_LOCKED', 'APPEAL_APPROVED', 'APPEAL_REJECTED'].includes(n.type);
+    } else if (categoryFilter === 'FOLLOW') {
+      matchesCategory = n.type === 'FOLLOW';
+    } else if (categoryFilter === 'FEEDBACK') {
+      matchesCategory = n.type === 'FEEDBACK';
+    } else if (categoryFilter === 'COMMENT') {
+      matchesCategory = n.type === 'COMMENT';
+    } else if (categoryFilter === 'SAVE_LIKE') {
       matchesCategory = ['CHARACTER_LIKE', 'CHARACTER_SAVE', 'PROMPT_SAVE', 'LIKE', 'BOOKMARK', 'SAVE'].includes(n.type);
     }
 
@@ -344,6 +421,9 @@ export default function Notifications() {
   // Helper for notification icon
   const getIconForType = (type: string) => {
     switch (type) {
+      case 'SYSTEM':
+      case 'SYSTEM_BROADCAST':
+        return <ShieldCheck className="w-5 h-5 text-amber-500" />;
       case 'FOLLOW':
         return <UserPlus className="w-5 h-5 text-blue-500" />;
       case 'FEEDBACK':
@@ -360,6 +440,8 @@ export default function Notifications() {
         return <Bookmark className="w-5 h-5 text-amber-500 fill-current" />;
       case 'MODERATOR_INVITE':
         return <Shield className="w-5 h-5 text-purple-500" />;
+      case 'SUPPORT_REPLY':
+        return <HelpCircle className="w-5 h-5 text-amber-500" />;
       default:
         return <Bell className="w-5 h-5 text-neutral-500" />;
     }
@@ -393,7 +475,7 @@ export default function Notifications() {
             )}
           </h1>
           <p className="text-neutral-400 text-xs md:text-sm">
-            Cập nhật tức thì khi có người Follow, gửi Feedback, bình luận hoặc lưu Character / Prompt của bạn.
+            Cập nhật tức thì các thông báo từ Ban Quản Trị, khi có người Follow, gửi Feedback, bình luận hoặc lưu nội dung của bạn.
           </p>
         </div>
 
@@ -431,6 +513,18 @@ export default function Notifications() {
             }`}
           >
             Tất cả ({notifications.length})
+          </button>
+
+          <button
+            onClick={() => setCategoryFilter('SYSTEM')}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+              categoryFilter === 'SYSTEM'
+                ? 'bg-amber-500 text-black shadow-sm font-extrabold'
+                : 'text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white'
+            }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+            <span>Hệ thống</span>
           </button>
 
           <button
@@ -509,7 +603,7 @@ export default function Notifications() {
           <Bell className="w-12 h-12 text-neutral-400 mx-auto opacity-30" />
           <h3 className="font-bold text-base text-neutral-800 dark:text-neutral-200">Bạn chưa có thông báo nào</h3>
           <p className="text-neutral-500 text-xs max-w-sm mx-auto">
-            Khi có người Follow, bình luận, gửi Feedback hoặc tương tác với nội dung của bạn, thông báo sẽ xuất hiện ở đây.
+            Khi có thông báo từ Ban Quản Trị, người Follow, bình luận, gửi Feedback hoặc tương tác với nội dung của bạn, thông báo sẽ xuất hiện ở đây.
           </p>
         </div>
       ) : (
@@ -519,10 +613,19 @@ export default function Notifications() {
               ? notif.createdAt.toDate().toLocaleString('vi-VN') 
               : new Date(notif.createdAt || 0).toLocaleString('vi-VN');
 
+            const isSystemNotif = notif.isSystem || notif.type === 'SYSTEM' || notif.type === 'SYSTEM_BROADCAST' || !!notif.markdownContent;
+
             return (
               <div
                 key={notif.id}
-                onClick={() => handleMarkAsRead(notif.id)}
+                onClick={() => {
+                  handleMarkAsRead(notif.id);
+                  if (isSystemNotif) {
+                    setSystemModalData({ isOpen: true, notification: notif });
+                  } else if (notif.type === 'SUPPORT_REPLY' || notif.targetType === 'SUPPORT_TICKET') {
+                    setSupportModalData({ isOpen: true, notification: notif });
+                  }
+                }}
                 className={`group relative p-4 rounded-2xl border transition-all flex items-start gap-4 cursor-pointer ${
                   notif.read
                     ? 'bg-white dark:bg-neutral-900/60 border-neutral-200/80 dark:border-neutral-800/80 opacity-80'
@@ -549,18 +652,23 @@ export default function Notifications() {
                 {/* Main Content */}
                 <div className="flex-1 min-w-0 space-y-1">
                   <div className="flex items-center justify-between gap-2 pr-6">
-                    <h4 className="font-bold text-sm text-neutral-900 dark:text-neutral-100">
-                      {notif.title}
+                    <h4 className="font-bold text-sm text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+                      {isSystemNotif && (
+                        <span className="text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-md shrink-0">
+                          Hệ thống
+                        </span>
+                      )}
+                      <span>{notif.title}</span>
                     </h4>
                   </div>
 
-                  <p className="text-xs md:text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed">
+                  <p className="text-xs md:text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed line-clamp-2">
                     {notif.message}
                   </p>
 
                   <div className="flex items-center gap-4 pt-1 text-[11px] text-neutral-400">
                     <span>{timeFormatted}</span>
-                    {notif.link && (
+                    {(notif.link || notif.type === 'SUPPORT_REPLY' || notif.targetType === 'SUPPORT_TICKET' || isSystemNotif) && (
                       <button
                         onClick={e => handleNotificationAction(notif, e)}
                         className="text-amber-600 dark:text-amber-400 font-bold hover:underline"
@@ -568,7 +676,7 @@ export default function Notifications() {
                         Xem chi tiết →
                       </button>
                     )}
-                    {(['CONTENT_REMOVED', 'ACCOUNT_LOCKED', 'APPEAL_APPROVED', 'APPEAL_REJECTED'].includes(notif.type) || notif.targetId) && (
+                    {(['CONTENT_REMOVED', 'ACCOUNT_LOCKED', 'APPEAL_APPROVED', 'APPEAL_REJECTED'].includes(notif.type) && !isSystemNotif && notif.type !== 'SUPPORT_REPLY' && notif.targetType !== 'SUPPORT_TICKET') && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -645,6 +753,20 @@ export default function Notifications() {
           removalTime={removalModalData.removalTime}
         />
       )}
+
+      {/* Support Reply Detail Modal */}
+      <SupportReplyModal
+        isOpen={supportModalData.isOpen}
+        onClose={() => setSupportModalData(prev => ({ ...prev, isOpen: false }))}
+        notification={supportModalData.notification}
+      />
+
+      {/* System Notification Detail Modal */}
+      <SystemNotificationModal
+        isOpen={systemModalData.isOpen}
+        onClose={() => setSystemModalData(prev => ({ ...prev, isOpen: false }))}
+        notification={systemModalData.notification}
+      />
     </div>
   );
 }
