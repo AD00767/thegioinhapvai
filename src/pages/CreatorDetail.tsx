@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
   Sparkles, UserCheck, UserPlus, Users, BookOpen, PenTool, ArrowLeft, Flag, AlertCircle, RefreshCw,
-  Facebook, Instagram, Music, MessageSquare, Share2
+  Facebook, Instagram, Music, MessageSquare, Share2, MoreVertical
 } from 'lucide-react';
 import { doc, getDoc, collection, query, where, getDocs, addDoc, deleteDoc, serverTimestamp, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -41,12 +41,31 @@ export default function CreatorDetail() {
   const [promptToDelete, setPromptToDelete] = useState<string | null>(null);
   const [isShareOpen, setIsShareOpen] = useState(false);
 
+  // 3-dots menu for Creator header
+  const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
+  const headerMenuRef = useRef<HTMLDivElement>(null);
+
   useSeo({
     title: creator?.displayName,
     description: creator?.bio,
     image: creator?.avatar,
     type: 'profile'
   });
+
+  // Close header menu on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (headerMenuRef.current && !headerMenuRef.current.contains(event.target as Node)) {
+        setIsHeaderMenuOpen(false);
+      }
+    }
+    if (isHeaderMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isHeaderMenuOpen]);
 
   const fetchCreatorData = async () => {
     if (!id) return;
@@ -68,7 +87,7 @@ export default function CreatorDetail() {
         }
       }
 
-      // Fallback to direct document ID lookup for backward compatibility
+      // Fallback to direct document ID lookup
       if (!userSnap) {
         const userRef = doc(db, 'users', id);
         const directSnap = await getDoc(userRef);
@@ -106,7 +125,7 @@ export default function CreatorDetail() {
 
       document.title = `${cItem.displayName} - Creator Profile | Thế giới nhập vai_AD`;
 
-      // 2. Fetch Creator's characters using resolved docId
+      // Fetch Creator's characters
       const qChar = query(collection(db, 'characters'), where('creatorId', '==', targetDocId));
       const snapChar = await getDocs(qChar);
       const charList: CharacterItem[] = [];
@@ -124,6 +143,7 @@ export default function CreatorDetail() {
           totalViewsReceived += Number(data.viewsCount || 0);
         }
       });
+
       // Sort pinned first, then newest
       charList.sort((a, b) => {
         if (a.pinned && !b.pinned) return -1;
@@ -132,12 +152,10 @@ export default function CreatorDetail() {
       });
       setCharacters(charList);
       
-      // Set default tab to PROMPTS if no characters and it's a regular user
       if (charList.length === 0) {
         setActiveTab('PROMPTS');
       }
 
-      // Update creator object with fresh sums for UserBadge and SEO
       setCreator(prev => prev ? { 
         ...prev, 
         totalLikes: totalLikesReceived, 
@@ -145,7 +163,7 @@ export default function CreatorDetail() {
         viewsCount: totalViewsReceived
       } : null);
 
-      // 3. Fetch Creator's prompts using resolved docId
+      // Fetch Creator's prompts
       const qPrompt = query(collection(db, 'prompts'), where('authorId', '==', targetDocId));
       const snapPrompt = await getDocs(qPrompt);
       const promptList: PromptItem[] = [];
@@ -153,7 +171,7 @@ export default function CreatorDetail() {
         const data = d.data();
         if (!data.deletedAt && !data.isHidden) promptList.push({ id: d.id, ...data } as PromptItem);
       });
-      // Sort pinned first, then newest
+
       promptList.sort((a, b) => {
         if (a.pinned && !b.pinned) return -1;
         if (!a.pinned && b.pinned) return 1;
@@ -169,7 +187,6 @@ export default function CreatorDetail() {
     }
   };
 
-  // Check follow status using resolved creator.id
   useEffect(() => {
     if (!user?.id || !creator?.id || user.id === creator.id) return;
 
@@ -266,193 +283,223 @@ export default function CreatorDetail() {
         <span>Quay lại</span>
       </button>
 
-      {/* Creator Profile Hero Banner */}
+      {/* Creator Profile Hero Card */}
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 md:p-8 shadow-sm space-y-6 relative overflow-hidden">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div className="flex items-center gap-5">
-            <img 
-              src={getValidAvatar(creator.avatar)} 
-              alt={creator.displayName}
-              className="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-neutral-200 dark:border-neutral-700 shrink-0 shadow-md"
-            />
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl md:text-3xl font-extrabold text-neutral-900 dark:text-neutral-100 flex items-center gap-2 flex-wrap">
-                  <span>{creator.displayName}</span>
-                  <UserBadge 
-                    subject={{ 
-                      creatorStatus: creator.creatorStatus,
-                      role: creator.role,
-                      createdAt: creator.createdAt,
-                      characterCount: characters.length, 
-                      promptCount: prompts.length,
-                      totalLikes: creator.totalLikes || 0,
-                      totalSaves: creator.totalSaves || 0,
-                      viewsCount: creator.viewsCount || 0,
-                      badges: creator.badges || []
-                    }} 
-                    size="md"
-                    maxVisible={10}
-                  />
-                  {creator.creatorStatus && (
-                    <Sparkles className="w-5 h-5 text-amber-500 fill-amber-500 shrink-0" />
-                  )}
-                </h1>
-              </div>
-              {creator.role !== 'ADMIN' && creator.role !== 'MODERATOR' && (
-                <div className="mt-1 mb-2">
-                  <DisplayId type="creator" numericId={creator.numericId} />
-                </div>
-              )}
+        
+        {/* Top Right Three Dots Options Menu */}
+        <div className="absolute top-6 right-6 z-20" ref={headerMenuRef}>
+          <button
+            onClick={() => setIsHeaderMenuOpen(!isHeaderMenuOpen)}
+            className="p-2 rounded-xl text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+            title="Tùy chọn Creator"
+            aria-label="Tùy chọn Creator"
+          >
+            <MoreVertical className="w-5 h-5" />
+          </button>
 
-              <p className="text-sm text-neutral-600 dark:text-neutral-400 max-w-xl leading-relaxed">
-                {creator.bio || (creator.creatorStatus 
-                  ? "Tác giả sáng tạo nhân vật Roleplay và Prompt trên Google AI Studio." 
-                  : "Thành viên cộng đồng Thế giới nhập vai_AD.")}
-              </p>
+          {isHeaderMenuOpen && (
+            <div className="absolute right-0 top-full mt-2 w-44 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-xl py-1.5 text-xs font-semibold z-30 animate-in fade-in duration-150">
+              <button
+                onClick={() => {
+                  setIsHeaderMenuOpen(false);
+                  setIsShareOpen(true);
+                }}
+                className="w-full text-left px-3.5 py-2.5 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2 transition-colors"
+              >
+                <Share2 className="w-4 h-4 text-indigo-500" />
+                <span>Chia sẻ</span>
+              </button>
 
-              {/* Social links */}
-              {creator.socialLinks && (creator.socialLinks.facebook || creator.socialLinks.instagram || creator.socialLinks.tiktok || creator.socialLinks.discord) && (
-                <div className="flex items-center gap-2 pt-2 flex-wrap">
-                  {creator.socialLinks.facebook && (
-                    <a 
-                      href={creator.socialLinks.facebook.startsWith('http') ? creator.socialLinks.facebook : `https://${creator.socialLinks.facebook}`} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      className="p-2 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:text-blue-500 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
-                      title="Facebook"
-                    >
-                      <Facebook className="w-4 h-4" />
-                    </a>
-                  )}
-                  {creator.socialLinks.instagram && (
-                    <a 
-                      href={creator.socialLinks.instagram.startsWith('http') ? creator.socialLinks.instagram : `https://${creator.socialLinks.instagram}`} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      className="p-2 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:text-pink-500 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
-                      title="Instagram"
-                    >
-                      <Instagram className="w-4 h-4" />
-                    </a>
-                  )}
-                  {creator.socialLinks.tiktok && (
-                    <a 
-                      href={creator.socialLinks.tiktok.startsWith('http') ? creator.socialLinks.tiktok : `https://${creator.socialLinks.tiktok}`} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      className="p-2 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
-                      title="TikTok"
-                    >
-                      <Music className="w-4 h-4" />
-                    </a>
-                  )}
-                  {creator.socialLinks.discord && (
-                    <a 
-                      href={creator.socialLinks.discord.startsWith('http') ? creator.socialLinks.discord : `https://${creator.socialLinks.discord}`} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      className="p-2 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:text-indigo-500 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
-                      title="Discord"
-                    >
-                      <MessageSquare className="w-4 h-4" />
-                    </a>
-                  )}
-                </div>
+              {!isSelf && (
+                <button
+                  onClick={() => {
+                    setIsHeaderMenuOpen(false);
+                    setIsReportOpen(true);
+                  }}
+                  className="w-full text-left px-3.5 py-2.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-2 transition-colors"
+                >
+                  <Flag className="w-4 h-4" />
+                  <span>Báo cáo</span>
+                </button>
               )}
             </div>
-          </div>
+          )}
+        </div>
 
-          {/* Action buttons */}
-          <div className="flex items-center gap-2 w-full md:w-auto shrink-0">
-            {creator.role !== 'ADMIN' && creator.role !== 'MODERATOR' && (
-              <button
-                onClick={() => setIsShareOpen(true)}
-                className="p-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 transition-colors flex items-center justify-center gap-1.5 text-xs font-bold"
-                title="Chia sẻ hồ sơ"
-              >
-                <Share2 className="w-4 h-4 text-amber-500" />
-                <span className="hidden sm:inline">Chia sẻ</span>
-              </button>
-            )}
+        {/* Creator Info */}
+        <div className="flex flex-col md:flex-row items-start gap-5 pr-12">
+          <img 
+            src={getValidAvatar(creator.avatar)} 
+            alt={creator.displayName}
+            className="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-neutral-200 dark:border-neutral-700 shrink-0 shadow-md"
+          />
+          <div className="space-y-2 min-w-0 flex-1">
+            {/* Display Name & Admin-Granted Badges */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-2xl md:text-3xl font-extrabold text-neutral-900 dark:text-neutral-100">
+                {creator.displayName}
+              </h1>
+              <UserBadge 
+                subject={{ 
+                  creatorStatus: creator.creatorStatus,
+                  role: creator.role,
+                  createdAt: creator.createdAt,
+                  characterCount: characters.length, 
+                  promptCount: prompts.length,
+                  totalLikes: creator.totalLikes || 0,
+                  totalSaves: creator.totalSaves || 0,
+                  viewsCount: creator.viewsCount || 0,
+                  badges: creator.badges || []
+                }} 
+                size="md"
+                maxVisible={10}
+              />
+              {creator.creatorStatus && (
+                <Sparkles className="w-5 h-5 text-amber-500 fill-amber-500 shrink-0" />
+              )}
+            </div>
 
-            {!isSelf && (
-              <button
-                onClick={handleToggleFollow}
-                disabled={followLoading}
-                className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${
-                  isFollowing
-                    ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200'
-                    : 'bg-black dark:bg-white text-white dark:text-black hover:opacity-90 shadow-sm'
-                }`}
-              >
-                {isFollowing ? (
-                  <>
-                    <UserCheck className="w-4 h-4 text-emerald-500" />
-                    <span>Đang theo dõi</span>
-                  </>
-                ) : (
-                  <>
-                    <UserPlus className="w-4 h-4" />
-                    <span>Theo dõi Creator</span>
-                  </>
+            {/* Creator ID (Left) & Follow Button (Right) */}
+            <div className="flex items-center justify-between gap-3 w-full">
+              {creator.role !== 'ADMIN' && creator.role !== 'MODERATOR' ? (
+                <DisplayId type="creator" numericId={creator.numericId} />
+              ) : (
+                <div />
+              )}
+
+              {!isSelf && (
+                <button
+                  onClick={handleToggleFollow}
+                  disabled={followLoading}
+                  className={`px-3.5 sm:px-4 py-1.5 rounded-full font-bold text-xs flex items-center gap-1.5 transition-all duration-150 active:scale-95 shrink-0 ${
+                    isFollowing
+                      ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 border border-neutral-200 dark:border-neutral-700'
+                      : 'bg-black dark:bg-white text-white dark:text-black hover:opacity-90 shadow-sm'
+                  }`}
+                >
+                  {isFollowing ? (
+                    <>
+                      <UserCheck className="w-3.5 h-3.5 text-emerald-500" />
+                      <span>Đang theo dõi</span>
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="w-3.5 h-3.5" />
+                      <span>Theo dõi</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+
+            {/* Activity Status (Row below ID) */}
+            <div>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Đang hoạt động</span>
+              </span>
+            </div>
+
+            {/* Bio */}
+            <p className="text-sm text-neutral-600 dark:text-neutral-400 max-w-2xl leading-relaxed pt-1">
+              {creator.bio || (creator.creatorStatus 
+                ? "Tác giả sáng tạo nhân vật Roleplay và Prompt trên Google AI Studio." 
+                : "Thành viên cộng đồng Thế giới nhập vai_AD.")}
+            </p>
+
+            {/* Social Links */}
+            {creator.socialLinks && (creator.socialLinks.facebook || creator.socialLinks.instagram || creator.socialLinks.tiktok || creator.socialLinks.discord) && (
+              <div className="flex items-center gap-2 pt-2 flex-wrap">
+                {creator.socialLinks.facebook && (
+                  <a 
+                    href={creator.socialLinks.facebook.startsWith('http') ? creator.socialLinks.facebook : `https://${creator.socialLinks.facebook}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="p-2 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:text-blue-500 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
+                    title="Facebook"
+                  >
+                    <Facebook className="w-4 h-4" />
+                  </a>
                 )}
-              </button>
-            )}
-
-            {!isSelf && (
-              <button
-                onClick={() => setIsReportOpen(true)}
-                className="p-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-400 hover:text-red-500 transition-colors"
-                title="Báo cáo"
-              >
-                <Flag className="w-4 h-4" />
-              </button>
+                {creator.socialLinks.instagram && (
+                  <a 
+                    href={creator.socialLinks.instagram.startsWith('http') ? creator.socialLinks.instagram : `https://${creator.socialLinks.instagram}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="p-2 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:text-pink-500 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
+                    title="Instagram"
+                  >
+                    <Instagram className="w-4 h-4" />
+                  </a>
+                )}
+                {creator.socialLinks.tiktok && (
+                  <a 
+                    href={creator.socialLinks.tiktok.startsWith('http') ? creator.socialLinks.tiktok : `https://${creator.socialLinks.tiktok}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="p-2 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
+                    title="TikTok"
+                  >
+                    <Music className="w-4 h-4" />
+                  </a>
+                )}
+                {creator.socialLinks.discord && (
+                  <a 
+                    href={creator.socialLinks.discord.startsWith('http') ? creator.socialLinks.discord : `https://${creator.socialLinks.discord}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="p-2 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:text-indigo-500 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
+                    title="Discord"
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                  </a>
+                )}
+              </div>
             )}
           </div>
         </div>
 
-        {/* Creator Statistics Row */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-2xl border border-neutral-100 dark:border-neutral-800 text-center">
+        {/* Rectangular Stats Card */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 md:gap-4 p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-2xl border border-neutral-200 dark:border-neutral-800 text-center">
           <div>
-            <div className="text-xs text-neutral-500 font-medium">Characters</div>
+            <div className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">Character</div>
             <div className="text-lg font-extrabold text-neutral-900 dark:text-neutral-100 mt-0.5">{characters.length}</div>
           </div>
           <div>
-            <div className="text-xs text-neutral-500 font-medium">Prompts</div>
+            <div className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">Prompt</div>
             <div className="text-lg font-extrabold text-neutral-900 dark:text-neutral-100 mt-0.5">{prompts.length}</div>
           </div>
           <div>
-            <div className="text-xs text-neutral-500 font-medium">Lượt thích</div>
+            <div className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">Lượt thích</div>
             <div className="text-lg font-extrabold text-neutral-900 dark:text-neutral-100 mt-0.5">{creator.totalLikes || 0}</div>
           </div>
           <div>
-            <div className="text-xs text-neutral-500 font-medium">Lượt lưu</div>
+            <div className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">Lượt lưu</div>
             <div className="text-lg font-extrabold text-neutral-900 dark:text-neutral-100 mt-0.5">{creator.totalSaves || 0}</div>
           </div>
-          <div className="col-span-2 md:col-span-1">
-            <div className="text-xs text-neutral-500 font-medium">Người theo dõi</div>
+          <div className="col-span-2 sm:col-span-1 md:col-span-1">
+            <div className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">Người theo dõi</div>
             <div className="text-lg font-extrabold text-neutral-900 dark:text-neutral-100 mt-0.5">{followerCount}</div>
           </div>
         </div>
       </div>
 
-      {/* Pinned Characters Section (if any) */}
+      {/* Pinned Characters Section */}
       {pinnedCharacters.length > 0 && (
         <div className="space-y-4">
           <h3 className="font-extrabold text-base text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-amber-500 fill-amber-500" />
             <span>Character Nổi Bật Được Ghim ({pinnedCharacters.length}/3)</span>
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {pinnedCharacters.map(c => (
-              <CharacterCard key={c.id} character={c} onUpdate={fetchCreatorData} />
+              <CharacterCard key={c.id} character={c} isOwner={isSelf} onUpdate={fetchCreatorData} />
             ))}
           </div>
         </div>
       )}
 
-      {/* Tabs Selection: Characters vs Prompts */}
+      {/* Tabs Selection */}
       <div className="border-b border-neutral-200 dark:border-neutral-800 flex items-center gap-6">
         <button
           onClick={() => setActiveTab('CHARACTERS')}
@@ -479,7 +526,7 @@ export default function CreatorDetail() {
         </button>
       </div>
 
-      {/* Tab Content Display */}
+      {/* Tab Content */}
       {activeTab === 'CHARACTERS' ? (
         characters.length === 0 ? (
           <div className="py-16 text-center bg-white dark:bg-neutral-900 rounded-3xl border border-dashed border-neutral-200 dark:border-neutral-800 p-8 space-y-2">
@@ -488,7 +535,7 @@ export default function CreatorDetail() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {characters.map(c => (
-              <CharacterCard key={c.id} character={c} onUpdate={fetchCreatorData} />
+              <CharacterCard key={c.id} character={c} isOwner={isSelf} onUpdate={fetchCreatorData} />
             ))}
           </div>
         )
@@ -520,7 +567,7 @@ export default function CreatorDetail() {
         targetName={creator.displayName}
       />
 
-      {/* Delete Prompt Confirmation Modal */}
+      {/* Delete Prompt Modal */}
       <DeleteConfirmModal
         isOpen={promptToDelete !== null}
         onClose={() => setPromptToDelete(null)}
