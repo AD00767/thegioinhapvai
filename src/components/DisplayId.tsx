@@ -3,7 +3,7 @@ import { Copy, Check } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 interface DisplayIdProps {
-  type: 'character' | 'prompt' | 'user' | 'creator';
+  type: 'character' | 'prompt' | 'user' | 'creator' | 'feedback';
   numericId?: string;
   className?: string;
 }
