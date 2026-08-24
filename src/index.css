@@ -4,25 +4,80 @@
 
 @theme {
   --font-serif: "Playfair Display", Georgia, Cambria, "Times New Roman", Times, serif;
-  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  --font-heading: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --font-sans: Arial, Helvetica, "Nimbus Sans L", "Liberation Sans", sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
 :root {
-  font-family: var(--font-sans);
+  font-family: Arial, Helvetica, "Nimbus Sans L", "Liberation Sans", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
 
 html, body {
-  font-family: var(--font-sans);
+  font-family: Arial, Helvetica, "Nimbus Sans L", "Liberation Sans", sans-serif;
 }
 
 button, input, optgroup, select, textarea {
   font-family: inherit;
 }
 
-h1, h2, h3, h4, h5, h6 {
-  font-family: inherit;
+/* ====================================================================
+   TYPOGRAPHY SYSTEM:
+   1. Chữ in đậm (Bold, Semibold, Medium, Extrabold, Black): GIỮ NGUYÊN font hiện tại (Plus Jakarta Sans / Playfair Display)
+   2. Chữ không in đậm (Normal, 400, Light, v.v.): SỬ DỤNG Arial
+   ==================================================================== */
+
+/* Bold / Semibold / Medium weights & Headings maintain Plus Jakarta Sans */
+.font-medium,
+.font-semibold,
+.font-bold,
+.font-extrabold,
+.font-black,
+[class*="font-medium"],
+[class*="font-semibold"],
+[class*="font-bold"],
+[class*="font-extrabold"],
+[class*="font-black"],
+h1:not(.font-serif):not(.font-normal),
+h2:not(.font-serif):not(.font-normal),
+h3:not(.font-serif):not(.font-normal),
+h4:not(.font-serif):not(.font-normal),
+h5:not(.font-serif):not(.font-normal),
+h6:not(.font-serif):not(.font-normal),
+strong,
+b,
+th {
+  font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
+
+/* Explicit font-serif classes maintain Playfair Display (Welcome title/tagline) */
+.font-serif,
+[class*="font-serif"] {
+  font-family: var(--font-serif) !important;
+}
+
+/* Explicit font-mono classes maintain Monospace (code, IDs) */
+.font-mono,
+[class*="font-mono"] {
+  font-family: var(--font-mono) !important;
+}
+
+/* Non-bold elements use Arial */
+.font-normal,
+.font-light,
+.font-thin,
+p:not([class*="font-semibold"]):not([class*="font-bold"]):not([class*="font-medium"]):not([class*="font-extrabold"]):not([class*="font-black"]):not([class*="font-serif"]):not([class*="font-mono"]),
+span:not([class*="font-semibold"]):not([class*="font-bold"]):not([class*="font-medium"]):not([class*="font-extrabold"]):not([class*="font-black"]):not([class*="font-serif"]):not([class*="font-mono"]),
+div:not([class*="font-semibold"]):not([class*="font-bold"]):not([class*="font-medium"]):not([class*="font-extrabold"]):not([class*="font-black"]):not([class*="font-serif"]):not([class*="font-mono"]),
+input:not([class*="font-semibold"]):not([class*="font-bold"]):not([class*="font-medium"]):not([class*="font-extrabold"]):not([class*="font-black"]):not([class*="font-serif"]):not([class*="font-mono"]),
+textarea:not([class*="font-semibold"]):not([class*="font-bold"]):not([class*="font-medium"]):not([class*="font-extrabold"]):not([class*="font-black"]):not([class*="font-serif"]):not([class*="font-mono"]),
+select:not([class*="font-semibold"]):not([class*="font-bold"]):not([class*="font-medium"]):not([class*="font-extrabold"]):not([class*="font-black"]):not([class*="font-serif"]):not([class*="font-mono"]),
+label:not([class*="font-semibold"]):not([class*="font-bold"]):not([class*="font-medium"]):not([class*="font-extrabold"]):not([class*="font-black"]):not([class*="font-serif"]):not([class*="font-mono"]),
+small,
+time {
+  font-family: Arial, Helvetica, "Nimbus Sans L", "Liberation Sans", sans-serif;
+}
+
