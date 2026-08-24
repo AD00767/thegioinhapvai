@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/useAuthStore";
-import { Compass, LogIn, WifiOff, RefreshCw, ArrowLeft, Mail, Lock, UserPlus, AlertCircle } from "lucide-react";
+import { WifiOff, RefreshCw, ArrowLeft, Mail, Lock, UserPlus, AlertCircle } from "lucide-react";
 import { motion } from "motion/react";
 import { useSeo } from "../hooks/useSeo";
 import ThemeToggle from "../components/ThemeToggle";
@@ -29,7 +29,7 @@ export default function Welcome({ onStart }: WelcomeProps) {
 
   useSeo({
     title: 'THẾ GIỚI NHẬP VAI AD - KHỞI ĐẦU CHO MỌI HÀNH TRÌNH ROLEPLAY',
-    description: 'Thế Giới Nhập Vai AD - Khởi đầu cho mọi hành trình Roleplay trên Google AI Studio. Khám phá Character, Prompt và kết nối với cộng đồng Creator.'
+    description: 'Nơi khám phá, chia sẻ và kết nối cùng thế giới Roleplay trên Google AI Studio.'
   });
 
   useEffect(() => {
@@ -164,17 +164,17 @@ export default function Welcome({ onStart }: WelcomeProps) {
   // Offline State (Module 03 Section XI)
   if (!isOnline) {
     return (
-      <div className="min-h-screen bg-white dark:bg-black text-neutral-900 dark:text-white flex flex-col items-center justify-center p-6 text-center font-sans">
-        <div className="w-16 h-16 rounded-2xl bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 flex items-center justify-center mb-6">
+      <div className="min-h-screen bg-[#F7F6F3] dark:bg-[#050505] text-neutral-950 dark:text-white flex flex-col items-center justify-center p-6 text-center font-sans">
+        <div className="w-16 h-16 rounded-2xl bg-neutral-200/60 dark:bg-neutral-900 border border-black/5 dark:border-white/10 text-neutral-600 dark:text-neutral-400 flex items-center justify-center mb-6">
           <WifiOff className="w-8 h-8" />
         </div>
-        <h2 className="text-2xl font-bold mb-3 tracking-tight">Mất kết nối mạng</h2>
+        <h2 className="text-2xl font-serif font-bold mb-3 tracking-tight">Mất kết nối mạng</h2>
         <p className="text-neutral-600 dark:text-neutral-400 max-w-md mb-8 leading-relaxed text-sm">
           Không thể kết nối. Vui lòng kiểm tra kết nối mạng và thử lại.
         </p>
         <button
           onClick={handleRetryConnection}
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-black dark:bg-white text-white dark:text-black font-semibold text-sm hover:opacity-90 transition-opacity cursor-pointer"
+          className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-neutral-950 dark:bg-white text-white dark:text-black font-semibold text-sm hover:opacity-90 transition-opacity cursor-pointer uppercase tracking-wider"
         >
           <RefreshCw className="w-4 h-4" />
           <span>Thử lại</span>
@@ -183,18 +183,18 @@ export default function Welcome({ onStart }: WelcomeProps) {
     );
   }
 
-  // Full-Screen Authentication View
+  // Full-Screen Authentication View in Matching Dark Luxury Editorial Style
   if (viewMode === 'auth') {
     return (
-      <div className="min-h-screen bg-white dark:bg-black text-neutral-900 dark:text-white flex flex-col justify-between font-sans selection:bg-neutral-200 dark:selection:bg-neutral-800 animate-in fade-in duration-200">
-        {/* Full-Screen Top Bar */}
-        <header className="p-6 max-w-7xl mx-auto w-full flex items-center justify-between">
+      <div className="min-h-screen bg-[#F7F6F3] dark:bg-[#050505] text-neutral-950 dark:text-white flex flex-col justify-between font-sans selection:bg-neutral-300 dark:selection:bg-neutral-800 animate-in fade-in duration-300">
+        {/* Top bar with back button & theme toggle */}
+        <header className="p-6 sm:px-12 max-w-7xl mx-auto w-full flex items-center justify-between">
           <button
             onClick={() => {
               setViewMode('welcome');
               resetAuthForm();
             }}
-            className="inline-flex items-center gap-2 text-sm font-bold text-neutral-600 hover:text-black dark:text-neutral-400 dark:hover:text-white transition-colors cursor-pointer"
+            className="inline-flex items-center gap-2 text-xs font-bold tracking-widest text-neutral-600 hover:text-black dark:text-neutral-400 dark:hover:text-white transition-colors cursor-pointer uppercase"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>QUAY LẠI</span>
@@ -205,30 +205,30 @@ export default function Welcome({ onStart }: WelcomeProps) {
           </div>
         </header>
 
-        {/* Full-Screen Form Content */}
+        {/* Auth Content */}
         <main className="flex-1 flex items-center justify-center p-6 my-auto">
           <div className="max-w-md w-full mx-auto space-y-6">
             
-            <div className="text-center space-y-2">
-              <div className="inline-block px-3 py-1 rounded-full bg-neutral-100 dark:bg-neutral-900 text-[11px] font-bold uppercase tracking-widest text-neutral-600 dark:text-neutral-400">
-                THẾ GIỚI NHẬP VAI AD
+            <div className="text-center space-y-3">
+              <div className="inline-flex items-center justify-center px-3.5 py-1 rounded-full bg-neutral-950 text-white dark:bg-white dark:text-black text-[10px] font-semibold tracking-[0.2em] uppercase">
+                GOOGLE AI STUDIO COMMUNITY
               </div>
-              <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-neutral-900 dark:text-white uppercase">
+              <h1 className="text-3xl sm:text-4xl font-serif font-bold tracking-tight text-neutral-950 dark:text-white uppercase">
                 {authTab === 'login' ? 'ĐĂNG NHẬP' : 'TẠO TÀI KHOẢN'}
               </h1>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                Khởi đầu cho mọi hành trình Roleplay trên Google AI Studio.
+              <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 font-sans">
+                Nơi khám phá, chia sẻ và kết nối cùng thế giới Roleplay trên Google AI Studio.
               </p>
             </div>
 
             {/* Mode Switcher Tabs */}
-            <div className="grid grid-cols-2 p-1 bg-neutral-100 dark:bg-neutral-900 rounded-2xl text-xs font-bold border border-neutral-200/60 dark:border-neutral-800/60">
+            <div className="grid grid-cols-2 p-1 bg-black/5 dark:bg-white/5 rounded-xl text-xs font-semibold border border-black/10 dark:border-white/10">
               <button
                 type="button"
                 onClick={() => switchAuthTab('login')}
-                className={`py-3 rounded-xl transition-all cursor-pointer ${
+                className={`py-3 rounded-lg transition-all cursor-pointer uppercase tracking-wider ${
                   authTab === 'login'
-                    ? 'bg-white dark:bg-black text-black dark:text-white shadow-sm'
+                    ? 'bg-white dark:bg-neutral-900 text-neutral-950 dark:text-white shadow-sm font-bold'
                     : 'text-neutral-500 hover:text-black dark:hover:text-white'
                 }`}
               >
@@ -237,9 +237,9 @@ export default function Welcome({ onStart }: WelcomeProps) {
               <button
                 type="button"
                 onClick={() => switchAuthTab('register')}
-                className={`py-3 rounded-xl transition-all cursor-pointer ${
+                className={`py-3 rounded-lg transition-all cursor-pointer uppercase tracking-wider ${
                   authTab === 'register'
-                    ? 'bg-white dark:bg-black text-black dark:text-white shadow-sm'
+                    ? 'bg-white dark:bg-neutral-900 text-neutral-950 dark:text-white shadow-sm font-bold'
                     : 'text-neutral-500 hover:text-black dark:hover:text-white'
                 }`}
               >
@@ -249,7 +249,7 @@ export default function Welcome({ onStart }: WelcomeProps) {
 
             {/* Error Alert Box */}
             {authError && (
-              <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 flex items-start gap-3 text-xs text-red-600 dark:text-red-400">
+              <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 flex items-start gap-3 text-xs text-red-600 dark:text-red-400">
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                 <div className="leading-relaxed font-medium">{authError}</div>
               </div>
@@ -260,9 +260,9 @@ export default function Welcome({ onStart }: WelcomeProps) {
               type="button"
               onClick={handleGoogleAuth}
               disabled={authLoading}
-              className="w-full py-3.5 px-4 rounded-2xl border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-900 text-neutral-900 dark:text-white font-semibold text-sm transition-all flex items-center justify-center gap-3 shadow-sm disabled:opacity-50 cursor-pointer"
+              className="w-full py-3.5 px-4 rounded-xl border border-neutral-950/20 dark:border-white/20 bg-white dark:bg-transparent hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-950 dark:text-white font-semibold text-sm transition-all flex items-center justify-center gap-3 shadow-sm disabled:opacity-50 cursor-pointer"
             >
-              <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                 <path
                   fill="#4285F4"
                   d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -286,9 +286,9 @@ export default function Welcome({ onStart }: WelcomeProps) {
             {/* Divider */}
             <div className="relative flex items-center justify-center">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-neutral-200 dark:border-neutral-800" />
+                <div className="w-full border-t border-black/10 dark:border-white/10" />
               </div>
-              <span className="relative px-3 bg-white dark:bg-black text-[11px] font-bold uppercase tracking-wider text-neutral-400">
+              <span className="relative px-3 bg-[#F7F6F3] dark:bg-[#050505] text-[10px] font-semibold uppercase tracking-wider text-neutral-500">
                 hoặc sử dụng Email
               </span>
             </div>
@@ -297,7 +297,7 @@ export default function Welcome({ onStart }: WelcomeProps) {
             {authTab === 'login' ? (
               <form onSubmit={handleEmailLogin} className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
                     Email
                   </label>
                   <div className="relative">
@@ -308,13 +308,13 @@ export default function Welcome({ onStart }: WelcomeProps) {
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="name@example.com"
                       required
-                      className="w-full pl-11 pr-4 py-3.5 rounded-2xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all text-neutral-900 dark:text-white"
+                      className="w-full pl-11 pr-4 py-3 rounded-xl bg-white dark:bg-neutral-900 border border-black/10 dark:border-white/10 text-sm focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-white transition-all text-neutral-950 dark:text-white"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
                     Mật khẩu
                   </label>
                   <div className="relative">
@@ -325,7 +325,7 @@ export default function Welcome({ onStart }: WelcomeProps) {
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
                       required
-                      className="w-full pl-11 pr-4 py-3.5 rounded-2xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all text-neutral-900 dark:text-white"
+                      className="w-full pl-11 pr-4 py-3 rounded-xl bg-white dark:bg-neutral-900 border border-black/10 dark:border-white/10 text-sm focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-white transition-all text-neutral-950 dark:text-white"
                     />
                   </div>
                 </div>
@@ -333,19 +333,18 @@ export default function Welcome({ onStart }: WelcomeProps) {
                 <button
                   type="submit"
                   disabled={authLoading}
-                  className="w-full py-4 rounded-2xl bg-black dark:bg-white hover:opacity-90 text-white dark:text-black font-extrabold text-sm shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                  className="w-full py-3.5 rounded-xl bg-neutral-950 dark:bg-white hover:opacity-90 text-white dark:text-black font-bold text-xs sm:text-sm tracking-wider uppercase transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                 >
-                  <LogIn className="w-4 h-4" />
-                  <span>{authLoading ? 'Đang xử lý...' : 'Đăng Nhập'}</span>
+                  <span>{authLoading ? 'Đang xử lý...' : 'ĐĂNG NHẬP'}</span>
                 </button>
 
-                <div className="text-center pt-2">
+                <div className="text-center pt-1">
                   <p className="text-xs text-neutral-500">
                     Bạn chưa có tài khoản?{' '}
                     <button
                       type="button"
                       onClick={() => switchAuthTab('register')}
-                      className="font-bold text-black dark:text-white hover:underline cursor-pointer ml-1"
+                      className="font-bold text-neutral-950 dark:text-white hover:underline cursor-pointer ml-1"
                     >
                       Đăng ký ngay
                     </button>
@@ -355,7 +354,7 @@ export default function Welcome({ onStart }: WelcomeProps) {
             ) : (
               <form onSubmit={handleEmailRegister} className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
                     Email
                   </label>
                   <div className="relative">
@@ -366,13 +365,13 @@ export default function Welcome({ onStart }: WelcomeProps) {
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="name@example.com"
                       required
-                      className="w-full pl-11 pr-4 py-3.5 rounded-2xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all text-neutral-900 dark:text-white"
+                      className="w-full pl-11 pr-4 py-3 rounded-xl bg-white dark:bg-neutral-900 border border-black/10 dark:border-white/10 text-sm focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-white transition-all text-neutral-950 dark:text-white"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
                     Mật khẩu
                   </label>
                   <div className="relative">
@@ -384,13 +383,13 @@ export default function Welcome({ onStart }: WelcomeProps) {
                       placeholder="Ít nhất 6 ký tự"
                       minLength={6}
                       required
-                      className="w-full pl-11 pr-4 py-3.5 rounded-2xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all text-neutral-900 dark:text-white"
+                      className="w-full pl-11 pr-4 py-3 rounded-xl bg-white dark:bg-neutral-900 border border-black/10 dark:border-white/10 text-sm focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-white transition-all text-neutral-950 dark:text-white"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
                     Xác nhận Mật khẩu
                   </label>
                   <div className="relative">
@@ -402,7 +401,7 @@ export default function Welcome({ onStart }: WelcomeProps) {
                       placeholder="Nhập lại mật khẩu..."
                       minLength={6}
                       required
-                      className="w-full pl-11 pr-4 py-3.5 rounded-2xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all text-neutral-900 dark:text-white"
+                      className="w-full pl-11 pr-4 py-3 rounded-xl bg-white dark:bg-neutral-900 border border-black/10 dark:border-white/10 text-sm focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-white transition-all text-neutral-950 dark:text-white"
                     />
                   </div>
                 </div>
@@ -410,19 +409,19 @@ export default function Welcome({ onStart }: WelcomeProps) {
                 <button
                   type="submit"
                   disabled={authLoading}
-                  className="w-full py-4 rounded-2xl bg-black dark:bg-white hover:opacity-90 text-white dark:text-black font-extrabold text-sm shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                  className="w-full py-3.5 rounded-xl bg-neutral-950 dark:bg-white hover:opacity-90 text-white dark:text-black font-bold text-xs sm:text-sm tracking-wider uppercase transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                 >
                   <UserPlus className="w-4 h-4" />
-                  <span>{authLoading ? 'Đang tạo tài khoản...' : 'Đăng Ký Tài Khoản'}</span>
+                  <span>{authLoading ? 'Đang tạo tài khoản...' : 'ĐĂNG KÝ TÀI KHOẢN'}</span>
                 </button>
 
-                <div className="text-center pt-2">
+                <div className="text-center pt-1">
                   <p className="text-xs text-neutral-500">
                     Đã có tài khoản?{' '}
                     <button
                       type="button"
                       onClick={() => switchAuthTab('login')}
-                      className="font-bold text-black dark:text-white hover:underline cursor-pointer ml-1"
+                      className="font-bold text-neutral-950 dark:text-white hover:underline cursor-pointer ml-1"
                     >
                       Đăng nhập
                     </button>
@@ -435,88 +434,92 @@ export default function Welcome({ onStart }: WelcomeProps) {
         </main>
 
         {/* Footer */}
-        <footer className="p-6 text-xs text-neutral-400 text-center max-w-7xl mx-auto w-full">
-          &copy; 2026 Thế Giới Nhập vai AD. All rights reserved.
+        <footer className="p-6 text-xs text-neutral-500 text-center max-w-7xl mx-auto w-full border-t border-black/10 dark:border-white/10">
+          &copy; 2026 THẾ GIỚI NHẬP VAI AD
         </footer>
       </div>
     );
   }
 
-  // Minimalist Welcome View
+  // Pure Dark Luxury / Editorial / Cinematic / Minimal Welcome Page
   return (
-    <div className="min-h-screen bg-white dark:bg-black text-neutral-900 dark:text-white flex flex-col justify-between font-sans selection:bg-neutral-200 dark:selection:bg-neutral-800">
+    <div className="min-h-screen bg-[#F7F6F3] dark:bg-[#050505] text-neutral-950 dark:text-white flex flex-col justify-between selection:bg-neutral-300 dark:selection:bg-neutral-800 transition-colors duration-300">
       
-      {/* Minimalist Header */}
-      <header className="p-6 flex justify-between items-center max-w-7xl mx-auto w-full">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-black dark:bg-white text-white dark:text-black flex items-center justify-center font-black text-sm">
-            AD
-          </div>
-          <div className="font-bold text-base tracking-tight uppercase">THẾ GIỚI NHẬP VAI AD</div>
-        </div>
+      {/* Discreet Top Navigation Bar for Theme Switching */}
+      <header className="w-full p-6 sm:px-12 flex items-center justify-end">
         <div className="flex items-center gap-3">
           <ThemeToggle />
-          <button 
-            onClick={() => setViewMode('auth')} 
-            className="text-xs font-bold uppercase tracking-wider text-neutral-700 hover:text-black dark:text-neutral-300 dark:hover:text-white transition-colors px-4 py-2 rounded-full border border-neutral-200 dark:border-neutral-800 cursor-pointer"
-          >
-            ĐĂNG NHẬP
-          </button>
         </div>
       </header>
 
-      {/* Pure Minimalist Hero Section */}
-      <main className="flex-1 flex items-center justify-center p-6 my-auto">
-        <div className="max-w-3xl w-full mx-auto text-center space-y-10 py-8">
+      {/* Main Hero Section: Pure Typography & Whitespace */}
+      <main className="flex-1 flex flex-col items-center justify-center px-6 sm:px-10 py-10 md:py-16 my-auto">
+        <div className="max-w-4xl w-full mx-auto text-center flex flex-col items-center">
           
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
+          {/* 1. BRAND LABEL */}
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-            className="space-y-5"
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="mb-4 sm:mb-6"
           >
-            {/* 1. Tên Website ở chính giữa giao diện */}
-            <div className="flex items-center justify-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-2xl bg-black dark:bg-white text-white dark:text-black flex items-center justify-center font-black text-base shadow-sm">
-                AD
-              </div>
-            </div>
-
-            <h1 className="text-4xl sm:text-6xl md:text-7xl font-black tracking-tight text-neutral-900 dark:text-white uppercase leading-[1.08]">
-              THẾ GIỚI NHẬP VAI AD
-            </h1>
-            
-            {/* 2. Slogan bên dưới tên Website */}
-            <p className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-neutral-800 dark:text-neutral-200">
-              Khởi đầu cho mọi hành trình Roleplay
-            </p>
-            
-            {/* 3. Dòng chữ màu xám nhỏ hơn bên dưới Slogan */}
-            <p className="text-sm sm:text-base md:text-lg text-neutral-500 dark:text-neutral-400 max-w-2xl mx-auto leading-relaxed font-normal pt-1 px-4">
-              Nền tảng cộng đồng dành cho Google AI Studio, nơi bạn có thể khám phá, chia sẻ Character, Prompt, Creator và các tài nguyên hữu ích cho Roleplay.
-            </p>
+            <span className="inline-flex items-center justify-center px-4 py-1.5 rounded-full bg-neutral-950 text-white dark:bg-white dark:text-black text-[10px] sm:text-xs font-semibold tracking-[0.2em] sm:tracking-[0.25em] uppercase">
+              GOOGLE AI STUDIO COMMUNITY
+            </span>
           </motion.div>
 
-          {/* 4. Hai nút nổi bật BẮT ĐẦU và ĐĂNG NHẬP */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
+          {/* 2. TÊN WEBSITE (MAIN HEADING) */}
+          <motion.h1
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.15, ease: "easeOut" }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4 max-w-md mx-auto"
+            transition={{ duration: 0.6, delay: 0.1, ease: "easeOut" }}
+            className="font-serif font-bold text-3xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl tracking-tight uppercase text-neutral-950 dark:text-white leading-[1.1] sm:leading-[1.08] mb-3 sm:mb-4 text-center max-w-5xl"
           >
-            <button 
+            THẾ GIỚI NHẬP VAI AD
+          </motion.h1>
+
+          {/* 3. TAGLINE */}
+          <motion.p
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
+            className="font-serif font-semibold text-sm sm:text-lg md:text-xl lg:text-2xl uppercase tracking-[0.14em] sm:tracking-[0.18em] text-neutral-700 dark:text-neutral-300 mb-4 sm:mb-6 text-center"
+          >
+            KHỞI ĐẦU CHO MỌI HÀNH TRÌNH ROLEPLAY
+          </motion.p>
+
+          {/* 4. MÔ TẢ (DESCRIPTION) */}
+          <motion.p
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3, ease: "easeOut" }}
+            className="font-sans font-normal text-sm sm:text-base md:text-lg text-neutral-600 dark:text-neutral-400 max-w-xl mx-auto leading-relaxed mb-8 sm:mb-12 px-2 text-center"
+          >
+            Nơi khám phá, chia sẻ và kết nối cùng thế giới Roleplay trên Google AI Studio.
+          </motion.p>
+
+          {/* 5. CTA BUTTONS */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4, ease: "easeOut" }}
+            className="flex flex-col sm:flex-row items-center justify-center gap-3.5 sm:gap-5 w-full max-w-md mx-auto"
+          >
+            {/* Primary CTA: BẮT ĐẦU */}
+            <button
               onClick={handleStart}
-              className="w-full sm:flex-1 flex items-center justify-center gap-3 px-8 py-4 rounded-full bg-black dark:bg-white text-white dark:text-black font-extrabold text-sm sm:text-base tracking-wider hover:opacity-90 active:scale-95 transition-all shadow-lg hover:shadow-xl cursor-pointer uppercase"
+              aria-label="Bắt đầu"
+              className="w-full sm:flex-1 py-4 px-8 rounded-xl bg-neutral-950 text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200 font-semibold text-sm sm:text-base uppercase tracking-wider transition-colors duration-200 shadow-sm cursor-pointer min-h-[50px] flex items-center justify-center active:scale-[0.99]"
             >
-              <Compass className="w-5 h-5 shrink-0" />
               <span>BẮT ĐẦU</span>
             </button>
 
-            <button 
-              onClick={() => setViewMode('auth')} 
-              className="w-full sm:flex-1 flex items-center justify-center gap-3 px-8 py-4 rounded-full bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-900 dark:hover:bg-neutral-800 text-neutral-900 dark:text-white font-extrabold text-sm sm:text-base tracking-wider transition-all border border-neutral-300/80 dark:border-neutral-700/80 active:scale-95 shadow-sm cursor-pointer uppercase"
+            {/* Secondary CTA: ĐĂNG NHẬP */}
+            <button
+              onClick={() => setViewMode('auth')}
+              aria-label="Đăng nhập"
+              className="w-full sm:flex-1 py-4 px-8 rounded-xl bg-transparent border border-neutral-950/30 text-neutral-950 hover:border-neutral-950 hover:bg-black/5 dark:border-white/30 dark:text-white dark:hover:border-white dark:hover:bg-white/5 font-semibold text-sm sm:text-base uppercase tracking-wider transition-colors duration-200 cursor-pointer min-h-[50px] flex items-center justify-center active:scale-[0.99]"
             >
-              <LogIn className="w-5 h-5 shrink-0" />
               <span>ĐĂNG NHẬP</span>
             </button>
           </motion.div>
@@ -524,28 +527,45 @@ export default function Welcome({ onStart }: WelcomeProps) {
         </div>
       </main>
 
-      {/* Minimalist Footer */}
-      <footer className="p-6 text-xs text-neutral-500 border-t border-neutral-100 dark:border-neutral-900 max-w-7xl mx-auto w-full">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2 text-center sm:text-left">
-            <span className="font-bold text-neutral-900 dark:text-neutral-100">Thế Giới Nhập vai AD</span>
-            <span className="opacity-40">|</span>
-            <span className="hidden sm:inline">Khởi đầu cho mọi hành trình Roleplay.</span>
-            <span className="px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-[10px] font-mono">v1.0</span>
+      {/* 6. FOOTER: Divider, Left Copyright, Right Links */}
+      <footer className="w-full border-t border-black/10 dark:border-white/10 py-6 px-6 sm:px-12 transition-colors duration-300">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-sans tracking-wider uppercase text-neutral-600 dark:text-neutral-400">
+          
+          {/* Left: Copyright */}
+          <div className="text-center sm:text-left">
+            &copy; 2026 THẾ GIỚI NHẬP VAI AD
           </div>
 
-          <div className="flex items-center gap-6">
-            <Link to="/privacy" className="hover:text-black dark:hover:text-white transition-colors">Bảo mật</Link>
-            <Link to="/terms" className="hover:text-black dark:hover:text-white transition-colors">Điều khoản</Link>
-            <Link to="/contact" className="hover:text-black dark:hover:text-white transition-colors">Liên hệ</Link>
+          {/* Right: Quick Links */}
+          <div className="flex items-center gap-3 sm:gap-4 flex-wrap justify-center">
+            <Link
+              to="/contact"
+              aria-label="Liên hệ"
+              className="hover:text-black dark:hover:text-white transition-colors duration-150"
+            >
+              LIÊN HỆ
+            </Link>
+            <span className="opacity-40 select-none">·</span>
+            <Link
+              to="/terms"
+              aria-label="Điều khoản"
+              className="hover:text-black dark:hover:text-white transition-colors duration-150"
+            >
+              ĐIỀU KHOẢN
+            </Link>
+            <span className="opacity-40 select-none">·</span>
+            <Link
+              to="/privacy"
+              aria-label="Bảo mật"
+              className="hover:text-black dark:hover:text-white transition-colors duration-150"
+            >
+              BẢO MẬT
+            </Link>
           </div>
 
-          <div className="text-center sm:text-right opacity-60">
-            &copy; 2026 Thế Giới Nhập vai AD.
-          </div>
         </div>
       </footer>
+
     </div>
   );
 }
-
