@@ -183,7 +183,7 @@ export default function Contact() {
             Liên Hệ Với Chúng Tôi
           </h1>
           <p className="text-neutral-400 text-sm md:text-base leading-relaxed">
-            Bạn muốn báo lỗi, đóng góp ý kiến hay gửi đề xuất tính năng mới cho <strong className="text-white">Thế giới nhập vai_AD</strong>? Ban quản trị luôn lắng nghe phản hồi của bạn!
+            Bạn muốn báo lỗi, đóng góp ý kiến hay gửi đề xuất tính năng mới cho <strong className="text-white">Thế giới nhập vai AD</strong>? Ban quản trị luôn lắng nghe phản hồi của bạn!
           </p>
         </div>
       </div>
