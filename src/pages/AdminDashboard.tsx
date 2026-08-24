@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { 
   collection, query, getDocs, doc, updateDoc,
-  orderBy, addDoc, where, getDoc
+  orderBy, addDoc, where, getDoc, limit, documentId
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { getValidAvatar } from '../lib/avatar';
@@ -51,16 +51,20 @@ export default function AdminDashboard() {
     if (missingIds.length === 0) return;
 
     const newMap: Record<string, any> = {};
-    await Promise.all(missingIds.map(async (uid) => {
+    
+    // Batch in chunks of up to 30 with documentId() 'in'
+    for (let i = 0; i < missingIds.length; i += 30) {
+      const chunk = missingIds.slice(i, i + 30);
       try {
-        const uSnap = await getDoc(doc(db, 'users', uid));
-        if (uSnap.exists()) {
-          newMap[uid] = { id: uSnap.id, ...uSnap.data() };
-        }
+        const q = query(collection(db, 'users'), where(documentId(), 'in', chunk));
+        const snap = await getDocs(q);
+        snap.docs.forEach(d => {
+          newMap[d.id] = { id: d.id, ...d.data() };
+        });
       } catch (err) {
-        console.warn(`Could not fetch user ${uid}:`, err);
+        console.warn(`Could not batch fetch users:`, err);
       }
-    }));
+    }
 
     if (Object.keys(newMap).length > 0) {
       setOwnerUsers(prev => ({ ...prev, ...newMap }));
@@ -71,7 +75,7 @@ export default function AdminDashboard() {
     setLoading(true);
     try {
       if (activeTab === 'characters') {
-        const q = query(collection(db, 'characters'), orderBy('createdAt', 'desc'));
+        const q = query(collection(db, 'characters'), orderBy('createdAt', 'desc'), limit(50));
         const snap = await getDocs(q);
         const list = await Promise.all(snap.docs.map(async (d) => {
           const data = d.data();
@@ -92,7 +96,7 @@ export default function AdminDashboard() {
         await fetchOwnerUsers(ownerIds);
 
       } else if (activeTab === 'prompts') {
-        const q = query(collection(db, 'prompts'), orderBy('createdAt', 'desc'));
+        const q = query(collection(db, 'prompts'), orderBy('createdAt', 'desc'), limit(50));
         const snap = await getDocs(q);
         const list = await Promise.all(snap.docs.map(async (d) => {
           const data = d.data();
@@ -113,7 +117,7 @@ export default function AdminDashboard() {
         await fetchOwnerUsers(ownerIds);
 
       } else if (activeTab === 'feedbacks') {
-        const q = query(collection(db, 'feedbacks'), where('mode', '==', 'PUBLIC'));
+        const q = query(collection(db, 'feedbacks'), where('mode', '==', 'PUBLIC'), limit(50));
         const snap = await getDocs(q);
         const list = await Promise.all(snap.docs.map(async (d) => {
           const data = d.data();

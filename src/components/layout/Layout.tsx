@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "../../store/useAuthStore";
 import { loginWithGoogle, logout, db } from "../../lib/firebase";
-import { collection, query, where, onSnapshot, doc, updateDoc, getDocs } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, updateDoc, getDocs, limit } from "firebase/firestore";
 import toast from "react-hot-toast";
 import clsx from "clsx";
 import CaptchaModal from "../CaptchaModal";
@@ -118,13 +118,15 @@ export default function Layout({ children }: LayoutProps) {
     const qRecipient = query(
       collection(db, 'notifications'),
       where('recipientId', '==', user.id),
-      where('read', '==', false)
+      where('read', '==', false),
+      limit(20)
     );
 
     const qUser = query(
       collection(db, 'notifications'),
       where('userId', '==', user.id),
-      where('read', '==', false)
+      where('read', '==', false),
+      limit(20)
     );
 
     let unreadRecipientIds = new Set<string>();

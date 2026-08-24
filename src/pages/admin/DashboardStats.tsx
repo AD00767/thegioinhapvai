@@ -5,7 +5,7 @@ import {
   BarChart3, TrendingUp, ArrowUpRight, ArrowDownRight,
   Activity, RefreshCw, AlertCircle, Play, CheckCircle2, Terminal
 } from 'lucide-react';
-import { collection, getDocs, query, where, doc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, updateDoc, getCountFromServer, orderBy, limit } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { generateUniqueId } from '../../lib/generateId';
 import { 
@@ -50,24 +50,44 @@ export default function DashboardStats() {
   useEffect(() => {
     const fetchStatsAndData = async () => {
       try {
-        const usersSnap = await getDocs(collection(db, 'users'));
-        const charsSnap = await getDocs(collection(db, 'characters'));
-        const promptsSnap = await getDocs(collection(db, 'prompts'));
-        const reportsSnap = await getDocs(query(collection(db, 'reports'), where('status', '==', 'PENDING')));
-        const requestsSnap = await getDocs(query(collection(db, 'creator_requests'), where('status', '==', 'PENDING')));
+        // Fast aggregations with zero full collection downloading
+        const [
+          usersCountSnap, 
+          creatorsCountSnap, 
+          charsCountSnap, 
+          promptsCountSnap, 
+          reportsCountSnap, 
+          requestsCountSnap
+        ] = await Promise.all([
+          getCountFromServer(collection(db, 'users')),
+          getCountFromServer(query(collection(db, 'users'), where('creatorStatus', '==', true))),
+          getCountFromServer(collection(db, 'characters')),
+          getCountFromServer(collection(db, 'prompts')),
+          getCountFromServer(query(collection(db, 'reports'), where('status', '==', 'PENDING'))),
+          getCountFromServer(query(collection(db, 'creator_requests'), where('status', '==', 'PENDING'))),
+        ]);
 
-        const allUsers = usersSnap.docs.map(d => d.data());
-        const allChars = charsSnap.docs.map(d => d.data());
-        const allPrompts = promptsSnap.docs.map(d => d.data());
-        
-        const totalUsers = allUsers.length;
-        const totalCreators = allUsers.filter(u => u.creatorStatus === true).length;
-        const totalCharacters = allChars.length;
-        const totalPrompts = allPrompts.length;
+        const totalUsers = usersCountSnap.data().count;
+        const totalCreators = creatorsCountSnap.data().count;
+        const totalCharacters = charsCountSnap.data().count;
+        const totalPrompts = promptsCountSnap.data().count;
+        const pendingReports = reportsCountSnap.data().count;
+        const pendingCreatorRequests = requestsCountSnap.data().count;
 
-        const unmigratedUsers = usersSnap.docs.filter(d => !d.data().numericId).length;
-        const unmigratedChars = charsSnap.docs.filter(d => !d.data().numericId).length;
-        const unmigratedPrompts = promptsSnap.docs.filter(d => !d.data().numericId).length;
+        // Fetch bounded recent documents for 7-day trend chart
+        const [recentUsersSnap, recentCharsSnap, recentPromptsSnap] = await Promise.all([
+          getDocs(query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(100))),
+          getDocs(query(collection(db, 'characters'), orderBy('createdAt', 'desc'), limit(100))),
+          getDocs(query(collection(db, 'prompts'), orderBy('createdAt', 'desc'), limit(100)))
+        ]);
+
+        const allUsers = recentUsersSnap.docs.map(d => d.data());
+        const allChars = recentCharsSnap.docs.map(d => d.data());
+        const allPrompts = recentPromptsSnap.docs.map(d => d.data());
+
+        const unmigratedUsers = recentUsersSnap.docs.filter(d => !d.data().numericId).length;
+        const unmigratedChars = recentCharsSnap.docs.filter(d => !d.data().numericId).length;
+        const unmigratedPrompts = recentPromptsSnap.docs.filter(d => !d.data().numericId).length;
 
         setMigrationStats({
           unmigratedUsers,
@@ -114,9 +134,6 @@ export default function DashboardStats() {
 
         setChartData(formattedChartData);
 
-        // Trend calculation (last 7 days vs previous 7 days if possible, or just new in last 7 days / total)
-        // Since we don't have enough data for 14 days, we can calculate % of total created in last 7 days
-        // Or we can just calculate if there are any new items today vs yesterday
         const todayData = formattedChartData[6];
         const yesterdayData = formattedChartData[5];
 
@@ -131,8 +148,8 @@ export default function DashboardStats() {
           totalCreators,
           totalCharacters,
           totalPrompts,
-          pendingReports: reportsSnap.size,
-          pendingCreatorRequests: requestsSnap.size,
+          pendingReports,
+          pendingCreatorRequests,
           userTrend: calcTrend(todayData.users, yesterdayData.users),
           creatorTrend: calcTrend(
             allUsers.filter(u => u.creatorStatus && new Date(u.createdAt) >= dates[6]).length,

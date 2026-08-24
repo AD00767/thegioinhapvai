@@ -1,16 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { UserCheck, UserPlus, Users, User as UserIcon, BookOpen, PenTool, Sparkles, Flag } from 'lucide-react';
-import { collection, addDoc, query, where, getDocs, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../lib/firebase';
 import { useAuthStore } from '../store/useAuthStore';
+import { useUserInteractions } from '../context/UserInteractionsContext';
 import { CreatorItem } from '../types';
 import ReportModal from './ReportModal';
 import UserBadge from './UserBadge';
 import DisplayId from './DisplayId';
 import { getValidAvatar } from '../lib/avatar';
 import toast from 'react-hot-toast';
-import { checkIsFollowing, toggleFollow } from '../lib/followService';
+import { toggleFollow } from '../lib/followService';
 
 interface CreatorCardProps {
   key?: React.Key;
@@ -20,7 +19,8 @@ interface CreatorCardProps {
 
 export default function CreatorCard({ creator, onUpdate }: CreatorCardProps) {
   const { user } = useAuthStore();
-  const [isFollowing, setIsFollowing] = useState(false);
+  const { isCreatorFollowed, setFollowState } = useUserInteractions();
+  const isFollowing = isCreatorFollowed(creator.id);
   const [followerCount, setFollowerCount] = useState(creator.followerCount || 0);
   const [loading, setLoading] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
@@ -28,21 +28,6 @@ export default function CreatorCard({ creator, onUpdate }: CreatorCardProps) {
   useEffect(() => {
     setFollowerCount(creator.followerCount || 0);
   }, [creator.followerCount]);
-
-  useEffect(() => {
-    if (!user?.id || !creator.id) return;
-    if (user.id === creator.id) return;
-
-    const checkFollow = async () => {
-      try {
-        const hasFollow = await checkIsFollowing(user.id, creator.id);
-        setIsFollowing(hasFollow);
-      } catch (e) {
-        console.error("Check follow error:", e);
-      }
-    };
-    checkFollow();
-  }, [user?.id, creator.id]);
 
   const handleToggleFollow = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -63,7 +48,7 @@ export default function CreatorCard({ creator, onUpdate }: CreatorCardProps) {
       });
 
       if (res.success) {
-        setIsFollowing(res.following);
+        setFollowState(creator.id, res.following);
         setFollowerCount(res.followerCount);
         toast.success(res.message || (res.following ? `Đã theo dõi ${creator.displayName}` : `Đã hủy theo dõi ${creator.displayName}`));
       } else {

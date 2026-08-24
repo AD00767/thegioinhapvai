@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { 
   collection, query, getDocs, doc, updateDoc, deleteDoc,
-  orderBy, where, addDoc 
+  orderBy, where, addDoc, limit 
 } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -51,7 +51,7 @@ export default function UserManagement() {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
+      const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(100));
       const snap = await getDocs(q);
       setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() }) as CreatorItem));
     } catch (err) {
@@ -67,7 +67,8 @@ export default function UserManagement() {
       const q = query(
         collection(db, 'audit_logs'), 
         where('targetId', '==', userId),
-        orderBy('createdAt', 'desc')
+        orderBy('createdAt', 'desc'),
+        limit(50)
       );
       const snap = await getDocs(q);
       setUserHistory(snap.docs.map(d => ({ id: d.id, ...d.data() })));

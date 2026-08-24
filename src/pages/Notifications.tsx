@@ -4,7 +4,7 @@ import {
   Shield, Check, X, HelpCircle, ShieldCheck, Megaphone
 } from 'lucide-react';
 import { 
-  collection, query, where, getDocs, doc, updateDoc, deleteDoc, orderBy, writeBatch, addDoc
+  collection, query, where, getDocs, doc, updateDoc, deleteDoc, orderBy, writeBatch, addDoc, limit
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuthStore } from '../store/useAuthStore';
@@ -90,15 +90,18 @@ export default function Notifications() {
       // Query notifications where recipientId == user.id OR userId == user.id OR recipientId == 'ALL'
       const qRecipient = query(
         collection(db, 'notifications'),
-        where('recipientId', '==', user.id)
+        where('recipientId', '==', user.id),
+        limit(40)
       );
       const qUser = query(
         collection(db, 'notifications'),
-        where('userId', '==', user.id)
+        where('userId', '==', user.id),
+        limit(40)
       );
       const qBroadcast = query(
         collection(db, 'notifications'),
-        where('recipientId', '==', 'ALL')
+        where('recipientId', '==', 'ALL'),
+        limit(20)
       );
 
       const [snapRecipient, snapUser, snapBroadcast] = await Promise.all([

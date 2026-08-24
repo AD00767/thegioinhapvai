@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Sparkles, Search, UserCheck, Flame, Clock, Award, RefreshCw } from 'lucide-react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useSeo } from '../hooks/useSeo';
 import { CreatorItem } from '../types';
@@ -38,7 +38,8 @@ export default function Creators() {
       // Query users who have creatorStatus = true OR role = 'CREATOR' / 'ADMIN'
       const q = query(
         collection(db, 'users'),
-        where('creatorStatus', '==', true)
+        where('creatorStatus', '==', true),
+        limit(60)
       );
       const snap = await getDocs(q);
       const list: CreatorItem[] = [];

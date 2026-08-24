@@ -7,11 +7,14 @@ interface UserInteractionsContextType {
   likedCharacterIds: Set<string>;
   bookmarkedCharacterIds: Set<string>;
   bookmarkedPromptIds: Set<string>;
+  followedCreatorIds: Set<string>;
   isCharacterLiked: (characterId: string) => boolean;
   isCharacterBookmarked: (characterId: string) => boolean;
   isPromptBookmarked: (promptId: string) => boolean;
+  isCreatorFollowed: (creatorId: string) => boolean;
   setLikedState: (characterId: string, isLiked: boolean) => void;
   setBookmarkState: (targetId: string, targetType: 'CHARACTER' | 'PROMPT', isBookmarked: boolean) => void;
+  setFollowState: (creatorId: string, isFollowed: boolean) => void;
   refreshInteractions: () => Promise<void>;
 }
 
@@ -19,11 +22,14 @@ const UserInteractionsContext = createContext<UserInteractionsContextType>({
   likedCharacterIds: new Set(),
   bookmarkedCharacterIds: new Set(),
   bookmarkedPromptIds: new Set(),
+  followedCreatorIds: new Set(),
   isCharacterLiked: () => false,
   isCharacterBookmarked: () => false,
   isPromptBookmarked: () => false,
+  isCreatorFollowed: () => false,
   setLikedState: () => {},
   setBookmarkState: () => {},
+  setFollowState: () => {},
   refreshInteractions: async () => {},
 });
 
@@ -32,12 +38,14 @@ export const UserInteractionsProvider: React.FC<{ children: React.ReactNode }> =
   const [likedCharacterIds, setLikedCharacterIds] = useState<Set<string>>(new Set());
   const [bookmarkedCharacterIds, setBookmarkedCharacterIds] = useState<Set<string>>(new Set());
   const [bookmarkedPromptIds, setBookmarkedPromptIds] = useState<Set<string>>(new Set());
+  const [followedCreatorIds, setFollowedCreatorIds] = useState<Set<string>>(new Set());
 
   const fetchInteractions = async () => {
     if (!user?.id) {
       setLikedCharacterIds(new Set());
       setBookmarkedCharacterIds(new Set());
       setBookmarkedPromptIds(new Set());
+      setFollowedCreatorIds(new Set());
       return;
     }
 
@@ -67,6 +75,17 @@ export const UserInteractionsProvider: React.FC<{ children: React.ReactNode }> =
       });
       setBookmarkedCharacterIds(charBooksSet);
       setBookmarkedPromptIds(promptBooksSet);
+
+      // 3. Fetch followed creators for current user
+      const qFollow = query(collection(db, 'follows'), where('followerId', '==', user.id));
+      const snapFollow = await getDocs(qFollow);
+      const followsSet = new Set<string>();
+      snapFollow.docs.forEach(docSnap => {
+        const data = docSnap.data();
+        const cId = data.creatorId || data.targetCreatorId;
+        if (cId) followsSet.add(cId);
+      });
+      setFollowedCreatorIds(followsSet);
     } catch (err) {
       console.error("Error fetching user interactions:", err);
     }
@@ -79,6 +98,7 @@ export const UserInteractionsProvider: React.FC<{ children: React.ReactNode }> =
   const isCharacterLiked = (characterId: string) => likedCharacterIds.has(characterId);
   const isCharacterBookmarked = (characterId: string) => bookmarkedCharacterIds.has(characterId);
   const isPromptBookmarked = (promptId: string) => bookmarkedPromptIds.has(promptId);
+  const isCreatorFollowed = (creatorId: string) => followedCreatorIds.has(creatorId);
 
   const setLikedState = (characterId: string, isLiked: boolean) => {
     setLikedCharacterIds(prev => {
@@ -107,17 +127,29 @@ export const UserInteractionsProvider: React.FC<{ children: React.ReactNode }> =
     }
   };
 
+  const setFollowState = (creatorId: string, isFollowed: boolean) => {
+    setFollowedCreatorIds(prev => {
+      const next = new Set(prev);
+      if (isFollowed) next.add(creatorId);
+      else next.delete(creatorId);
+      return next;
+    });
+  };
+
   return (
     <UserInteractionsContext.Provider
       value={{
         likedCharacterIds,
         bookmarkedCharacterIds,
         bookmarkedPromptIds,
+        followedCreatorIds,
         isCharacterLiked,
         isCharacterBookmarked,
         isPromptBookmarked,
+        isCreatorFollowed,
         setLikedState,
         setBookmarkState,
+        setFollowState,
         refreshInteractions: fetchInteractions,
       }}
     >

@@ -18,12 +18,14 @@ import DisplayId from '../components/DisplayId';
 import ShareModal from '../components/ShareModal';
 import toast from 'react-hot-toast';
 import { getValidAvatar } from '../lib/avatar';
-import { checkIsFollowing, toggleFollow, reconcileFollowerCount } from '../lib/followService';
+import { toggleFollow, reconcileFollowerCount } from '../lib/followService';
+import { useUserInteractions } from '../context/UserInteractionsContext';
 
 export default function CreatorDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const { isCreatorFollowed, setFollowState } = useUserInteractions();
 
   const [creator, setCreator] = useState<CreatorItem | null>(null);
   const [characters, setCharacters] = useState<CharacterItem[]>([]);
@@ -31,9 +33,9 @@ export default function CreatorDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  const [isFollowing, setIsFollowing] = useState(false);
   const [followerCount, setFollowerCount] = useState(0);
   const [followLoading, setFollowLoading] = useState(false);
+  const isFollowing = creator?.id ? isCreatorFollowed(creator.id) : false;
 
   const [activeTab, setActiveTab] = useState<'CHARACTERS' | 'PROMPTS'>('CHARACTERS');
 
@@ -188,21 +190,6 @@ export default function CreatorDetail() {
   };
 
   useEffect(() => {
-    if (!user?.id || !creator?.id || user.id === creator.id) return;
-
-    const checkFollow = async () => {
-      try {
-        const hasFollow = await checkIsFollowing(user.id, creator.id);
-        setIsFollowing(hasFollow);
-      } catch (e) {
-        console.error("Check follow error:", e);
-      }
-    };
-
-    checkFollow();
-  }, [user?.id, creator?.id]);
-
-  useEffect(() => {
     fetchCreatorData();
   }, [id]);
 
@@ -224,7 +211,7 @@ export default function CreatorDetail() {
       });
 
       if (res.success) {
-        setIsFollowing(res.following);
+        setFollowState(creator.id, res.following);
         setFollowerCount(res.followerCount);
         toast.success(res.message || (res.following ? `Đã theo dõi ${creator.displayName}` : `Đã hủy theo dõi ${creator.displayName}`));
       } else {
