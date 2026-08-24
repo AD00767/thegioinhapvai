@@ -242,10 +242,27 @@ export default function Home() {
             <span>Trang Chủ & Khám Phá — Thế Giới Nhập Vai AD</span>
           </div>
 
-          <h1 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight mb-4 leading-tight">
+          <h1 
+            style={{ 
+              fontFamily: '"Plus Jakarta Sans", sans-serif',
+              fontSize: '50px',
+              lineHeight: '52.5px',
+              fontWeight: 700,
+              fontStyle: 'normal',
+              textDecoration: 'none'
+            }}
+            className="text-2xl xs:text-3xl sm:text-4xl md:text-[50px] font-bold tracking-tight mb-4 leading-[1.05]"
+          >
             Khởi đầu cho mọi hành trình Roleplay
           </h1>
-          <p className="text-neutral-400 mb-6 sm:mb-8 max-w-2xl mx-auto text-xs xs:text-sm md:text-base leading-relaxed">
+          <p 
+            style={{
+              fontFamily: 'Arial, sans-serif',
+              fontWeight: 'normal',
+              fontStyle: 'italic'
+            }}
+            className="text-neutral-400 mb-6 sm:mb-8 max-w-2xl mx-auto text-xs xs:text-sm md:text-base leading-relaxed"
+          >
             Nền tảng cộng đồng dành cho Google AI Studio — Nơi tự do khám phá, sáng tạo Character, Prompt và kết nối với các Creator hàng đầu.
           </p>
 
