@@ -168,7 +168,7 @@ export default function Welcome({ onStart }: WelcomeProps) {
         <div className="w-16 h-16 rounded-2xl bg-neutral-200/60 dark:bg-neutral-900 border border-black/5 dark:border-white/10 text-neutral-600 dark:text-neutral-400 flex items-center justify-center mb-6">
           <WifiOff className="w-8 h-8" />
         </div>
-        <h2 className="text-2xl font-serif font-bold mb-3 tracking-tight">Mất kết nối mạng</h2>
+        <h2 className="text-2xl font-bold mb-3 tracking-tight">Mất kết nối mạng</h2>
         <p className="text-neutral-600 dark:text-neutral-400 max-w-md mb-8 leading-relaxed text-sm">
           Không thể kết nối. Vui lòng kiểm tra kết nối mạng và thử lại.
         </p>
@@ -213,7 +213,7 @@ export default function Welcome({ onStart }: WelcomeProps) {
               <div className="inline-flex items-center justify-center px-3.5 py-1 rounded-full bg-neutral-950 text-white dark:bg-white dark:text-black text-[10px] font-semibold tracking-[0.2em] uppercase">
                 GOOGLE AI STUDIO COMMUNITY
               </div>
-              <h1 className="text-3xl sm:text-4xl font-serif font-bold tracking-tight text-neutral-950 dark:text-white uppercase">
+              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-neutral-950 dark:text-white uppercase">
                 {authTab === 'login' ? 'ĐĂNG NHẬP' : 'TẠO TÀI KHOẢN'}
               </h1>
               <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 font-sans">
