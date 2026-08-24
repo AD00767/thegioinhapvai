@@ -271,24 +271,24 @@ export default function Layout({ children }: LayoutProps) {
                   </button>
                   <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-neutral-900 rounded-xl shadow-lg border border-neutral-100 dark:border-neutral-800 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
                     <div className="p-2">
-                       <Link to="/profile" className="block px-4 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg">Hồ sơ của tôi</Link>
+                       <Link to="/profile" className="menu-item-text block px-4 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg">Hồ sơ của tôi</Link>
                        {(user.creatorStatus || user.role === 'ADMIN') && (
-                         <Link to="/creator/dashboard" className="block px-4 py-2 text-sm text-amber-600 dark:text-amber-400 font-medium hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg">
+                         <Link to="/creator/dashboard" className="menu-item-text block px-4 py-2 text-sm text-amber-600 dark:text-amber-400 font-medium hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg">
                            Bảng điều khiển Creator
                          </Link>
                        )}
                        {user.role === 'ADMIN' && (
-                         <Link to="/admin" className="block px-4 py-2 text-sm text-red-600 dark:text-red-400 font-medium hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg">
+                         <Link to="/admin" className="menu-item-text block px-4 py-2 text-sm text-red-600 dark:text-red-400 font-medium hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg">
                            Quản trị & Kiểm duyệt
                          </Link>
                        )}
                        {(user.role === 'MOD' || user.role === 'MODERATOR') && (
-                         <Link to="/admin/users" className="block px-4 py-2 text-sm text-amber-600 dark:text-amber-400 font-medium hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg">
+                         <Link to="/admin/users" className="menu-item-text block px-4 py-2 text-sm text-amber-600 dark:text-amber-400 font-medium hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg">
                            Moderator Panel
                          </Link>
                        )}
-                       <Link to="/settings" className="block px-4 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg">Cài đặt</Link>
-                       <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg">Đăng xuất</button>
+                       <Link to="/settings" className="menu-item-text block px-4 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg">Cài đặt</Link>
+                       <button onClick={handleLogout} className="menu-item-text w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg">Đăng xuất</button>
                     </div>
                   </div>
                 </div>
@@ -319,7 +319,9 @@ export default function Layout({ children }: LayoutProps) {
                 )}
               >
                 {item.icon}
-                {item.label}
+                <span className="menu-item-text" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
+                  {item.label}
+                </span>
               </Link>
             ))}
           </nav>
@@ -350,7 +352,9 @@ export default function Layout({ children }: LayoutProps) {
                       )}
                     >
                       {item.icon}
-                      {item.label}
+                      <span className="menu-item-text" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
+                        {item.label}
+                      </span>
                     </Link>
                   ))}
                 </nav>

@@ -59,7 +59,13 @@ th {
   font-family: var(--font-serif) !important;
 }
 
-/* Explicit font-mono classes maintain Monospace (code, IDs) */
+/* Navigation / Menu Item labels: ALWAYS use Arial, Helvetica, sans-serif */
+.menu-item-text,
+.nav-item-text,
+[data-nav-label] {
+  font-family: Arial, Helvetica, "Nimbus Sans L", "Liberation Sans", sans-serif !important;
+}
+
 .font-mono,
 [class*="font-mono"] {
   font-family: var(--font-mono) !important;
