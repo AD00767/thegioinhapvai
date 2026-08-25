@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/useAuthStore";
-import { WifiOff, RefreshCw, ArrowLeft, Mail, Lock, UserPlus, AlertCircle } from "lucide-react";
+import { WifiOff, RefreshCw, ArrowLeft, Mail, Lock, UserPlus, AlertCircle, Compass, LogIn } from "lucide-react";
 import { motion } from "motion/react";
 import { useSeo } from "../hooks/useSeo";
 import ThemeToggle from "../components/ThemeToggle";
@@ -29,7 +29,7 @@ export default function Welcome({ onStart }: WelcomeProps) {
 
   useSeo({
     title: 'THẾ GIỚI NHẬP VAI AD - KHỞI ĐẦU CHO MỌI HÀNH TRÌNH ROLEPLAY',
-    description: 'Nơi khám phá, chia sẻ và kết nối cùng thế giới Roleplay trên Google AI Studio.'
+    description: 'Khám phá, chia sẻ và kết nối cùng cộng đồng Roleplay qua những Character, Prompt và tài nguyên dành cho Google AI Studio.'
   });
 
   useEffect(() => {
@@ -473,7 +473,15 @@ export default function Welcome({ onStart }: WelcomeProps) {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1, ease: "easeOut" }}
-            className="font-serif font-bold text-3xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl tracking-tight uppercase text-neutral-950 dark:text-white leading-[1.1] sm:leading-[1.08] mb-3 sm:mb-4 text-center max-w-5xl"
+            style={{
+              fontFamily: '"Playfair Display", Georgia, serif',
+              textAlign: 'center',
+              fontStyle: 'normal',
+              textDecoration: 'none',
+              fontWeight: 700,
+              fontSize: '60.5px'
+            }}
+            className="font-serif font-bold text-[60.5px] tracking-tight uppercase text-neutral-950 dark:text-white leading-[1.1] sm:leading-[1.08] mb-3 sm:mb-4 text-center max-w-5xl"
           >
             THẾ GIỚI NHẬP VAI AD
           </motion.h1>
@@ -483,7 +491,14 @@ export default function Welcome({ onStart }: WelcomeProps) {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
-            className="font-serif font-semibold text-sm sm:text-lg md:text-xl lg:text-2xl uppercase tracking-[0.14em] sm:tracking-[0.18em] text-neutral-700 dark:text-neutral-300 mb-4 sm:mb-6 text-center"
+            style={{
+              lineHeight: '37.5px',
+              fontSize: '15.5px',
+              fontWeight: 700,
+              fontStyle: 'normal',
+              fontFamily: 'Verdana, sans-serif'
+            }}
+            className="font-bold text-[15.5px] leading-[37.5px] uppercase tracking-[0.14em] sm:tracking-[0.18em] text-neutral-700 dark:text-neutral-300 mb-4 sm:mb-6 text-center"
           >
             KHỞI ĐẦU CHO MỌI HÀNH TRÌNH ROLEPLAY
           </motion.p>
@@ -495,7 +510,7 @@ export default function Welcome({ onStart }: WelcomeProps) {
             transition={{ duration: 0.6, delay: 0.3, ease: "easeOut" }}
             className="font-sans font-normal text-sm sm:text-base md:text-lg text-neutral-600 dark:text-neutral-400 max-w-xl mx-auto leading-relaxed mb-8 sm:mb-12 px-2 text-center"
           >
-            Nơi khám phá, chia sẻ và kết nối cùng thế giới Roleplay trên Google AI Studio.
+            Khám phá, chia sẻ và kết nối cùng cộng đồng Roleplay qua những Character, Prompt và tài nguyên dành cho Google AI Studio.
           </motion.p>
 
           {/* 5. CTA BUTTONS */}
@@ -506,22 +521,30 @@ export default function Welcome({ onStart }: WelcomeProps) {
             className="flex flex-col sm:flex-row items-center justify-center gap-3.5 sm:gap-5 w-full max-w-md mx-auto"
           >
             {/* Primary CTA: BẮT ĐẦU */}
-            <button
+            <motion.button
+              whileHover={{ y: -4, scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
               onClick={handleStart}
               aria-label="Bắt đầu"
-              className="w-full sm:flex-1 py-4 px-8 rounded-xl bg-neutral-950 text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200 font-semibold text-sm sm:text-base uppercase tracking-wider transition-colors duration-200 shadow-sm cursor-pointer min-h-[50px] flex items-center justify-center active:scale-[0.99]"
+              className="group w-full sm:flex-1 py-4 px-8 rounded-xl bg-neutral-950 text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200 font-semibold text-sm sm:text-base uppercase tracking-wider transition-all duration-300 shadow-md hover:shadow-2xl dark:hover:shadow-[0_15px_30px_-5px_rgba(255,255,255,0.2)] cursor-pointer min-h-[50px] flex items-center justify-center gap-2.5"
             >
+              <Compass className="w-4 h-4 sm:w-4.5 sm:h-4.5 transition-transform duration-300 group-hover:rotate-45" />
               <span>BẮT ĐẦU</span>
-            </button>
+            </motion.button>
 
             {/* Secondary CTA: ĐĂNG NHẬP */}
-            <button
+            <motion.button
+              whileHover={{ y: -4, scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
               onClick={() => setViewMode('auth')}
               aria-label="Đăng nhập"
-              className="w-full sm:flex-1 py-4 px-8 rounded-xl bg-transparent border border-neutral-950/30 text-neutral-950 hover:border-neutral-950 hover:bg-black/5 dark:border-white/30 dark:text-white dark:hover:border-white dark:hover:bg-white/5 font-semibold text-sm sm:text-base uppercase tracking-wider transition-colors duration-200 cursor-pointer min-h-[50px] flex items-center justify-center active:scale-[0.99]"
+              className="group w-full sm:flex-1 py-4 px-8 rounded-xl bg-transparent border border-neutral-950/30 text-neutral-950 hover:border-neutral-950 hover:bg-black/5 dark:border-white/30 dark:text-white dark:hover:border-white dark:hover:bg-white/5 font-semibold text-sm sm:text-base uppercase tracking-wider transition-all duration-300 shadow-sm hover:shadow-xl dark:hover:shadow-[0_15px_30px_-5px_rgba(255,255,255,0.1)] cursor-pointer min-h-[50px] flex items-center justify-center gap-2.5"
             >
+              <LogIn className="w-4 h-4 sm:w-4.5 sm:h-4.5 transition-transform duration-300 group-hover:translate-x-0.5" />
               <span>ĐĂNG NHẬP</span>
-            </button>
+            </motion.button>
           </motion.div>
 
         </div>
