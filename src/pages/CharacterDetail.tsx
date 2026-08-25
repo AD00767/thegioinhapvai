@@ -586,7 +586,7 @@ export default function CharacterDetail() {
                 )}
 
                 {character.additionalLinks && character.additionalLinks.length > 0 && (
-                  <div className="space-y-2 pt-2">
+                  <div className="space-y-2.5 pt-2">
                     <h4 className="text-xs font-extrabold text-neutral-500 uppercase tracking-wider">
                       Các liên kết thử nghiệm bổ sung:
                     </h4>
@@ -596,13 +596,14 @@ export default function CharacterDetail() {
                         href={aLink}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center justify-between p-3.5 rounded-2xl bg-neutral-100 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700 text-xs font-bold text-neutral-800 dark:text-neutral-200 hover:border-indigo-500 transition-colors group"
+                        className="w-full py-3.5 px-6 rounded-2xl bg-black dark:bg-white text-white dark:text-black font-extrabold text-sm flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-md active:scale-[0.99]"
                       >
-                        <span className="truncate pr-2 font-mono text-[11px]">{aLink}</span>
-                        <div className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 shrink-0">
-                          <span>Mở link</span>
-                          <ExternalLink className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                        </div>
+                        <span>
+                          {character.additionalLinks!.length > 1
+                            ? `Trải nghiệm ngay trên Google AI Studio #${idx + 1}`
+                            : `Trải nghiệm ngay trên Google AI Studio`}
+                        </span>
+                        <ExternalLink className="w-4 h-4" />
                       </a>
                     ))}
                   </div>
