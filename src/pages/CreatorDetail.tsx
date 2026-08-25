@@ -17,6 +17,7 @@ import UserBadge from '../components/UserBadge';
 import DisplayId from '../components/DisplayId';
 import ShareModal from '../components/ShareModal';
 import toast from 'react-hot-toast';
+import { executeDeletePrompt } from '../lib/promptService';
 import { getValidAvatar } from '../lib/avatar';
 import { toggleFollow, reconcileFollowerCount } from '../lib/followService';
 import { useUserInteractions } from '../context/UserInteractionsContext';
@@ -40,7 +41,7 @@ export default function CreatorDetail() {
   const [activeTab, setActiveTab] = useState<'CHARACTERS' | 'PROMPTS'>('CHARACTERS');
 
   const [isReportOpen, setIsReportOpen] = useState(false);
-  const [promptToDelete, setPromptToDelete] = useState<string | null>(null);
+  const [promptToDeleteItem, setPromptToDeleteItem] = useState<PromptItem | null>(null);
   const [isShareOpen, setIsShareOpen] = useState(false);
 
   // 3-dots menu for Creator header
@@ -538,7 +539,7 @@ export default function CreatorDetail() {
                 key={p.id} 
                 prompt={p} 
                 isOwner={user?.id === p.authorId || user?.role === 'ADMIN'} 
-                onDelete={(promptId) => setPromptToDelete(promptId)}
+                onDelete={() => setPromptToDeleteItem(p)}
               />
             ))}
           </div>
@@ -556,20 +557,41 @@ export default function CreatorDetail() {
 
       {/* Delete Prompt Modal */}
       <DeleteConfirmModal
-        isOpen={promptToDelete !== null}
-        onClose={() => setPromptToDelete(null)}
-        title="Xóa hoàn toàn Prompt?"
-        description="Bạn có chắc chắn muốn xóa Prompt này không? Nội dung sẽ bị xóa hoàn toàn khỏi hệ thống và không thể hoàn tác."
-        confirmText="Xác nhận xóa"
+        isOpen={promptToDeleteItem !== null}
+        onClose={() => setPromptToDeleteItem(null)}
+        title="Xác nhận xóa Prompt"
+        description={
+          user?.role === 'ADMIN' && promptToDeleteItem && user.id !== promptToDeleteItem.authorId
+            ? `Bạn đang xóa Prompt "${promptToDeleteItem.title || promptToDeleteItem.name || ''}" với tư cách Quản trị viên. Vui lòng nhập lý do xóa để gửi thông báo cho tác giả.`
+            : `Bạn có chắc chắn muốn xóa Prompt "${promptToDeleteItem?.title || promptToDeleteItem?.name || ''}" không? Hành động này không thể hoàn tác.`
+        }
+        requireReason={user?.role === 'ADMIN' && promptToDeleteItem !== null && user.id !== promptToDeleteItem.authorId}
         onConfirm={async () => {
-          if (!promptToDelete) return;
+          if (!promptToDeleteItem) return;
           try {
-            await deleteDoc(doc(db, 'prompts', promptToDelete));
-            toast.success("Đã xóa hoàn toàn Prompt khỏi hệ thống.");
-            setPromptToDelete(null);
+            await executeDeletePrompt({
+              prompt: promptToDeleteItem,
+              currentUser: user
+            });
+            toast.success("Đã xóa Prompt thành công.");
             fetchCreatorData();
-          } catch (e) {
-            toast.error("Không thể xóa Prompt.");
+          } catch (e: any) {
+            toast.error(e?.message || "Không thể xóa Prompt.");
+          }
+        }}
+        onConfirmWithReason={async (reason, details) => {
+          if (!promptToDeleteItem) return;
+          try {
+            await executeDeletePrompt({
+              prompt: promptToDeleteItem,
+              currentUser: user,
+              reason,
+              details
+            });
+            toast.success("Đã xóa Prompt và ghi log lý do thành công.");
+            fetchCreatorData();
+          } catch (e: any) {
+            toast.error(e?.message || "Không thể xóa Prompt.");
           }
         }}
       />

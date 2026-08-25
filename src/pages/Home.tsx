@@ -11,6 +11,7 @@ import CharacterCard from "../components/CharacterCard";
 import PromptCard from "../components/PromptCard";
 import CreatorCard from "../components/CreatorCard";
 import DeleteConfirmModal from "../components/DeleteConfirmModal";
+import { executeDeletePrompt } from "../lib/promptService";
 import { CharacterItem, PromptItem, CreatorItem } from "../types";
 import { useAuthStore } from "../store/useAuthStore";
 import { useSeo } from "../hooks/useSeo";
@@ -37,7 +38,7 @@ export default function Home() {
   const [topCreators, setTopCreators] = useState<CreatorItem[]>([]);
   const [trendingTags, setTrendingTags] = useState<{ tag: string; count: number }[]>([]);
   const [publicFeedbacks, setPublicFeedbacks] = useState<any[]>([]);
-  const [promptToDelete, setPromptToDelete] = useState<string | null>(null);
+  const [promptToDeleteItem, setPromptToDeleteItem] = useState<PromptItem | null>(null);
 
   useSeo({
     title: 'Trang Chủ',
@@ -422,7 +423,7 @@ export default function Home() {
                   key={prompt.id} 
                   prompt={prompt} 
                   isOwner={user?.id === prompt.authorId || user?.role === 'ADMIN'}
-                  onDelete={(id) => setPromptToDelete(id)}
+                  onDelete={() => setPromptToDeleteItem(prompt)}
                 />
               ))}
             </div>
@@ -512,16 +513,41 @@ export default function Home() {
 
       {/* Delete Prompt Confirmation Modal */}
       <DeleteConfirmModal
-        isOpen={promptToDelete !== null}
-        onClose={() => setPromptToDelete(null)}
+        isOpen={promptToDeleteItem !== null}
+        onClose={() => setPromptToDeleteItem(null)}
+        title="Xác nhận xóa Prompt"
+        description={
+          user?.role === 'ADMIN' && promptToDeleteItem && user.id !== promptToDeleteItem.authorId
+            ? `Bạn đang xóa Prompt "${promptToDeleteItem.title || promptToDeleteItem.name || ''}" với tư cách Quản trị viên. Vui lòng nhập lý do xóa để gửi thông báo cho tác giả.`
+            : `Bạn có chắc chắn muốn xóa Prompt "${promptToDeleteItem?.title || promptToDeleteItem?.name || ''}" không? Hành động này không thể hoàn tác.`
+        }
+        requireReason={user?.role === 'ADMIN' && promptToDeleteItem !== null && user.id !== promptToDeleteItem.authorId}
         onConfirm={async () => {
-          if (!promptToDelete) return;
+          if (!promptToDeleteItem) return;
           try {
-            await deleteDoc(doc(db, 'prompts', promptToDelete));
-            toast.success("Đã xóa hoàn toàn Prompt khỏi hệ thống.");
+            await executeDeletePrompt({
+              prompt: promptToDeleteItem,
+              currentUser: user
+            });
+            toast.success("Đã xóa Prompt thành công.");
             loadHomeData();
-          } catch (e) {
-            toast.error("Không thể xóa Prompt.");
+          } catch (e: any) {
+            toast.error(e?.message || "Không thể xóa Prompt.");
+          }
+        }}
+        onConfirmWithReason={async (reason, details) => {
+          if (!promptToDeleteItem) return;
+          try {
+            await executeDeletePrompt({
+              prompt: promptToDeleteItem,
+              currentUser: user,
+              reason,
+              details
+            });
+            toast.success("Đã xóa Prompt và ghi log lý do thành công.");
+            loadHomeData();
+          } catch (e: any) {
+            toast.error(e?.message || "Không thể xóa Prompt.");
           }
         }}
       />

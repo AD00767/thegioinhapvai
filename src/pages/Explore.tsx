@@ -10,6 +10,7 @@ import CharacterCard from '../components/CharacterCard';
 import PromptCard from '../components/PromptCard';
 import CreatorCard from '../components/CreatorCard';
 import DeleteConfirmModal from '../components/DeleteConfirmModal';
+import { executeDeletePrompt } from '../lib/promptService';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
 import { useSeo } from '../hooks/useSeo';
@@ -33,7 +34,7 @@ export default function Explore() {
   const [selectedTag, setSelectedTag] = useState<string | null>(searchParams.get('tag') || null);
 
   const [loading, setLoading] = useState(true);
-  const [promptToDelete, setPromptToDelete] = useState<string | null>(null);
+  const [promptToDeleteItem, setPromptToDeleteItem] = useState<PromptItem | null>(null);
 
   const [allCharacters, setAllCharacters] = useState<CharacterItem[]>([]);
   const [allPrompts, setAllPrompts] = useState<PromptItem[]>([]);
@@ -547,7 +548,7 @@ export default function Explore() {
                         key={prompt.id} 
                         prompt={prompt} 
                         isOwner={user?.id === prompt.authorId || user?.role === 'ADMIN'}
-                        onDelete={(id) => setPromptToDelete(id)}
+                        onDelete={() => setPromptToDeleteItem(prompt)}
                       />
                     ))}
                   </div>
@@ -710,7 +711,7 @@ export default function Explore() {
                         key={prompt.id} 
                         prompt={prompt} 
                         isOwner={user?.id === prompt.authorId || user?.role === 'ADMIN'}
-                        onDelete={(id) => setPromptToDelete(id)}
+                        onDelete={() => setPromptToDeleteItem(prompt)}
                       />
                     ))}
                   </div>
@@ -751,7 +752,7 @@ export default function Explore() {
                         key={prompt.id} 
                         prompt={prompt} 
                         isOwner={user?.id === prompt.authorId || user?.role === 'ADMIN'}
-                        onDelete={(id) => setPromptToDelete(id)}
+                        onDelete={() => setPromptToDeleteItem(prompt)}
                       />
                     ))}
                   </div>
@@ -836,16 +837,41 @@ export default function Explore() {
 
       {/* Delete Prompt Confirmation Modal */}
       <DeleteConfirmModal
-        isOpen={promptToDelete !== null}
-        onClose={() => setPromptToDelete(null)}
+        isOpen={promptToDeleteItem !== null}
+        onClose={() => setPromptToDeleteItem(null)}
+        title="Xác nhận xóa Prompt"
+        description={
+          user?.role === 'ADMIN' && promptToDeleteItem && user.id !== promptToDeleteItem.authorId
+            ? `Bạn đang xóa Prompt "${promptToDeleteItem.title || promptToDeleteItem.name || ''}" với tư cách Quản trị viên. Vui lòng nhập lý do xóa để gửi thông báo cho tác giả.`
+            : `Bạn có chắc chắn muốn xóa Prompt "${promptToDeleteItem?.title || promptToDeleteItem?.name || ''}" không? Hành động này không thể hoàn tác.`
+        }
+        requireReason={user?.role === 'ADMIN' && promptToDeleteItem !== null && user.id !== promptToDeleteItem.authorId}
         onConfirm={async () => {
-          if (!promptToDelete) return;
+          if (!promptToDeleteItem) return;
           try {
-            await deleteDoc(doc(db, 'prompts', promptToDelete));
-            toast.success("Đã xóa hoàn toàn Prompt khỏi hệ thống.");
+            await executeDeletePrompt({
+              prompt: promptToDeleteItem,
+              currentUser: user
+            });
+            toast.success("Đã xóa Prompt thành công.");
             loadData();
-          } catch (e) {
-            toast.error("Không thể xóa Prompt.");
+          } catch (e: any) {
+            toast.error(e?.message || "Không thể xóa Prompt.");
+          }
+        }}
+        onConfirmWithReason={async (reason, details) => {
+          if (!promptToDeleteItem) return;
+          try {
+            await executeDeletePrompt({
+              prompt: promptToDeleteItem,
+              currentUser: user,
+              reason,
+              details
+            });
+            toast.success("Đã xóa Prompt và ghi log lý do thành công.");
+            loadData();
+          } catch (e: any) {
+            toast.error(e?.message || "Không thể xóa Prompt.");
           }
         }}
       />

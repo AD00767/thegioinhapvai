@@ -623,7 +623,17 @@ export default function Notifications() {
                 key={notif.id}
                 onClick={() => {
                   handleMarkAsRead(notif.id);
-                  if (isSystemNotif) {
+                  if (['CONTENT_REMOVED', 'ACCOUNT_LOCKED', 'APPEAL_APPROVED', 'APPEAL_REJECTED'].includes(notif.type)) {
+                    setRemovalModalData({
+                      isOpen: true,
+                      targetType: notif.targetType || 'FEEDBACK',
+                      targetId: notif.targetId || user?.id || '',
+                      targetName: notif.title,
+                      removalReason: (notif as any).removalReason || notif.message,
+                      removalDetails: (notif as any).removalDetails,
+                      removalTime: (notif as any).removalTime || notif.createdAt
+                    });
+                  } else if (isSystemNotif) {
                     setSystemModalData({ isOpen: true, notification: notif });
                   } else if (notif.type === 'SUPPORT_REPLY' || notif.targetType === 'SUPPORT_TICKET') {
                     setSupportModalData({ isOpen: true, notification: notif });

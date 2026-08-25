@@ -10,6 +10,7 @@ import UserBadge from '../UserBadge';
 import { FeedbackItem } from './PublicFeedbackCard';
 import { getValidAvatar, DEFAULT_AVATAR } from '../../lib/avatar';
 import { enforceActivityCheck } from '../../lib/restrictions';
+import DeleteConfirmModal from '../DeleteConfirmModal';
 import toast from 'react-hot-toast';
 
 interface PrivateReply {
@@ -136,35 +137,79 @@ export default function PrivateFeedbackCard({
   // Recipient or Admin deletes letter (per Module 11 rules)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  const handleDelete = async () => {
+  const handleDelete = async (reason?: string, details?: string) => {
     try {
-      const fbRef = doc(db, 'feedbacks', feedback.id);
-      await updateDoc(fbRef, { 
-        deletedAt: new Date().toISOString(),
-        deletedBy: user?.id,
-        deleteReason: isAdmin && user?.id !== feedback.senderId ? "Nội dung vi phạm quy chuẩn cộng đồng" : null
-      });
+      const now = new Date().toISOString();
+      const isModerationAction = Boolean(isAdmin && user?.id !== feedback.senderId);
 
-      // Notify sender if deleted by admin
-      if (isAdmin && user?.id !== feedback.senderId) {
-        await addDoc(collection(db, 'notifications'), {
-          userId: feedback.senderId,
-          recipientId: feedback.senderId,
-          senderId: user?.id,
-          senderName: "Hệ thống Quản trị",
-          senderAvatar: DEFAULT_AVATAR,
-          type: 'SYSTEM',
-          title: 'Thư riêng tư đã bị xóa',
-          message: `Thư riêng tư của bạn đã bị xóa bởi Quản trị viên. Lý do: Nội dung vi phạm quy chuẩn cộng đồng.`,
+      if (isModerationAction) {
+        if (!reason || !reason.trim()) {
+          toast.error("Lý do xử lý là bắt buộc.");
+          return;
+        }
+
+        const removalReasonText = reason.trim();
+        const removalDetailsText = details?.trim() || removalReasonText;
+
+        const fbRef = doc(db, 'feedbacks', feedback.id);
+        await updateDoc(fbRef, { 
+          isHidden: true,
+          deletedAt: now,
+          deletedBy: user?.id || 'admin',
+          removalReason: removalReasonText,
+          removalDetails: removalDetailsText,
+          removalTime: now,
+          appealStatus: 'NONE'
+        });
+
+        // Notify sender if deleted by admin
+        if (feedback.senderId && feedback.senderId !== user?.id) {
+          const targetName = feedback.title || feedback.content?.slice(0, 40) || 'Thư riêng tư';
+          await addDoc(collection(db, 'notifications'), {
+            userId: feedback.senderId,
+            recipientId: feedback.senderId,
+            senderId: user?.id,
+            senderName: user?.displayName || "Hệ thống Quản trị",
+            senderAvatar: user?.avatar ? getValidAvatar(user.avatar) : DEFAULT_AVATAR,
+            type: 'CONTENT_REMOVED',
+            title: `Thư riêng tư "${targetName}" đã bị gỡ bỏ`,
+            message: `Thư riêng tư của bạn đã bị gỡ bỏ bởi Quản trị viên. Lý do: ${removalReasonText}. Nhấp vào để xem chi tiết và gửi đơn kháng nghị.`,
+            targetId: feedback.id,
+            targetType: 'FEEDBACK',
+            targetName,
+            removalReason: removalReasonText,
+            removalDetails: removalDetailsText,
+            removalTime: now,
+            read: false,
+            createdAt: now
+          });
+        }
+
+        // Add audit log
+        await addDoc(collection(db, 'audit_logs'), {
+          executorId: user?.id,
+          executorName: user?.displayName || 'Admin',
+          executorRole: user?.role || 'ADMIN',
+          action: 'DELETE_FEEDBACK',
           targetId: feedback.id,
           targetType: 'FEEDBACK',
-          read: false,
-          createdAt: new Date().toISOString()
+          details: `Đã gỡ bỏ thư riêng tư của "${feedback.senderName}". Lý do: ${removalReasonText}`,
+          reason: removalReasonText,
+          createdAt: now
         });
+
+        toast.success("Đã gỡ bỏ thư riêng tư và gửi thông báo cho tác giả.");
+      } else {
+        // Recipient deletes received private feedback
+        const fbRef = doc(db, 'feedbacks', feedback.id);
+        await updateDoc(fbRef, { 
+          deletedAt: now,
+          deletedBy: user?.id
+        });
+        toast.success("Đã xóa thư riêng tư thành công.");
       }
 
       setIsDeleted(true);
-      toast.success("Đã xóa thư riêng tư thành công.");
       if (onDelete) onDelete(feedback.id);
     } catch (err) {
       console.error("Lỗi khi xóa doc riêng tư:", err);
@@ -430,32 +475,22 @@ export default function PrivateFeedbackCard({
         </div>
       )}
 
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white dark:bg-neutral-900 rounded-3xl w-full max-w-sm p-6 shadow-2xl border border-neutral-200 dark:border-neutral-800">
-            <h3 className="text-xl font-extrabold text-neutral-900 dark:text-neutral-100 mb-2">
-              Xóa thư riêng tư?
-            </h3>
-            <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-6">
-              Bạn có chắc chắn muốn xóa thư riêng tư này không? Hành động này không thể hoàn tác và thư sẽ lập tức biến mất khỏi hệ thống.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleDelete}
-                className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-red-500 hover:bg-red-600 text-white transition-colors"
-              >
-                Xác nhận
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeleteConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirmWithReason={(reason, details) => handleDelete(reason, details)}
+        onConfirm={() => handleDelete()}
+        requireReason={Boolean(isAdmin && user?.id !== feedback.senderId)}
+        targetName={feedback.title || feedback.content?.slice(0, 40) || 'Thư riêng tư'}
+        title={isAdmin && user?.id !== feedback.senderId ? "Gỡ bỏ thư riêng tư vi phạm" : "Xóa thư riêng tư"}
+        description={
+          isAdmin && user?.id !== feedback.senderId
+            ? "Thư riêng tư sẽ bị gỡ bỏ khỏi hệ thống. Tác giả sẽ nhận được thông báo kèm lý do cụ thể và có quyền gửi đơn kháng nghị."
+            : "Bạn có chắc chắn muốn xóa thư riêng tư này không? Hành động này sẽ gỡ thư khỏi hòm thư của bạn."
+        }
+        confirmText="Xác nhận xóa"
+        cancelText="Hủy bỏ"
+      />
     </div>
   );
 }

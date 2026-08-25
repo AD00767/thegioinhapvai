@@ -301,8 +301,11 @@ export default function CreatorDashboard() {
   const handleDeleteFeedback = async () => {
     if (!deleteFeedbackItem) return;
     try {
-      await deleteDoc(doc(db, 'feedbacks', deleteFeedbackItem));
-      toast.success("Đã xóa hoàn toàn Feedback khỏi hệ thống!");
+      await updateDoc(doc(db, 'feedbacks', deleteFeedbackItem), {
+        deletedAt: new Date().toISOString(),
+        deletedBy: user?.id
+      });
+      toast.success("Đã xóa Feedback thành công!");
       loadDashboardData();
     } catch (err) {
       console.error("Lỗi khi xoá doc feedback:", err);
@@ -893,32 +896,14 @@ export default function CreatorDashboard() {
       )}
 
       {/* Delete Feedback Confirmation Modal */}
-      {deleteFeedbackItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white dark:bg-neutral-900 rounded-3xl w-full max-w-sm p-6 shadow-2xl border border-neutral-200 dark:border-neutral-800">
-            <h3 className="text-xl font-extrabold text-neutral-900 dark:text-neutral-100 mb-2">
-              Xóa Feedback?
-            </h3>
-            <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-6">
-              Bạn có chắc chắn muốn xóa Feedback này không? Hành động này không thể hoàn tác và Feedback sẽ lập tức biến mất khỏi hệ thống.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setDeleteFeedbackItem(null)}
-                className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleDeleteFeedback}
-                className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-red-500 hover:bg-red-600 text-white transition-colors"
-              >
-                Xác nhận
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeleteConfirmModal
+        isOpen={deleteFeedbackItem !== null}
+        onClose={() => setDeleteFeedbackItem(null)}
+        title="Xóa Feedback?"
+        description="Bạn có chắc chắn muốn xóa Feedback này không? Hành động này sẽ gỡ Feedback khỏi danh sách của bạn."
+        confirmText="Xác nhận xóa"
+        onConfirm={handleDeleteFeedback}
+      />
 
       {/* Custom Delete Confirmation Modals */}
       <DeleteConfirmModal

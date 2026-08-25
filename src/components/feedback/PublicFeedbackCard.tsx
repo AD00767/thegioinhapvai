@@ -11,6 +11,7 @@ import { db } from '../../lib/firebase';
 import { useAuthStore } from '../../store/useAuthStore';
 import CommentSection from '../comments/CommentSection';
 import ReportModal from '../ReportModal';
+import DeleteConfirmModal from '../DeleteConfirmModal';
 import UserBadge from '../UserBadge';
 import { getValidAvatar, DEFAULT_AVATAR } from '../../lib/avatar';
 import toast from 'react-hot-toast';
@@ -178,35 +179,79 @@ export default function PublicFeedbackCard({
   // Delete post (sender or admin)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  const handleDeletePost = async () => {
+  const handleDeletePost = async (reason?: string, details?: string) => {
     try {
-      const fbRef = doc(db, 'feedbacks', feedback.id);
-      await updateDoc(fbRef, { 
-        deletedAt: new Date().toISOString(),
-        deletedBy: user?.id,
-        deleteReason: isStaff && user?.id !== feedback.senderId ? "Nội dung vi phạm quy chuẩn cộng đồng" : null
-      });
+      const now = new Date().toISOString();
+      const isModerationAction = Boolean(isStaff && user?.id !== feedback.senderId);
 
-      // Send notification to author if deleted by staff
-      if (isStaff && feedback.senderId !== user?.id) {
-        await addDoc(collection(db, 'notifications'), {
-          userId: feedback.senderId,
-          recipientId: feedback.senderId,
-          senderId: user?.id,
-          senderName: "Hệ thống Quản trị",
-          senderAvatar: DEFAULT_AVATAR,
-          type: 'SYSTEM',
-          title: 'Nội dung không còn tồn tại',
-          message: `Feedback của bạn đã bị xóa bởi Quản trị viên. Lý do: Nội dung vi phạm quy chuẩn cộng đồng.`,
+      if (isModerationAction) {
+        if (!reason || !reason.trim()) {
+          toast.error("Lý do xử lý là bắt buộc.");
+          return;
+        }
+
+        const removalReasonText = reason.trim();
+        const removalDetailsText = details?.trim() || removalReasonText;
+
+        const fbRef = doc(db, 'feedbacks', feedback.id);
+        await updateDoc(fbRef, { 
+          isHidden: true,
+          deletedAt: now,
+          deletedBy: user?.id || 'admin',
+          removalReason: removalReasonText,
+          removalDetails: removalDetailsText,
+          removalTime: now,
+          appealStatus: 'NONE'
+        });
+
+        // Send notification to author
+        if (feedback.senderId && feedback.senderId !== user?.id) {
+          const targetName = feedback.title || feedback.content?.slice(0, 40) || 'Feedback';
+          await addDoc(collection(db, 'notifications'), {
+            userId: feedback.senderId,
+            recipientId: feedback.senderId,
+            senderId: user?.id,
+            senderName: user?.displayName || "Hệ thống Quản trị",
+            senderAvatar: user?.avatar ? getValidAvatar(user.avatar) : DEFAULT_AVATAR,
+            type: 'CONTENT_REMOVED',
+            title: `Feedback "${targetName}" đã bị gỡ bỏ`,
+            message: `Feedback của bạn đã bị gỡ bỏ bởi Quản trị viên. Lý do: ${removalReasonText}. Nhấp vào để xem chi tiết và gửi đơn kháng nghị.`,
+            targetId: feedback.id,
+            targetType: 'FEEDBACK',
+            targetName,
+            removalReason: removalReasonText,
+            removalDetails: removalDetailsText,
+            removalTime: now,
+            read: false,
+            createdAt: now
+          });
+        }
+
+        // Add audit log
+        await addDoc(collection(db, 'audit_logs'), {
+          executorId: user?.id,
+          executorName: user?.displayName || 'Admin',
+          executorRole: user?.role || 'ADMIN',
+          action: 'DELETE_FEEDBACK',
           targetId: feedback.id,
           targetType: 'FEEDBACK',
-          read: false,
-          createdAt: new Date().toISOString()
+          details: `Đã gỡ bỏ Feedback của "${feedback.senderName}". Lý do: ${removalReasonText}`,
+          reason: removalReasonText,
+          createdAt: now
         });
+
+        toast.success("Đã gỡ bỏ Feedback và gửi thông báo cho tác giả.");
+      } else {
+        // Author deletes own feedback
+        const fbRef = doc(db, 'feedbacks', feedback.id);
+        await updateDoc(fbRef, { 
+          deletedAt: now,
+          deletedBy: user?.id
+        });
+        toast.success("Đã xóa Feedback thành công.");
       }
 
       setIsDeleted(true);
-      toast.success("Đã xóa Feedback thành công.");
       if (onDelete) onDelete(feedback.id);
     } catch (err) {
       console.error("Lỗi khi xóa document Feedback:", err);
@@ -465,32 +510,22 @@ export default function PublicFeedbackCard({
         />
       )}
 
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white dark:bg-neutral-900 rounded-3xl w-full max-w-sm p-6 shadow-2xl border border-neutral-200 dark:border-neutral-800">
-            <h3 className="text-xl font-extrabold text-neutral-900 dark:text-neutral-100 mb-2">
-              Xóa Feedback?
-            </h3>
-            <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-6">
-              Bạn có chắc chắn muốn xóa Feedback này không? Hành động này không thể hoàn tác và Feedback sẽ lập tức biến mất khỏi hệ thống.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleDeletePost}
-                className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-red-500 hover:bg-red-600 text-white transition-colors"
-              >
-                Xác nhận
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeleteConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirmWithReason={(reason, details) => handleDeletePost(reason, details)}
+        onConfirm={() => handleDeletePost()}
+        requireReason={Boolean(isStaff && user?.id !== feedback.senderId)}
+        targetName={feedback.title || feedback.content?.slice(0, 40) || 'Feedback'}
+        title={isStaff && user?.id !== feedback.senderId ? "Gỡ bỏ Feedback vi phạm" : "Xóa Feedback"}
+        description={
+          isStaff && user?.id !== feedback.senderId
+            ? "Feedback sẽ bị gỡ bỏ khỏi cộng đồng. Tác giả sẽ nhận được thông báo kèm lý do cụ thể và có quyền gửi đơn kháng nghị."
+            : "Bạn có chắc chắn muốn xóa Feedback này không? Hành động này sẽ gỡ bài đăng khỏi danh sách hiển thị."
+        }
+        confirmText="Xác nhận xóa"
+        cancelText="Hủy bỏ"
+      />
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { PromptItem } from '../types';
 import PromptCard from '../components/PromptCard';
 import CreatePromptModal from '../components/profile/CreatePromptModal';
 import DeleteConfirmModal from '../components/DeleteConfirmModal';
+import { executeDeletePrompt } from '../lib/promptService';
 import toast from 'react-hot-toast';
 
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -28,7 +29,7 @@ export default function Prompts() {
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [promptToEdit, setPromptToEdit] = useState<PromptItem | null>(null);
-  const [promptToDelete, setPromptToDelete] = useState<string | null>(null);
+  const [promptToDeleteItem, setPromptToDeleteItem] = useState<PromptItem | null>(null);
 
   useSeo({
     title: 'Thư Viện Prompt',
@@ -275,7 +276,7 @@ export default function Prompts() {
                 setPromptToEdit(item);
                 setIsCreateModalOpen(true);
               }}
-              onDelete={(id) => setPromptToDelete(id)}
+              onDelete={() => setPromptToDeleteItem(p)}
             />
           ))}
         </div>
@@ -290,20 +291,49 @@ export default function Prompts() {
       />
 
       {/* Delete Prompt Confirmation Modal */}
-      <DeleteConfirmModal
-        isOpen={promptToDelete !== null}
-        onClose={() => setPromptToDelete(null)}
-        onConfirm={async () => {
-          if (!promptToDelete) return;
-          try {
-            await deleteDoc(doc(db, 'prompts', promptToDelete));
-            toast.success("Đã xóa hoàn toàn Prompt khỏi hệ thống.");
-            fetchPrompts();
-          } catch (e) {
-            toast.error("Không thể xóa Prompt.");
-          }
-        }}
-      />
+      {(() => {
+        const isAdminAction = Boolean(user && user.role === 'ADMIN' && promptToDeleteItem && promptToDeleteItem.authorId !== user.id);
+        const requireReason = Boolean(user && user.role === 'ADMIN');
+
+        return (
+          <DeleteConfirmModal
+            isOpen={promptToDeleteItem !== null}
+            onClose={() => setPromptToDeleteItem(null)}
+            title={isAdminAction ? "Gỡ bỏ Prompt của thành viên?" : "Xóa Prompt?"}
+            description={
+              isAdminAction
+                ? "Vui lòng chọn hoặc nhập lý do gỡ bỏ để thông báo chính thức tới tác giả và lưu vào Nhật ký kiểm duyệt."
+                : "Bạn có chắc chắn muốn xóa Prompt này không? Thao tác này không thể hoàn tác."
+            }
+            confirmText={user?.role === 'ADMIN' ? "Xác nhận gỡ bỏ" : "Xác nhận xóa"}
+            requireReason={requireReason}
+            onConfirm={async () => {
+              if (!promptToDeleteItem) return;
+              const target = promptToDeleteItem;
+              setPromptToDeleteItem(null);
+              try {
+                await executeDeletePrompt({ prompt: target, currentUser: user });
+                toast.success("Đã xóa Prompt khỏi hệ thống.");
+                fetchPrompts();
+              } catch (e: any) {
+                toast.error(e.message || "Không thể xóa Prompt.");
+              }
+            }}
+            onConfirmWithReason={async (reason, details) => {
+              if (!promptToDeleteItem) return;
+              const target = promptToDeleteItem;
+              setPromptToDeleteItem(null);
+              try {
+                await executeDeletePrompt({ prompt: target, currentUser: user, reason, details });
+                toast.success("Đã gỡ bỏ Prompt và gửi thông báo tới tác giả.");
+                fetchPrompts();
+              } catch (e: any) {
+                toast.error(e.message || "Không thể xóa Prompt.");
+              }
+            }}
+          />
+        );
+      })()}
     </div>
   );
 }

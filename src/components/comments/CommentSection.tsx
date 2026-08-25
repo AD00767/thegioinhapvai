@@ -100,14 +100,13 @@ function CommentNode({
   navigate
 }: CommentNodeProps) {
   const isDeleted = !!comment.deletedAt;
-  const childReplies = allComments.filter(c => c.parentId === comment.id);
 
-  // If this comment is deleted and has no replies, do not render it
-  if (isDeleted && childReplies.length === 0) {
+  // If this comment is deleted, do not render it in the UI at all
+  if (isDeleted) {
     return null;
   }
 
-  const isModeratorRemoval = isDeleted && comment.deletedBy && comment.deletedBy !== comment.authorId;
+  const childReplies = allComments.filter(c => c.parentId === comment.id && !c.deletedAt);
   const isCommentAuthor = user?.id === comment.authorId;
   const reactionsObj = comment.reactions || {};
   const reactionsList = Object.values(reactionsObj) as string[];
@@ -117,37 +116,29 @@ function CommentNode({
     <div className="space-y-2">
       <div className="flex items-start gap-2.5 text-xs">
         <img
-          onClick={() => {
-            if (!isDeleted) navigate(`/creator/${comment.authorId}`);
-          }}
-          src={isDeleted ? DEFAULT_AVATAR : getValidAvatar(comment.authorAvatar)}
-          alt={isDeleted ? "Ẩn danh" : comment.authorName}
-          className={`w-7 h-7 rounded-full border border-neutral-200 dark:border-neutral-700 shrink-0 object-cover mt-0.5 ${!isDeleted ? 'cursor-pointer hover:scale-105 transition-transform' : ''}`}
+          onClick={() => navigate(`/creator/${comment.authorId}`)}
+          src={getValidAvatar(comment.authorAvatar)}
+          alt={comment.authorName}
+          className="w-7 h-7 rounded-full border border-neutral-200 dark:border-neutral-700 shrink-0 object-cover mt-0.5 cursor-pointer hover:scale-105 transition-transform"
         />
         <div className="flex-1 space-y-1">
           <div className="bg-neutral-100 dark:bg-neutral-800/90 p-3 rounded-2xl inline-block max-w-full relative group">
             <div className="flex flex-wrap items-center gap-1.5">
               <span 
-                onClick={() => {
-                  if (!isDeleted) navigate(`/creator/${comment.authorId}`);
-                }}
-                className={`font-extrabold text-neutral-900 dark:text-neutral-100 text-xs ${!isDeleted ? 'cursor-pointer hover:text-amber-600 dark:hover:text-amber-400 hover:underline' : 'opacity-60'}`}
+                onClick={() => navigate(`/creator/${comment.authorId}`)}
+                className="font-extrabold text-neutral-900 dark:text-neutral-100 text-xs cursor-pointer hover:text-amber-600 dark:hover:text-amber-400 hover:underline"
               >
-                {isDeleted ? (isModeratorRemoval ? '[Đã ẩn]' : 'Ẩn danh') : comment.authorName}
+                {comment.authorName}
               </span>
-              {!isDeleted && <UserBadge subject={{ commentCount: 1 }} size="xs" />}
-              {!isDeleted && targetOwnerId === comment.authorId && (
+              <UserBadge subject={{ commentCount: 1 }} size="xs" />
+              {targetOwnerId === comment.authorId && (
                 <span className="px-1.5 py-0.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded text-[9px] font-extrabold">
                   Tác giả
                 </span>
               )}
             </div>
 
-            {isDeleted ? (
-              <p className="text-neutral-400 dark:text-neutral-500 mt-1 italic leading-relaxed text-xs">
-                {isModeratorRemoval ? '[Bình luận bị ẩn do vi phạm]' : '[Bình luận đã bị xóa]'}
-              </p>
-            ) : editingCommentId === comment.id ? (
+            {editingCommentId === comment.id ? (
               <div className="mt-2 space-y-2 min-w-[240px]">
                 <input
                   type="text"
@@ -655,9 +646,13 @@ export default function CommentSection({
     }
   };
 
-  // Group comments into top-level and replies
-  const topLevelComments = comments.filter(c => !c.parentId);
-  const getRepliesFor = (commentId: string) => comments.filter(c => c.parentId === commentId);
+  // Filter out deleted comments and replies whose parent was deleted
+  const activeComments = comments.filter(c => !c.deletedAt);
+  const activeIds = new Set(activeComments.map(c => c.id));
+  const validComments = activeComments.filter(c => !c.parentId || activeIds.has(c.parentId));
+
+  const topLevelComments = validComments.filter(c => !c.parentId);
+  const getRepliesFor = (commentId: string) => validComments.filter(c => c.parentId === commentId);
 
   return (
     <div className={`space-y-4 ${className}`}>
@@ -665,7 +660,7 @@ export default function CommentSection({
       <div className="flex items-center justify-between">
         <h4 className="font-extrabold text-sm text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
           <MessageSquare className="w-4 h-4 text-amber-500" />
-          <span>Bình luận ({comments.length})</span>
+          <span>Bình luận ({validComments.length})</span>
         </h4>
       </div>
 
@@ -720,7 +715,7 @@ export default function CommentSection({
             <CommentNode
               key={comment.id}
               comment={comment}
-              allComments={comments}
+              allComments={validComments}
               depth={0}
               user={user}
               isStaff={isStaff}

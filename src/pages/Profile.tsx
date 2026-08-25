@@ -19,6 +19,7 @@ import DeleteConfirmModal from '../components/DeleteConfirmModal';
 import AppealModal from '../components/AppealModal';
 import DisplayId from '../components/DisplayId';
 import ShareModal from '../components/ShareModal';
+import { executeDeletePrompt } from '../lib/promptService';
 import { getValidAvatar } from '../lib/avatar';
 import toast from 'react-hot-toast';
 import { reconcileFollowerCount } from '../lib/followService';
@@ -39,7 +40,7 @@ export default function Profile() {
   const [characterToEdit, setCharacterToEdit] = useState<CharacterItem | null>(null);
   const [promptToEdit, setPromptToEdit] = useState<PromptItem | null>(null);
   const [characterToDelete, setCharacterToDelete] = useState<string | null>(null);
-  const [promptToDelete, setPromptToDelete] = useState<string | null>(null);
+  const [promptToDeleteItem, setPromptToDeleteItem] = useState<PromptItem | null>(null);
   const [isShareOpen, setIsShareOpen] = useState(false);
 
   // Followers / Following Modal
@@ -340,21 +341,6 @@ export default function Profile() {
       loadUserData();
     } catch (err) {
       toast.error("Không thể xóa Character.");
-    }
-  };
-
-  // Handle Delete Prompt
-  const handleDeletePrompt = async (promptId: string) => {
-    setPromptToDelete(promptId);
-  };
-
-  const executeDeletePrompt = async (promptId: string) => {
-    try {
-      await deleteDoc(doc(db, 'prompts', promptId));
-      toast.success("Đã xóa hoàn toàn Prompt khỏi hệ thống.");
-      loadUserData();
-    } catch (err) {
-      toast.error("Không thể xóa Prompt.");
     }
   };
 
@@ -903,7 +889,7 @@ export default function Profile() {
                         prompt={p}
                         isOwner={true}
                         onEdit={(item) => { setPromptToEdit(item); setIsCreatePromptOpen(true); }}
-                        onDelete={handleDeletePrompt}
+                        onDelete={() => setPromptToDeleteItem(p)}
                         onPin={handleTogglePinPrompt}
                       />
                     ))}
@@ -934,7 +920,7 @@ export default function Profile() {
                         prompt={p}
                         isOwner={true}
                         onEdit={(item) => { setPromptToEdit(item); setIsCreatePromptOpen(true); }}
-                        onDelete={handleDeletePrompt}
+                        onDelete={() => setPromptToDeleteItem(p)}
                         onPin={handleTogglePinPrompt}
                       />
                     ))}
@@ -1236,15 +1222,42 @@ export default function Profile() {
 
       {/* Delete Prompt Confirmation Modal */}
       <DeleteConfirmModal
-        isOpen={promptToDelete !== null}
-        onClose={() => setPromptToDelete(null)}
-        title="Xóa hoàn toàn Prompt?"
-        description="Bạn có chắc chắn muốn xóa hoàn toàn Prompt này không? Hành động này không thể hoàn tác và Prompt sẽ biến mất ngay lập tức khỏi hệ thống."
+        isOpen={promptToDeleteItem !== null}
+        onClose={() => setPromptToDeleteItem(null)}
+        title="Xác nhận xóa Prompt"
+        description={
+          user?.role === 'ADMIN' && promptToDeleteItem && user.id !== promptToDeleteItem.authorId
+            ? `Bạn đang xóa Prompt "${promptToDeleteItem.title || promptToDeleteItem.name || ''}" với tư cách Quản trị viên. Vui lòng nhập lý do xóa để gửi thông báo cho tác giả.`
+            : `Bạn có chắc chắn muốn xóa Prompt "${promptToDeleteItem?.title || promptToDeleteItem?.name || ''}" không? Hành động này không thể hoàn tác.`
+        }
+        requireReason={user?.role === 'ADMIN' && promptToDeleteItem !== null && user.id !== promptToDeleteItem.authorId}
         onConfirm={async () => {
-          if (!promptToDelete) return;
-          const targetId = promptToDelete;
-          setPromptToDelete(null);
-          await executeDeletePrompt(targetId);
+          if (!promptToDeleteItem) return;
+          try {
+            await executeDeletePrompt({
+              prompt: promptToDeleteItem,
+              currentUser: user
+            });
+            toast.success("Đã xóa Prompt thành công.");
+            loadUserData();
+          } catch (e: any) {
+            toast.error(e?.message || "Không thể xóa Prompt.");
+          }
+        }}
+        onConfirmWithReason={async (reason, details) => {
+          if (!promptToDeleteItem) return;
+          try {
+            await executeDeletePrompt({
+              prompt: promptToDeleteItem,
+              currentUser: user,
+              reason,
+              details
+            });
+            toast.success("Đã xóa Prompt và ghi log lý do thành công.");
+            loadUserData();
+          } catch (e: any) {
+            toast.error(e?.message || "Không thể xóa Prompt.");
+          }
         }}
       />
 
