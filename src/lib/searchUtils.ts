@@ -212,7 +212,16 @@ export function parseIdQuery(queryText: string): IdSearchResult {
  * Looks up a parsed ID in Firebase Firestore across all searchable collections
  * and resolves the actual public record object.
  */
+const idLookupCache = new Map<string, { data: ExactIdLookupResult | null; timestamp: number }>();
+const ID_CACHE_TTL = 120_000; // 2 minutes
+
 export async function lookupIdInFirebase(numericId: string, typeHint?: string): Promise<ExactIdLookupResult | null> {
+  const cacheKey = `${numericId}_${typeHint || 'id'}`;
+  const cached = idLookupCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < ID_CACHE_TTL) {
+    return cached.data;
+  }
+
   const collectionsToCheck = [
     { name: 'characters', path: '/character', label: 'Character', type: 'character' as const },
     { name: 'prompts', path: '/prompt', label: 'Prompt', type: 'prompt' as const },
@@ -249,7 +258,7 @@ export async function lookupIdInFirebase(numericId: string, typeHint?: string): 
 
       // Check if soft deleted or hidden
       if (docData.deletedAt || docData.isHidden) {
-        return {
+        const deletedResult: ExactIdLookupResult = {
           found: false,
           type: col.type,
           id: docSnap.id,
@@ -257,11 +266,13 @@ export async function lookupIdInFirebase(numericId: string, typeHint?: string): 
           path: '',
           error: "ID không tồn tại hoặc đã bị xóa khỏi hệ thống."
         };
+        idLookupCache.set(cacheKey, { data: deletedResult, timestamp: Date.now() });
+        return deletedResult;
       }
 
       if (col.name === 'users') {
         if (docData.role === 'ADMIN' || docData.role === 'MODERATOR') {
-          return {
+          const adminResult: ExactIdLookupResult = {
             found: false,
             type: col.type,
             id: docSnap.id,
@@ -269,6 +280,8 @@ export async function lookupIdInFirebase(numericId: string, typeHint?: string): 
             path: '',
             error: "ID không tồn tại hoặc đã bị xóa khỏi hệ thống."
           };
+          idLookupCache.set(cacheKey, { data: adminResult, timestamp: Date.now() });
+          return adminResult;
         }
 
         const isCreator = !!docData.creatorStatus;
@@ -290,7 +303,7 @@ export async function lookupIdInFirebase(numericId: string, typeHint?: string): 
           createdAt: docData.createdAt
         };
 
-        return {
+        const finalResult: ExactIdLookupResult = {
           found: true,
           type: targetType,
           id: docSnap.id,
@@ -298,6 +311,8 @@ export async function lookupIdInFirebase(numericId: string, typeHint?: string): 
           path,
           result: publicResult
         };
+        idLookupCache.set(cacheKey, { data: finalResult, timestamp: Date.now() });
+        return finalResult;
       } else if (col.name === 'characters') {
         const publicResult: CharacterItem = {
           id: docSnap.id,
@@ -319,7 +334,7 @@ export async function lookupIdInFirebase(numericId: string, typeHint?: string): 
         };
 
         const numId = docData.numericId || numericId || docSnap.id;
-        return {
+        const finalResult: ExactIdLookupResult = {
           found: true,
           type: 'character',
           id: docSnap.id,
@@ -327,6 +342,8 @@ export async function lookupIdInFirebase(numericId: string, typeHint?: string): 
           path: `/character/${numId}`,
           result: publicResult
         };
+        idLookupCache.set(cacheKey, { data: finalResult, timestamp: Date.now() });
+        return finalResult;
       } else if (col.name === 'prompts') {
         const publicResult: PromptItem = {
           id: docSnap.id,
@@ -344,7 +361,7 @@ export async function lookupIdInFirebase(numericId: string, typeHint?: string): 
         };
 
         const numId = docData.numericId || numericId || docSnap.id;
-        return {
+        const finalResult: ExactIdLookupResult = {
           found: true,
           type: 'prompt',
           id: docSnap.id,
@@ -352,10 +369,13 @@ export async function lookupIdInFirebase(numericId: string, typeHint?: string): 
           path: `/prompt/${numId}`,
           result: publicResult
         };
+        idLookupCache.set(cacheKey, { data: finalResult, timestamp: Date.now() });
+        return finalResult;
       }
     }
   }
 
+  idLookupCache.set(cacheKey, { data: null, timestamp: Date.now() });
   return null;
 }
 
@@ -377,6 +397,75 @@ export interface GroupedSearchResults {
   totalCount: number;
 }
 
+interface CachedDoc {
+  id: string;
+  data: any;
+}
+
+interface CollectionCache {
+  docs: CachedDoc[];
+  timestamp: number;
+}
+
+let charactersCache: CollectionCache | null = null;
+let promptsCache: CollectionCache | null = null;
+let usersCache: CollectionCache | null = null;
+
+const COLLECTION_CACHE_TTL = 120_000; // 2 minutes (120,000 ms)
+
+async function getCachedCharacters(): Promise<CachedDoc[]> {
+  const now = Date.now();
+  if (charactersCache && (now - charactersCache.timestamp < COLLECTION_CACHE_TTL)) {
+    return charactersCache.docs;
+  }
+  const q = query(collection(db, 'characters'), limit(100));
+  const snap = await getDocs(q);
+  const docs = snap.docs.map(docSnap => ({ id: docSnap.id, data: docSnap.data() }));
+  charactersCache = { docs, timestamp: now };
+  return docs;
+}
+
+async function getCachedPrompts(): Promise<CachedDoc[]> {
+  const now = Date.now();
+  if (promptsCache && (now - promptsCache.timestamp < COLLECTION_CACHE_TTL)) {
+    return promptsCache.docs;
+  }
+  const q = query(collection(db, 'prompts'), limit(100));
+  const snap = await getDocs(q);
+  const docs = snap.docs.map(docSnap => ({ id: docSnap.id, data: docSnap.data() }));
+  promptsCache = { docs, timestamp: now };
+  return docs;
+}
+
+async function getCachedUsers(): Promise<CachedDoc[]> {
+  const now = Date.now();
+  if (usersCache && (now - usersCache.timestamp < COLLECTION_CACHE_TTL)) {
+    return usersCache.docs;
+  }
+  const q = query(collection(db, 'users'), limit(100));
+  const snap = await getDocs(q);
+  const docs = snap.docs.map(docSnap => ({ id: docSnap.id, data: docSnap.data() }));
+  usersCache = { docs, timestamp: now };
+  return docs;
+}
+
+interface SearchResultCacheEntry {
+  result: GroupedSearchResults;
+  timestamp: number;
+}
+
+const searchResultsCache = new Map<string, SearchResultCacheEntry>();
+const SEARCH_RESULTS_CACHE_TTL = 120_000; // 2 minutes
+const MAX_SEARCH_RESULTS_CACHE_ENTRIES = 50;
+
+export function clearSearchCache() {
+  charactersCache = null;
+  promptsCache = null;
+  usersCache = null;
+  idLookupCache.clear();
+  searchResultsCache.clear();
+}
+
 /**
  * Standard Search (Search Thường):
  * Performs a comprehensive search directly across real Firestore collections (Characters, Prompts, Creators).
@@ -393,6 +482,13 @@ export async function searchAllCollections(
 ): Promise<GroupedSearchResults> {
   const trimmed = queryText.trim();
   const searchType = options.type || 'all';
+
+  const cacheKey = `${trimmed.toLowerCase()}_${searchType}_${options.gender || ''}_${(options.tags || []).join(',')}_${(options.keywords || []).join(',')}_${options.sortBy || 'relevance'}`;
+  const cachedResult = searchResultsCache.get(cacheKey);
+  if (cachedResult && (Date.now() - cachedResult.timestamp < SEARCH_RESULTS_CACHE_TTL)) {
+    return cachedResult.result;
+  }
+
   const keywords = options.keywords && options.keywords.length > 0
     ? options.keywords.map(k => normalizeSearchText(k)).filter(Boolean)
     : trimmed.split(/\s+/).map(k => normalizeSearchText(k)).filter(k => k.length > 0);
@@ -442,13 +538,12 @@ export async function searchAllCollections(
   // 1. Search Characters
   if (searchType === 'all' || searchType === 'character') {
     try {
-      const snap = await getDocs(collection(db, 'characters'));
-      snap.docs.forEach(docSnap => {
-        const data = docSnap.data();
+      const docs = await getCachedCharacters();
+      docs.forEach(({ id, data }) => {
         if (data.deletedAt || data.isHidden) return;
 
         const charItem: CharacterItem = {
-          id: docSnap.id,
+          id,
           numericId: data.numericId,
           name: data.name || '',
           avatar: data.avatar || '',
@@ -529,13 +624,12 @@ export async function searchAllCollections(
   // 2. Search Prompts
   if (searchType === 'all' || searchType === 'prompt') {
     try {
-      const snap = await getDocs(collection(db, 'prompts'));
-      snap.docs.forEach(docSnap => {
-        const data = docSnap.data();
+      const docs = await getCachedPrompts();
+      docs.forEach(({ id, data }) => {
         if (data.deletedAt || data.isHidden) return;
 
         const promptItem: PromptItem = {
-          id: docSnap.id,
+          id,
           numericId: data.numericId,
           title: data.name || data.title || '',
           name: data.name || data.title || '',
@@ -603,13 +697,12 @@ export async function searchAllCollections(
   // 3. Search Creators & Users
   if (searchType === 'all' || searchType === 'creator') {
     try {
-      const snap = await getDocs(collection(db, 'users'));
-      snap.docs.forEach(docSnap => {
-        const data = docSnap.data();
+      const docs = await getCachedUsers();
+      docs.forEach(({ id, data }) => {
         if (data.deletedAt || data.isHidden || data.isLocked) return;
 
         const creatorItem: CreatorItem = {
-          id: docSnap.id,
+          id,
           numericId: data.numericId,
           displayName: data.displayName || 'Người dùng',
           avatar: data.avatar || '',
@@ -697,10 +790,18 @@ export async function searchAllCollections(
 
   const totalCount = finalCharacters.length + finalPrompts.length + finalCreators.length;
 
-  return {
+  const output: GroupedSearchResults = {
     characters: finalCharacters,
     prompts: finalPrompts,
     creators: finalCreators,
     totalCount
   };
+
+  if (searchResultsCache.size >= MAX_SEARCH_RESULTS_CACHE_ENTRIES) {
+    const oldestKey = searchResultsCache.keys().next().value;
+    if (oldestKey) searchResultsCache.delete(oldestKey);
+  }
+  searchResultsCache.set(cacheKey, { result: output, timestamp: Date.now() });
+
+  return output;
 }

@@ -15,6 +15,8 @@ import { getValidAvatar } from '../lib/avatar';
 type SearchTab = 'all' | 'characters' | 'prompts' | 'creators';
 type SortOption = 'relevance' | 'hot' | 'newest';
 
+const aiCriteriaCache = new Map<string, any>();
+
 export default function AISearch() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,6 +29,7 @@ export default function AISearch() {
   const [copiedPromptId, setCopiedPromptId] = useState<string | null>(null);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const lastSearchRef = React.useRef<{ query: string; sort: string } | null>(null);
 
   useSeo({
     title: 'Tìm kiếm bằng AI',
@@ -37,6 +40,12 @@ export default function AISearch() {
     const trimmed = queryText.trim();
     if (!trimmed) return;
     
+    // Prevent redundant executions
+    if (lastSearchRef.current?.query === trimmed && lastSearchRef.current?.sort === currentSort && results !== null) {
+      return;
+    }
+    lastSearchRef.current = { query: trimmed, sort: currentSort };
+
     setLoading(true);
     setResults(null);
     setExactMatch(null);
@@ -71,19 +80,26 @@ export default function AISearch() {
         }
       }
 
-      // 2. Natural Language / AI Search Processing
+      // 2. Natural Language / AI Search Processing with Memory Cache
       let parsedCriteria: any = { keywords: [trimmed] };
-      try {
-        const res = await apiFetch("/api/ai-search", {
-          method: "POST",
-          body: JSON.stringify({ query: trimmed })
-        });
-        if (res && res.parsedCriteria) {
-          parsedCriteria = res.parsedCriteria;
-          setCriteria(parsedCriteria);
+      const cacheKey = trimmed.toLowerCase();
+      if (aiCriteriaCache.has(cacheKey)) {
+        parsedCriteria = aiCriteriaCache.get(cacheKey);
+        setCriteria(parsedCriteria);
+      } else {
+        try {
+          const res = await apiFetch("/api/ai-search", {
+            method: "POST",
+            body: JSON.stringify({ query: trimmed })
+          });
+          if (res && res.parsedCriteria) {
+            parsedCriteria = res.parsedCriteria;
+            aiCriteriaCache.set(cacheKey, parsedCriteria);
+            setCriteria(parsedCriteria);
+          }
+        } catch (aiErr) {
+          console.warn("AI parsing fallback to keyword matching:", aiErr);
         }
-      } catch (aiErr) {
-        console.warn("AI parsing fallback to keyword matching:", aiErr);
       }
 
       // 3. Search across all platform collections (Characters, Prompts, Creators)
@@ -122,15 +138,22 @@ export default function AISearch() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!searchQuery.trim()) return;
-    setSearchParams({ q: searchQuery.trim() });
-    performSearch(searchQuery.trim());
+    const trimmed = searchQuery.trim();
+    if (!trimmed) return;
+    if (searchParams.get('q') === trimmed) {
+      performSearch(trimmed);
+    } else {
+      setSearchParams({ q: trimmed });
+    }
   };
 
   const handleQuickSuggestion = (text: string) => {
     setSearchQuery(text);
-    setSearchParams({ q: text });
-    performSearch(text);
+    if (searchParams.get('q') === text) {
+      performSearch(text);
+    } else {
+      setSearchParams({ q: text });
+    }
   };
 
   const copyToClipboard = (text: string, promptId: string) => {
