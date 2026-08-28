@@ -2,10 +2,10 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { 
   Flame, Sparkles, Users, Tag as TagIcon, MessageSquare, 
-  Search as SearchIcon, ArrowRight, TrendingUp, Compass, Clock, Star
+  Search as SearchIcon, ArrowRight, Compass
 } from "lucide-react";
 import { db } from "../lib/firebase";
-import { collection, query, getDocs, where, limit, doc, deleteDoc } from "firebase/firestore";
+import { collection, query, getDocs, where, limit } from "firebase/firestore";
 import PublicFeedbackCard from "../components/feedback/PublicFeedbackCard";
 import CharacterCard from "../components/CharacterCard";
 import PromptCard from "../components/PromptCard";
@@ -57,9 +57,9 @@ export default function Home() {
     let loadedPrompts: PromptItem[] = [];
 
     try {
-      // 1. Fetch Characters (limit to 30 for Home)
+      // 1. Fetch Characters (limit to 6 for Home)
       try {
-        const charQuery = query(collection(db, "characters"), limit(30));
+        const charQuery = query(collection(db, "characters"), limit(6));
         const charSnap = await getDocs(charQuery);
         loadedChars = charSnap.docs
           .map(doc => ({ id: doc.id, ...doc.data() } as CharacterItem))
@@ -75,9 +75,9 @@ export default function Home() {
         console.error("Error fetching characters:", e);
       }
 
-      // 2. Fetch Prompts (limit to 30 for Home)
+      // 2. Fetch Prompts (limit to 6 for Home)
       try {
-        const promptQuery = query(collection(db, "prompts"), limit(30));
+        const promptQuery = query(collection(db, "prompts"), limit(6));
         const promptSnap = await getDocs(promptQuery);
         loadedPrompts = promptSnap.docs
           .map(doc => ({ id: doc.id, ...doc.data() } as PromptItem))
@@ -93,9 +93,9 @@ export default function Home() {
         console.error("Error fetching prompts:", e);
       }
 
-      // 3. Fetch Top Creators (limit to 30 creators for Home)
+      // 3. Fetch Top Creators (limit to 6 creators for Home)
       try {
-        const creatorQuery = query(collection(db, "users"), where("creatorStatus", "==", true), limit(30));
+        const creatorQuery = query(collection(db, "users"), where("creatorStatus", "==", true), limit(6));
         const userSnap = await getDocs(creatorQuery);
         const rawCreators: CreatorItem[] = userSnap.docs
           .map(doc => ({ id: doc.id, ...doc.data() } as CreatorItem))
@@ -231,7 +231,6 @@ export default function Home() {
 
   return (
     <div className="w-full flex flex-col items-center pb-12">
-      
       {/* Hero Banner Section */}
       <section className="w-full bg-gradient-to-b from-neutral-900 to-neutral-950 text-white py-16 px-6 rounded-3xl mt-4 mb-12 text-center max-w-6xl mx-auto border border-neutral-800 shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -243,34 +242,17 @@ export default function Home() {
             <span>Trang Chủ & Khám Phá — Thế Giới Nhập Vai AD</span>
           </div>
 
-          <h1 
-            style={{ 
-              fontFamily: '"Plus Jakarta Sans", sans-serif',
-              fontSize: '50px',
-              lineHeight: '52.5px',
-              fontWeight: 700,
-              fontStyle: 'normal',
-              textDecoration: 'none'
-            }}
-            className="text-2xl xs:text-3xl sm:text-4xl md:text-[50px] font-bold tracking-tight mb-4 leading-[1.05]"
-          >
+          <h1 className="text-2xl xs:text-3xl sm:text-4xl md:text-[50px] font-bold tracking-tight mb-4 leading-[1.05]">
             Khởi đầu cho mọi hành trình Roleplay
           </h1>
-          <p 
-            style={{
-              fontFamily: 'Arial, sans-serif',
-              fontWeight: 'normal',
-              fontStyle: 'italic'
-            }}
-            className="text-neutral-400 mb-6 sm:mb-8 max-w-2xl mx-auto text-xs xs:text-sm md:text-base leading-relaxed"
-          >
+          <p className="text-neutral-400 mb-6 sm:mb-8 max-w-2xl mx-auto text-xs xs:text-sm md:text-base leading-relaxed italic">
             Nền tảng cộng đồng dành cho Google AI Studio — Nơi tự do khám phá, sáng tạo Character, Prompt và kết nối với các Creator hàng đầu.
           </p>
 
           {/* Quick Search */}
           <form onSubmit={handleSearchSubmit} className="max-w-2xl mx-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
             <div className="relative flex-1">
-              <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 xs:w-5 h-5 text-neutral-400" />
+              <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 xs:w-5 xs:h-5 text-neutral-400" />
               <input 
                 type="text" 
                 value={searchQuery}
@@ -303,7 +285,7 @@ export default function Home() {
                 className="p-3 xs:p-3.5 rounded-2xl bg-neutral-800 hover:bg-neutral-700 text-amber-400 border border-neutral-700 transition-colors shrink-0 flex items-center justify-center"
                 title="AI Search Ngữ Nghĩa"
               >
-                <Sparkles className="w-4 h-4 xs:w-5 h-5" />
+                <Sparkles className="w-4 h-4 xs:w-5 xs:h-5" />
               </Link>
             </div>
           </form>
@@ -311,7 +293,6 @@ export default function Home() {
       </section>
 
       <div className="w-full max-w-6xl mx-auto px-4 space-y-16">
-        
         {/* SECTION 1: TAG ĐANG PHỔ BIẾN */}
         <section className="bg-white dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800 p-6 rounded-3xl shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-start md:items-center justify-between gap-3 mb-5 border-b border-neutral-100 dark:border-neutral-800 pb-4">
@@ -359,7 +340,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* SECTION 2: CHARACTER HOT / TẤT CẢ */}
+        {/* SECTION 2: CHARACTER NỔI BẬT */}
         <section>
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
             <div className="space-y-1">
@@ -392,7 +373,7 @@ export default function Home() {
           )}
         </section>
 
-        {/* SECTION 3: PROMPT HOT */}
+        {/* SECTION 3: PROMPT NỔI BẬT */}
         <section>
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
             <div className="space-y-1">
@@ -508,7 +489,6 @@ export default function Home() {
             </div>
           )}
         </section>
-
       </div>
 
       {/* Delete Prompt Confirmation Modal */}
@@ -554,5 +534,3 @@ export default function Home() {
     </div>
   );
 }
-
-
