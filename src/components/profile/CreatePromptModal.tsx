@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  X, PenTool, Link as LinkIcon, Plus, Trash2, Image as ImageIcon, Upload, Sparkles, FileText, Check, AlertCircle 
+  X, PenTool, Link as LinkIcon, Plus, Trash2, Image as ImageIcon, Upload, Sparkles, FileText, Check, AlertCircle,
+  BookOpen
 } from 'lucide-react';
 import { collection, addDoc, doc, updateDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
@@ -9,6 +10,7 @@ import { PromptItem } from '../../types';
 import { enforceActivityCheck } from '../../lib/restrictions';
 import { generateUniqueId } from '../../lib/generateId';
 import toast from 'react-hot-toast';
+import NoticeModal from '../modals/NoticeModal';
 
 interface CreatePromptModalProps {
   isOpen: boolean;
@@ -35,6 +37,7 @@ export default function CreatePromptModal({ isOpen, onClose, onSuccess, promptTo
   const [content, setContent] = useState('');
   const [notes, setNotes] = useState('');
 
+  const [isNoticeOpen, setIsNoticeOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -242,14 +245,26 @@ export default function CreatePromptModal({ isOpen, onClose, onSuccess, promptTo
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={onClose}
-          className="p-2 rounded-xl text-neutral-500 hover:text-black dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-          title="Đóng"
-        >
-          <X className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsNoticeOpen(true)}
+            className="p-2 rounded-xl text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800 border border-neutral-200 dark:border-neutral-700/80 transition-colors"
+            title="Lưu ý"
+            aria-label="Lưu ý khi tạo Prompt"
+          >
+            <BookOpen className="w-5 h-5" />
+          </button>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 rounded-xl text-neutral-500 hover:text-black dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+            title="Đóng"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       {/* Main Full-Screen Body */}
@@ -523,6 +538,12 @@ export default function CreatePromptModal({ isOpen, onClose, onSuccess, promptTo
 
         </form>
       </div>
+
+      <NoticeModal
+        isOpen={isNoticeOpen}
+        onClose={() => setIsNoticeOpen(false)}
+        type="prompt"
+      />
     </div>
   );
 }
