@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Copy, Check, Bookmark, BookmarkCheck, Pin, Edit3, Trash2, User as UserIcon, Sparkles, MessageSquare, Flag
+  Copy, Check, Bookmark, BookmarkCheck, Pin, Edit3, Trash2, User as UserIcon, Sparkles, MessageSquare, Flag, Share2
 } from 'lucide-react';
 import { 
   doc, updateDoc, increment, collection, addDoc, query, where, getDocs, deleteDoc, serverTimestamp 
@@ -12,6 +12,7 @@ import { useUserInteractions } from '../context/UserInteractionsContext';
 import { PromptItem } from '../types';
 import CommentSection from './comments/CommentSection';
 import ReportModal from './ReportModal';
+import ShareModal from './ShareModal';
 import UserBadge from './UserBadge';
 import DisplayId from './DisplayId';
 import { getValidAvatar } from '../lib/avatar';
@@ -38,6 +39,7 @@ export default function PromptCard({ prompt, onEdit, onDelete, onPin, isOwner }:
   const [bookmarking, setBookmarking] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
 
   const isPinned = prompt.pinned || false;
   const { isPromptBookmarked, setBookmarkState } = useUserInteractions();
@@ -318,6 +320,16 @@ export default function PromptCard({ prompt, onEdit, onDelete, onPin, isOwner }:
             )}
           </button>
 
+          {/* Nút chia sẻ */}
+          <button
+            onClick={(e) => { e.stopPropagation(); setIsShareOpen(true); }}
+            className="p-2 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-500 hover:text-black dark:hover:text-white border border-neutral-200 dark:border-neutral-700 transition-all"
+            title="Chia sẻ Prompt"
+            aria-label="Chia sẻ Prompt"
+          >
+            <Share2 className="w-3.5 h-3.5" />
+          </button>
+
           {/* Báo cáo vi phạm */}
           <button
             onClick={(e) => { e.stopPropagation(); setIsReportOpen(true); }}
@@ -362,6 +374,15 @@ export default function PromptCard({ prompt, onEdit, onDelete, onPin, isOwner }:
         targetType="PROMPT"
         targetId={prompt.id}
         targetName={prompt.name}
+      />
+
+      <ShareModal
+        isOpen={isShareOpen}
+        onClose={() => setIsShareOpen(false)}
+        type="PROMPT"
+        targetId={prompt.numericId || prompt.id}
+        title={prompt.name}
+        description={prompt.purpose || prompt.content?.slice(0, 100)}
       />
     </div>
   );

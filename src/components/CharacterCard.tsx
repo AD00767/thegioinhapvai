@@ -22,7 +22,9 @@ import { useUserInteractions } from '../context/UserInteractionsContext';
 import { CharacterItem } from '../types';
 import ReportModal from './ReportModal';
 import DeleteConfirmModal from './DeleteConfirmModal';
+import ShareModal from './ShareModal';
 import DisplayId from './DisplayId';
+import { buildCharacterUrl } from '../lib/urls';
 import toast from 'react-hot-toast';
 
 interface CharacterCardProps {
@@ -56,6 +58,7 @@ export default function CharacterCard({
   const [viewsCount, setViewsCount] = useState(character.viewsCount || 0);
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -273,10 +276,7 @@ export default function CharacterCard({
     if (onShare) {
       onShare(character);
     } else {
-      const charIdentifier = character.numericId || character.id;
-      const shareUrl = `${window.location.origin}/character/${charIdentifier}`;
-      navigator.clipboard.writeText(shareUrl);
-      toast.success("Đã sao chép liên kết chia sẻ Character!");
+      setIsShareOpen(true);
     }
   };
 
@@ -534,6 +534,16 @@ export default function CharacterCard({
         targetType="CHARACTER"
         targetId={character.id}
         targetName={character.name}
+      />
+
+      <ShareModal
+        isOpen={isShareOpen}
+        onClose={() => setIsShareOpen(false)}
+        type="CHARACTER"
+        targetId={character.numericId || character.id}
+        title={character.name}
+        avatar={character.avatar}
+        description={character.slogan}
       />
 
       <DeleteConfirmModal
