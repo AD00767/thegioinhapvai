@@ -3,7 +3,7 @@ import {
   User as UserIcon, Settings, Plus, Pin, Heart, Bookmark, Users, UserCheck, 
   Sparkles, PenTool, ExternalLink, Edit3, Trash2, Copy, Check, Facebook, Instagram, Music, MessageSquare, ShieldAlert, ShieldCheck, X, Globe, Share2
 } from 'lucide-react';
-import { collection, query, where, getDocs, doc, updateDoc, deleteDoc, getDoc, addDoc, increment } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc, setDoc, deleteDoc, getDoc, addDoc, increment } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuthStore } from '../store/useAuthStore';
 import { CharacterItem, PromptItem } from '../types';
@@ -105,9 +105,9 @@ export default function Profile() {
         createdAt: new Date().toISOString()
       });
 
-      await updateDoc(doc(db, 'users', user.id), {
+      await setDoc(doc(db, 'users', user.id), {
         creatorRequestStatus: 'PENDING'
-      });
+      }, { merge: true });
 
       toast.success("Đã gửi yêu cầu trở thành Creator thành công!");
       setHasPendingRequest(true);

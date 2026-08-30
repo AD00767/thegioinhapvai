@@ -189,7 +189,7 @@ export const syncAuthUser = async (firebaseUser: any, customBackendData?: any) =
         deletedAt: null
       };
 
-      await setDoc(userRef, newUserData);
+      await setDoc(userRef, newUserData, { merge: true });
       const payload = { id: firebaseUser.uid, ...newUserData };
       useAuthStore.getState().setAuth(firebaseUser, payload);
       useAuthStore.getState().setInitialized(true);
@@ -200,15 +200,26 @@ export const syncAuthUser = async (firebaseUser: any, customBackendData?: any) =
       throw err;
     }
     console.error("syncAuthUser error fallback:", err);
+    const fallbackNumericId = firebaseUser.uid.replace(/\D/g, '').padEnd(9, '0').substring(0, 9) || Math.floor(Math.random() * 1000000000).toString().padStart(9, '0');
     const fallbackPayload = {
       id: firebaseUser.uid,
+      numericId: fallbackNumericId,
       email: firebaseUser.email || '',
-      displayName: sanitizeDisplayName(firebaseUser.displayName, firebaseUser.uid.substring(0, 6)),
+      displayName: sanitizeDisplayName(firebaseUser.displayName, fallbackNumericId),
       avatar: getValidAvatar(firebaseUser.photoURL),
       role: "USER",
       creatorStatus: false,
-      isLocked: false
+      isLocked: false,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      deletedAt: null
     };
+    try {
+      const userDocRef = doc(db, 'users', firebaseUser.uid);
+      await setDoc(userDocRef, fallbackPayload, { merge: true });
+    } catch (saveErr) {
+      console.warn("Could not save fallback user document:", saveErr);
+    }
     useAuthStore.getState().setAuth(firebaseUser, fallbackPayload);
     useAuthStore.getState().setInitialized(true);
     return fallbackPayload;
@@ -223,6 +234,17 @@ export const loginWithGoogle = async () => {
     return { user, backendData };
   } catch (error: any) {
     console.error("Google Login error:", error);
+    if (error?.code === 'auth/unauthorized-domain') {
+      throw new Error("Tên miền hiện tại chưa được kích hoạt trong Firebase Authorized Domains. Vui lòng mở ứng dụng trong tab mới hoặc cấu hình Authorized Domains.");
+    } else if (error?.code === 'auth/popup-blocked') {
+      throw new Error("Trình duyệt hoặc khung hiển thị đã chặn cửa sổ đăng nhập Google. Vui lòng cho phép popup hoặc mở ứng dụng trong tab mới.");
+    } else if (error?.code === 'auth/popup-closed-by-user') {
+      throw new Error("Cửa sổ đăng nhập Google đã bị đóng trước khi hoàn tất.");
+    } else if (error?.code === 'auth/cancelled-popup-request') {
+      throw new Error("Yêu cầu đăng nhập trước đó đã bị hủy. Vui lòng thử lại.");
+    } else if (error?.code === 'auth/network-request-failed') {
+      throw new Error("Lỗi kết nối mạng khi xác thực với Google. Vui lòng kiểm tra lại đường truyền.");
+    }
     throw error;
   }
 };

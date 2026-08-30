@@ -37,6 +37,54 @@ interface EditProfileModalProps {
   onSaveSuccess: () => void;
 }
 
+// Helper function to resize and compress avatar image client-side to prevent exceeding Firestore 1MB document limit
+const resizeAndCompressAvatar = (file: File, maxWidth = 400, maxHeight = 400, quality = 0.82): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (readerEvent) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Không thể khởi tạo bộ xử lý hình ảnh canvas'));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Try webp first, fallback to jpeg
+        let dataUrl = canvas.toDataURL('image/webp', quality);
+        if (!dataUrl || !dataUrl.startsWith('data:image/webp')) {
+          dataUrl = canvas.toDataURL('image/jpeg', quality);
+        }
+        resolve(dataUrl);
+      };
+      img.onerror = () => reject(new Error('Không thể đọc dữ liệu hình ảnh'));
+      img.src = readerEvent.target?.result as string;
+    };
+    reader.onerror = () => reject(new Error('Không thể đọc file hình ảnh'));
+    reader.readAsDataURL(file);
+  });
+};
+
 export default function EditProfileModal({ isOpen, onClose, onSaveSuccess }: EditProfileModalProps) {
   const { user, setAuth, firebaseUser } = useAuthStore();
   
@@ -104,7 +152,7 @@ export default function EditProfileModal({ isOpen, onClose, onSaveSuccess }: Edi
   if (!isOpen || !user) return null;
 
   // Handle Avatar Upload
-  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -118,13 +166,15 @@ export default function EditProfileModal({ isOpen, onClose, onSaveSuccess }: Edi
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const base64Str = event.target?.result as string;
-      setAvatar(base64Str);
+    try {
+      // Resize and compress client-side to ensure small footprint (< 50KB) and prevent Firestore 1MB document limit
+      const optimizedBase64 = await resizeAndCompressAvatar(file, 400, 400, 0.82);
+      setAvatar(optimizedBase64);
       toast.success("Tải ảnh đại diện thành công!");
-    };
-    reader.readAsDataURL(file);
+    } catch (err: any) {
+      console.error("Lỗi nén ảnh avatar:", err);
+      toast.error("Không thể xử lý ảnh đại diện: " + (err.message || "Vui lòng chọn ảnh khác"));
+    }
   };
 
   // Add Custom Social Link
@@ -167,7 +217,7 @@ export default function EditProfileModal({ isOpen, onClose, onSaveSuccess }: Edi
       };
 
       await setDoc(doc(db, 'creator_requests', user.id), reqData);
-      await updateDoc(doc(db, 'users', user.id), { creatorRequestStatus: 'PENDING' });
+      await setDoc(doc(db, 'users', user.id), { creatorRequestStatus: 'PENDING' }, { merge: true });
 
       setRequestStatus('PENDING');
       toast.success("Đã gửi yêu cầu trở thành Creator tới Quản trị viên (Admin)!");
@@ -219,7 +269,7 @@ export default function EditProfileModal({ isOpen, onClose, onSaveSuccess }: Edi
       };
 
       const userRef = doc(db, 'users', user.id);
-      await updateDoc(userRef, updatedData);
+      await setDoc(userRef, updatedData, { merge: true });
 
       // Update local state in Zustand store
       setAuth(firebaseUser, { ...user, ...updatedData });
