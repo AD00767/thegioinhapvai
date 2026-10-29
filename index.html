@@ -15,7 +15,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;0,800;0,900;1,600;1,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <title>Thế Giới Nhập Vai AD</title>
     
-    <!-- 1. TẢI THƯ VIỆN SUPABASE QUA CDN -->
+    <!-- TẢI THƯ VIỆN SUPABASE -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <script>
@@ -45,26 +45,26 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
 
-    <!-- 2. ĐOẠN MÃ THỬ NGHIỆM KẾT NỐI SUPABASE -->
+    <!-- ĐOẠN MÃ THỬ NGHIỆM KẾT NỐI SUPABASE -->
     <script>
-        // BẠN CẦN THAY THẾ 2 DÒNG DƯỚI ĐÂY BẰNG THÔNG TIN SUPABASE CỦA BẠN
-        const supabaseUrl = 'URL_CUA_BAN_TAI_DAY'; 
-        const supabaseKey = 'ANON_KEY_CUA_BAN_TAI_DAY';
+        // 1. BẠN CHỈ CẦN THAY 2 DÒNG NÀY BẰNG THÔNG TIN CỦA BẠN
+        const supabaseUrl = 'https://ykhsbwclewixebafftky.supabase.co'; 
+        const supabaseKey = 'sb_publishable_0wF7Ax8xD0RTaXj8dCZsCA_4UnIFRic';
         
         const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
         async function kiemTraSupabase() {
             console.log("Đang thử kết nối Supabase...");
             
-            // BẠN CẦN THAY 'ten_bang_cua_ban' THÀNH TÊN BẢNG BẠN ĐÃ TẠO TRÊN SUPABASE (VÍ DỤ: 'users' hoặc 'posts')
-            const { data, error } = await supabase.from('ten_bang_cua_ban').select('*').limit(1);
+            // Đã đổi thành bảng 'characters' vừa tạo
+            const { data, error } = await supabase.from('characters').select('*').limit(1);
             
             if (error) {
                 console.error("Lỗi Supabase:", error);
                 alert("Lỗi kết nối Supabase: " + error.message + "\nHãy xem Console (F12) để biết chi tiết!");
             } else {
                 console.log("Dữ liệu nhận được:", data);
-                alert("Kết nối Supabase THÀNH CÔNG!\nĐã lấy được dữ liệu, hãy xem trong Console (F12).");
+                alert("Kết nối Supabase THÀNH CÔNG!\nDữ liệu trả về (mảng rỗng [] là chính xác vì bảng chưa có gì): " + JSON.stringify(data));
             }
         }
         
