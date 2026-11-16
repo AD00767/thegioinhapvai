@@ -1,4 +1,4 @@
-# Thế giới nhập vai_AD
+# Thế giới nhập vai AD
 
 Khởi đầu cho mọi hành trình Roleplay. Nền tảng cộng đồng dành cho Google AI Studio.
 
